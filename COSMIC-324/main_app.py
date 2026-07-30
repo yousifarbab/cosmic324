@@ -333,6 +333,7 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
                     orbit_map[orbit.name] = orbit
             if orbit_map:
                 return orbit_map
+    # Mock data
     orbit_map = {}
     for i in range(min(num_satellites, 5000)):
         a = 7000 + random.randint(-500, 500)
@@ -502,91 +503,68 @@ st.dataframe(
 )
 
 # ============================================================
-# 🌍 الخريطة ثلاثية الأبعاد (النسخة النهائية المستقرة)
+# 🌍 الخريطة ثلاثية الأبعاد (نسخة مستقرة باستخدام px.scatter_geo)
 # ============================================================
 st.markdown("---")
 st.subheader(t('3d_globe'))
 
 if not df.empty and len(df) > 0:
-    fig_3d = go.Figure()
-
-    fig_3d.add_trace(go.Scattergeo(
-        lon=df[t('longitude')].tolist(),
-        lat=df[t('latitude')].tolist(),
-        mode='markers+text',
-        marker=dict(
-            size=10,
-            color=df[t('status')].map({
+    try:
+        fig_3d = px.scatter_geo(
+            df,
+            lat=t('latitude'),
+            lon=t('longitude'),
+            color=t('status'),
+            hover_name=t('satellite'),
+            hover_data={
+                t('latitude'): ':.4f',
+                t('longitude'): ':.4f',
+                t('altitude'): ':.2f'
+            },
+            title=t('3d_globe'),
+            color_discrete_map={
                 t('active'): '#00FF00',
                 t('calibration'): '#FFAA00',
                 t('standby'): '#FF5555'
-            }).tolist(),
-            symbol='circle',
-            line=dict(width=1, color='rgba(255,255,255,0.3)')
-        ),
-        text=df[t('satellite')].tolist(),
-        textposition='top center',
-        textfont=dict(size=9, color='white'),
-        hoverinfo='text',
-        hovertext=[
-            f"{row[t('satellite')]}<br>Lat: {row[t('latitude')]}°<br>Lon: {row[t('longitude')]}°<br>Alt: {row[t('altitude')]} km"
-            for _, row in df.iterrows()
-        ]
-    ))
+            },
+            projection='orthographic',
+            size_max=15
+        )
 
-    fig_3d.add_trace(go.Scattergeo(
-        lon=[0],
-        lat=[0],
-        mode='markers+text',
-        marker=dict(size=16, color='#FF3366', symbol='star'),
-        text=['🛰️ Ground'],
-        textposition='bottom center',
-        textfont=dict(size=12, color='#FF6699'),
-        hoverinfo='text',
-        hovertext=['🛰️ Ground Station<br>Lat: 0°<br>Lon: 0°<br>Altitude: 0 km']
-    ))
+        fig_3d.update_layout(
+            geo=dict(
+                showland=True,
+                landcolor='rgb(10, 10, 20)',
+                coastlinecolor='rgb(60, 60, 80)',
+                showocean=True,
+                oceancolor='rgb(5, 5, 15)',
+                showcountries=True,
+                countrycolor='rgb(50, 50, 70)',
+                bgcolor='rgba(0,0,0,0)'
+            ),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            height=650,
+            margin=dict(l=0, r=0, t=40, b=0)
+        )
 
-    rot_lon = st.session_state.get('rotation_lon', 0)
+        st.plotly_chart(fig_3d, use_container_width=True)
 
-    fig_3d.update_layout(
-        title={
-            'text': t('3d_globe'),
-            'font': {'size': 22, 'color': '#00CCFF', 'family': 'Arial Black'},
-            'x': 0.5
-        },
-        geo={
-            'projection_type': 'orthographic',
-            'projection_rotation': {'lon': rot_lon, 'lat': 0},
-            'showland': True,
-            'landcolor': 'rgb(10, 10, 20)',
-            'coastlinecolor': 'rgb(60, 60, 80)',
-            'showocean': True,
-            'oceancolor': 'rgb(5, 5, 15)',
-            'showcountries': True,
-            'countrycolor': 'rgb(50, 50, 70)',
-            'bgcolor': 'rgba(0,0,0,0)'
-        },
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        height=650,
-        margin=dict(l=0, r=0, t=40, b=0)
-    )
+        # أزرار تحكم منفصلة
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Rotate"):
+                st.session_state.rotation_lon = st.session_state.get('rotation_lon', 0) + 20
+                st.rerun()
+        with col2:
+            if st.button("⏺ Reset"):
+                st.session_state.rotation_lon = 0
+                st.rerun()
 
-    st.plotly_chart(fig_3d, use_container_width=True)
-
-    col_b1, col_b2, col_b3 = st.columns([1, 1, 4])
-    with col_b1:
-        if st.button("🔄 Rotate"):
-            st.session_state.rotation_lon = st.session_state.get('rotation_lon', 0) + 20
-            st.rerun()
-    with col_b2:
-        if st.button("⏺ Reset"):
-            st.session_state.rotation_lon = 0
-            st.rerun()
-    with col_b3:
-        st.caption("اضغط على الأزرار لتدوير أو إعادة تعيين الخريطة")
+    except Exception as e:
+        st.error(f"⚠️ حدث خطأ أثناء إنشاء الخريطة: {e}")
 else:
-    st.warning("⚠️ لا توجد بيانات كافية لعرض الخريطة ثلاثية الأبعاد.")
+    st.warning("⚠️ لا توجد بيانات كافية لعرض الخريطة.")
 
 # ============================================================
 # 📊 تحليلات متقدمة
