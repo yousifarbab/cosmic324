@@ -502,83 +502,91 @@ st.dataframe(
 )
 
 # ============================================================
-# 🌍 الخريطة ثلاثية الأبعاد (الإصدار المستقر)
+# 🌍 الخريطة ثلاثية الأبعاد (النسخة النهائية المستقرة)
 # ============================================================
 st.markdown("---")
 st.subheader(t('3d_globe'))
 
-fig_3d = go.Figure()
+if not df.empty and len(df) > 0:
+    fig_3d = go.Figure()
 
-fig_3d.add_trace(go.Scattergeo(
-    lon=df[t('longitude')],
-    lat=df[t('latitude')],
-    mode='markers+text',
-    marker=dict(
-        size=8,
-        color=df[t('status')].map({
-            t('active'): '#00FF00',
-            t('calibration'): '#FFAA00',
-            t('standby'): '#FF5555'
-        }),
-        symbol='circle',
-        line=dict(width=1, color='rgba(255,255,255,0.3)')
-    ),
-    text=df[t('satellite')],
-    textposition='top center',
-    textfont=dict(size=9, color='white'),
-    hoverinfo='text',
-    hovertext=df.apply(lambda row: f"{row[t('satellite')]}<br>Lat: {row[t('latitude')]}°<br>Lon: {row[t('longitude')]}°<br>Alt: {row[t('altitude')]} km", axis=1)
-))
+    fig_3d.add_trace(go.Scattergeo(
+        lon=df[t('longitude')].tolist(),
+        lat=df[t('latitude')].tolist(),
+        mode='markers+text',
+        marker=dict(
+            size=10,
+            color=df[t('status')].map({
+                t('active'): '#00FF00',
+                t('calibration'): '#FFAA00',
+                t('standby'): '#FF5555'
+            }).tolist(),
+            symbol='circle',
+            line=dict(width=1, color='rgba(255,255,255,0.3)')
+        ),
+        text=df[t('satellite')].tolist(),
+        textposition='top center',
+        textfont=dict(size=9, color='white'),
+        hoverinfo='text',
+        hovertext=[
+            f"{row[t('satellite')]}<br>Lat: {row[t('latitude')]}°<br>Lon: {row[t('longitude')]}°<br>Alt: {row[t('altitude')]} km"
+            for _, row in df.iterrows()
+        ]
+    ))
 
-fig_3d.add_trace(go.Scattergeo(
-    lon=[0],
-    lat=[0],
-    mode='markers+text',
-    marker=dict(size=16, color='#FF3366', symbol='star'),
-    text=['🛰️ Ground'],
-    textposition='bottom center',
-    textfont=dict(size=12, color='#FF6699'),
-    hoverinfo='text',
-    hovertext=['🛰️ Ground Station<br>Lat: 0°<br>Lon: 0°<br>Altitude: 0 km']
-))
+    fig_3d.add_trace(go.Scattergeo(
+        lon=[0],
+        lat=[0],
+        mode='markers+text',
+        marker=dict(size=16, color='#FF3366', symbol='star'),
+        text=['🛰️ Ground'],
+        textposition='bottom center',
+        textfont=dict(size=12, color='#FF6699'),
+        hoverinfo='text',
+        hovertext=['🛰️ Ground Station<br>Lat: 0°<br>Lon: 0°<br>Altitude: 0 km']
+    ))
 
-rot_lon = st.session_state.get('rotation_lon', 0)
+    rot_lon = st.session_state.get('rotation_lon', 0)
 
-fig_3d.update_layout(
-    title={
-        'text': t('3d_globe'),
-        'font': {'size': 22, 'color': '#00CCFF', 'family': 'Arial Black'},
-        'x': 0.5
-    },
-    geo={
-        'projection_type': 'orthographic',
-        'projection_rotation': {'lon': rot_lon, 'lat': 0},
-        'showland': True,
-        'landcolor': 'rgb(10, 10, 20)',
-        'coastlinecolor': 'rgb(60, 60, 80)',
-        'showocean': True,
-        'oceancolor': 'rgb(5, 5, 15)',
-        'showcountries': True,
-        'countrycolor': 'rgb(50, 50, 70)',
-        'bgcolor': 'rgba(0,0,0,0)'
-    },
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    height=650,
-    margin=dict(l=0, r=0, t=40, b=0)
-)
+    fig_3d.update_layout(
+        title={
+            'text': t('3d_globe'),
+            'font': {'size': 22, 'color': '#00CCFF', 'family': 'Arial Black'},
+            'x': 0.5
+        },
+        geo={
+            'projection_type': 'orthographic',
+            'projection_rotation': {'lon': rot_lon, 'lat': 0},
+            'showland': True,
+            'landcolor': 'rgb(10, 10, 20)',
+            'coastlinecolor': 'rgb(60, 60, 80)',
+            'showocean': True,
+            'oceancolor': 'rgb(5, 5, 15)',
+            'showcountries': True,
+            'countrycolor': 'rgb(50, 50, 70)',
+            'bgcolor': 'rgba(0,0,0,0)'
+        },
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        height=650,
+        margin=dict(l=0, r=0, t=40, b=0)
+    )
 
-st.plotly_chart(fig_3d, use_container_width=True)
+    st.plotly_chart(fig_3d, use_container_width=True)
 
-col_btn1, col_btn2 = st.columns(2)
-with col_btn1:
-    if st.button("🔄 Rotate Globe"):
-        st.session_state.rotation_lon = st.session_state.get('rotation_lon', 0) + 20
-        st.rerun()
-with col_btn2:
-    if st.button("⏺ Reset View"):
-        st.session_state.rotation_lon = 0
-        st.rerun()
+    col_b1, col_b2, col_b3 = st.columns([1, 1, 4])
+    with col_b1:
+        if st.button("🔄 Rotate"):
+            st.session_state.rotation_lon = st.session_state.get('rotation_lon', 0) + 20
+            st.rerun()
+    with col_b2:
+        if st.button("⏺ Reset"):
+            st.session_state.rotation_lon = 0
+            st.rerun()
+    with col_b3:
+        st.caption("اضغط على الأزرار لتدوير أو إعادة تعيين الخريطة")
+else:
+    st.warning("⚠️ لا توجد بيانات كافية لعرض الخريطة ثلاثية الأبعاد.")
 
 # ============================================================
 # 📊 تحليلات متقدمة
