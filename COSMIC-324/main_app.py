@@ -43,10 +43,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ تنبيه: انخفاض عدد الأقمار النشطة!",
         "alert_threshold": "عتبة التنبيه (مللي ثانية)",
         "active_threshold": "الحد الأدنى للأقمار النشطة",
-        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
-        "elevation": "الارتفاع",
-        "azimuth": "الزاوية الأفقية",
-        "distance": "المسافة"
+        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد"
     },
     "en": {
         "name": "English",
@@ -78,10 +75,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alert: Low Active Satellites!",
         "alert_threshold": "Alert Threshold (ms)",
         "active_threshold": "Min Active Satellites",
-        "3d_globe": "🌍 3D Constellation Globe",
-        "elevation": "Elevation",
-        "azimuth": "Azimuth",
-        "distance": "Distance"
+        "3d_globe": "🌍 3D Constellation Globe"
     },
     "fr": {
         "name": "Français",
@@ -113,10 +107,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alerte: Peu de satellites actifs!",
         "alert_threshold": "Seuil d'alerte (ms)",
         "active_threshold": "Min. satellites actifs",
-        "3d_globe": "🌍 Globe 3D de la constellation",
-        "elevation": "Élévation",
-        "azimuth": "Azimut",
-        "distance": "Distance"
+        "3d_globe": "🌍 Globe 3D de la constellation"
     },
     "de": {
         "name": "Deutsch",
@@ -148,10 +139,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Warnung: Wenig aktive Satelliten!",
         "alert_threshold": "Warnschwelle (ms)",
         "active_threshold": "Min. aktive Satelliten",
-        "3d_globe": "🌍 3D-Konstellationsglobus",
-        "elevation": "Höhenwinkel",
-        "azimuth": "Azimut",
-        "distance": "Entfernung"
+        "3d_globe": "🌍 3D-Konstellationsglobus"
     },
     "es": {
         "name": "Español",
@@ -183,10 +171,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alerta: ¡Pocos satélites activos!",
         "alert_threshold": "Umbral de alerta (ms)",
         "active_threshold": "Mín. satélites activos",
-        "3d_globe": "🌍 Globo 3D de la constelación",
-        "elevation": "Elevación",
-        "azimuth": "Azimut",
-        "distance": "Distancia"
+        "3d_globe": "🌍 Globo 3D de la constelación"
     },
     "zh": {
         "name": "中文",
@@ -218,10 +203,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ 警报：活跃卫星数量低！",
         "alert_threshold": "警报阈值（毫秒）",
         "active_threshold": "最低活跃卫星数",
-        "3d_globe": "🌍 3D星座球体",
-        "elevation": "仰角",
-        "azimuth": "方位角",
-        "distance": "距离"
+        "3d_globe": "🌍 3D星座球体"
     },
     "ru": {
         "name": "Русский",
@@ -253,10 +235,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Предупреждение: Мало активных спутников!",
         "alert_threshold": "Порог предупреждения (мс)",
         "active_threshold": "Мин. активных спутников",
-        "3d_globe": "🌍 3D-глобус созвездия",
-        "elevation": "Угол места",
-        "azimuth": "Азимут",
-        "distance": "Расстояние"
+        "3d_globe": "🌍 3D-глобус созвездия"
     }
 }
 
@@ -503,36 +482,55 @@ st.dataframe(
 )
 
 # ============================================================
-# 🌍 الخريطة ثلاثية الأبعاد (نسخة مستقرة باستخدام px.scatter_geo)
+# 🌍 الخريطة ثلاثية الأبعاد (باستخدام go.Figure المبسط)
 # ============================================================
 st.markdown("---")
 st.subheader(t('3d_globe'))
 
 if not df.empty and len(df) > 0:
     try:
-        fig_3d = px.scatter_geo(
-            df,
-            lat=t('latitude'),
-            lon=t('longitude'),
-            color=t('status'),
-            hover_name=t('satellite'),
-            hover_data={
-                t('latitude'): ':.4f',
-                t('longitude'): ':.4f',
-                t('altitude'): ':.2f'
-            },
-            title=t('3d_globe'),
-            color_discrete_map={
-                t('active'): '#00FF00',
-                t('calibration'): '#FFAA00',
-                t('standby'): '#FF5555'
-            },
-            projection='orthographic',
-            size_max=15
-        )
+        fig_3d = go.Figure()
+
+        fig_3d.add_trace(go.Scattergeo(
+            lon=df[t('longitude')].tolist(),
+            lat=df[t('latitude')].tolist(),
+            mode='markers',
+            marker=dict(
+                size=8,
+                color=df[t('status')].map({
+                    t('active'): '#00FF00',
+                    t('calibration'): '#FFAA00',
+                    t('standby'): '#FF5555'
+                }).tolist(),
+                symbol='circle',
+                line=dict(width=1, color='rgba(255,255,255,0.3)')
+            ),
+            text=df[t('satellite')].tolist(),
+            hoverinfo='text',
+            hovertext=[
+                f"{row[t('satellite')]}<br>Lat: {row[t('latitude')]}°<br>Lon: {row[t('longitude')]}°<br>Alt: {row[t('altitude')]} km"
+                for _, row in df.iterrows()
+            ]
+        ))
+
+        fig_3d.add_trace(go.Scattergeo(
+            lon=[0],
+            lat=[0],
+            mode='markers',
+            marker=dict(size=14, color='#FF3366', symbol='star'),
+            text=['🛰️ Ground'],
+            hoverinfo='text',
+            hovertext=['🛰️ Ground Station<br>Lat: 0°<br>Lon: 0°']
+        ))
 
         fig_3d.update_layout(
+            title={
+                'text': t('3d_globe'),
+                'font': {'size': 20, 'color': '#00CCFF', 'family': 'Arial Black'},
+                'x': 0.5
+            },
             geo=dict(
+                projection_type='orthographic',
                 showland=True,
                 landcolor='rgb(10, 10, 20)',
                 coastlinecolor='rgb(60, 60, 80)',
@@ -544,22 +542,11 @@ if not df.empty and len(df) > 0:
             ),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            height=650,
+            height=600,
             margin=dict(l=0, r=0, t=40, b=0)
         )
 
         st.plotly_chart(fig_3d, use_container_width=True)
-
-        # أزرار تحكم منفصلة
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 Rotate"):
-                st.session_state.rotation_lon = st.session_state.get('rotation_lon', 0) + 20
-                st.rerun()
-        with col2:
-            if st.button("⏺ Reset"):
-                st.session_state.rotation_lon = 0
-                st.rerun()
 
     except Exception as e:
         st.error(f"⚠️ حدث خطأ أثناء إنشاء الخريطة: {e}")
