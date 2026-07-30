@@ -24,6 +24,7 @@ LANGUAGES = {
         "active": "🟢 نشط",
         "calibration": "🟡 معايرة",
         "standby": "🔴 استعداد",
+        "disabled": "🔴 معطل",
         "total": "المجموع",
         "satellite": "القمر",
         "status": "الحالة",
@@ -59,6 +60,7 @@ LANGUAGES = {
         "active": "🟢 Active",
         "calibration": "🟡 Calibration",
         "standby": "🔴 Standby",
+        "disabled": "🔴 Disabled",
         "total": "Total",
         "satellite": "Satellite",
         "status": "Status",
@@ -94,6 +96,7 @@ LANGUAGES = {
         "active": "🟢 Actif",
         "calibration": "🟡 Étalonnage",
         "standby": "🔴 Veille",
+        "disabled": "🔴 Désactivé",
         "total": "Total",
         "satellite": "Satellite",
         "status": "Statut",
@@ -129,6 +132,7 @@ LANGUAGES = {
         "active": "🟢 Aktiv",
         "calibration": "🟡 Kalibrierung",
         "standby": "🔴 Bereitschaft",
+        "disabled": "🔴 Deaktiviert",
         "total": "Gesamt",
         "satellite": "Satellit",
         "status": "Status",
@@ -164,6 +168,7 @@ LANGUAGES = {
         "active": "🟢 Activo",
         "calibration": "🟡 Calibración",
         "standby": "🔴 En espera",
+        "disabled": "🔴 Desactivado",
         "total": "Total",
         "satellite": "Satélite",
         "status": "Estado",
@@ -199,6 +204,7 @@ LANGUAGES = {
         "active": "🟢 活跃",
         "calibration": "🟡 校准",
         "standby": "🔴 待机",
+        "disabled": "🔴 禁用",
         "total": "总计",
         "satellite": "卫星",
         "status": "状态",
@@ -234,6 +240,7 @@ LANGUAGES = {
         "active": "🟢 Активен",
         "calibration": "🟡 Калибровка",
         "standby": "🔴 Ожидание",
+        "disabled": "🔴 Отключен",
         "total": "Всего",
         "satellite": "Спутник",
         "status": "Статус",
@@ -266,7 +273,7 @@ def t(key: str) -> str:
     return LANGUAGES.get(lang, LANGUAGES['ar']).get(key, key)
 
 # ============================================================
-# 📡 جلب بيانات Celestrak (مع إعادة محاولة وتخزين مؤقت ذكي)
+# 📡 جلب بيانات Celestrak
 # ============================================================
 _last_successful_data = None
 _last_successful_time = None
@@ -393,6 +400,48 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
     return orbit_map
 
 # ============================================================
+# 🧪 دالة تطبيق محاكي السيناريوهات
+# ============================================================
+def apply_scenario(df: pd.DataFrame, scenario: str, custom_jamming: float = 0.0, custom_lost_sats: int = 0) -> pd.DataFrame:
+    df_scenario = df.copy()
+    jamming_factor = 0.0
+    lost_satellites = 0
+    
+    if scenario == "🔴 فقدان 5 أقمار":
+        lost_satellites = 5
+        jamming_factor = 0.0
+    elif scenario == "🔴🔴 تشويش شديد (Jamming 80%)":
+        lost_satellites = 0
+        jamming_factor = 0.8
+    elif scenario == "🔴🔴🔴 انهيار البوابة الأرضية":
+        lost_satellites = 0
+        jamming_factor = 0.0
+        if not df_scenario.empty:
+            df_scenario.loc[0, t('status')] = t('disabled')
+    elif scenario == "🎛️ سيناريو مخصص":
+        lost_satellites = custom_lost_sats
+        jamming_factor = custom_jamming
+    else:
+        return df_scenario
+    
+    if lost_satellites > 0 and len(df_scenario) > lost_satellites:
+        indices_to_disable = random.sample(range(1, len(df_scenario)), min(lost_satellites, len(df_scenario)-1))
+        for idx in indices_to_disable:
+            df_scenario.loc[idx, t('status')] = t('disabled')
+            
+    if jamming_factor > 0:
+        st.session_state.jamming_effect = jamming_factor
+    else:
+        st.session_state.jamming_effect = 0.0
+        
+    st.session_state.scenario_applied = True
+    st.session_state.scenario_name = scenario
+    st.session_state.lost_count = lost_satellites
+    st.session_state.jamming_applied = jamming_factor
+    
+    return df_scenario
+
+# ============================================================
 # ⚙️ إعداد الواجهة
 # ============================================================
 st.set_page_config(page_title="COSMIC-324: 6G Orbital Command", page_icon="🚀", layout="wide")
@@ -440,8 +489,39 @@ with st.sidebar:
     alert_threshold = st.slider(t("alert_threshold"), 5.0, 50.0, 20.0, 1.0)
     active_threshold = st.slider(t("active_threshold"), 1, 50, 5, 1)
     
+    # ============================================================
+    # 🧪 محاكي السيناريوهات (Scenario Simulator)
+    # ============================================================
+    st.markdown("---")
+    st.subheader("🧪 محاكي السيناريوهات")
+
+    scenario_options = [
+        "بدون سيناريو (Nominal)",
+        "🔴 فقدان 5 أقمار",
+        "🔴🔴 تشويش شديد (Jamming 80%)",
+        "🔴🔴🔴 انهيار البوابة الأرضية",
+        "🎛️ سيناريو مخصص"
+    ]
+    selected_scenario = st.selectbox("اختر السيناريو", scenario_options, index=0)
+
+    if selected_scenario == "🎛️ سيناريو مخصص":
+        custom_jamming = st.slider("شدة التشويش (0-1)", 0.0, 1.0, 0.3, 0.05)
+        custom_lost_sats = st.slider("عدد الأقمار المفقودة", 0, 20, 5, 1)
+        st.caption(f"⚠️ سيتم تعطيل {custom_lost_sats} قمر عشوائي مع تشويش {custom_jamming:.0%}")
+
+    if st.button("▶️ تنفيذ السيناريو", use_container_width=True, type="primary"):
+        st.session_state.run_scenario = True
+        st.session_state.selected_scenario = selected_scenario
+        if selected_scenario == "🎛️ سيناريو مخصص":
+            st.session_state.custom_jamming = custom_jamming
+            st.session_state.custom_lost_sats = custom_lost_sats
+        st.rerun()
+
+    st.markdown("---")
     if st.button(t("update_btn"), use_container_width=True):
         st.cache_data.clear()
+        st.session_state.run_scenario = False
+        st.session_state.scenario_applied = False
         st.rerun()
     
     st.caption(f"{t('last_update')}: {datetime.now().strftime('%H:%M:%S')}")
@@ -453,7 +533,7 @@ st.markdown(f"<h1 style='text-align: center; font-size: 3em; text-shadow: 0 0 40
 st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
 
 # ============================================================
-# 📊 توليد البيانات
+# 📊 توليد البيانات وتطبيق السيناريو
 # ============================================================
 with st.spinner("🔄 جاري تحميل بيانات الأقمار..."):
     orbit_map = generate_orbit_map(num_satellites, group, use_celestrak)
@@ -476,11 +556,33 @@ with st.spinner("🔄 جاري تحميل بيانات الأقمار..."):
             })
     df = pd.DataFrame(data)
 
+# تطبيق السيناريو إذا تم تفعيله
+if st.session_state.get('run_scenario', False):
+    scenario = st.session_state.get('selected_scenario', 'بدون سيناريو (Nominal)')
+    custom_jamming = st.session_state.get('custom_jamming', 0.0)
+    custom_lost_sats = st.session_state.get('custom_lost_sats', 0)
+    
+    df = apply_scenario(df, scenario, custom_jamming, custom_lost_sats)
+    
+    st.info(f"🧪 **السيناريو المطبق:** {scenario}")
+    if 'lost_count' in st.session_state and st.session_state.lost_count > 0:
+        st.warning(f"⚠️ تم تعطيل {st.session_state.lost_count} قمر صناعي")
+    if 'jamming_applied' in st.session_state and st.session_state.jamming_applied > 0:
+        st.warning(f"📡 تشويش نشط بنسبة {st.session_state.jamming_applied:.0%}")
+    
+    if st.button("🔄 إعادة ضبط السيناريو"):
+        st.session_state.run_scenario = False
+        st.session_state.scenario_applied = False
+        st.session_state.jamming_effect = 0.0
+        st.rerun()
+
 # ============================================================
 # 🔔 التنبيهات الذكية
 # ============================================================
 active_count = df[df[t('status')] == t('active')].shape[0]
-avg_latency = round(random.uniform(5, 25), 2)
+jamming_effect = st.session_state.get('jamming_effect', 0.0)
+base_avg_latency = round(random.uniform(5, 18), 2)
+avg_latency = round(base_avg_latency * (1.0 + jamming_effect * 1.5), 2)
 
 if avg_latency > alert_threshold:
     st.markdown(f"<div class='alert-box'>🚨 {t('alert_latency')} (القيمة الحالية: {avg_latency} ms، الحد الأقصى: {alert_threshold} ms)</div>", unsafe_allow_html=True)
@@ -503,12 +605,15 @@ st.markdown("---")
 # 🎨 جدول البيانات الملون
 # ============================================================
 def highlight_status(row):
-    if row[t('status')] == t('active'):
+    status_val = row[t('status')]
+    if status_val == t('active'):
         return ['background-color: #1a3a1a; color: #00FF00'] * len(row)
-    elif row[t('status')] == t('calibration'):
+    elif status_val == t('calibration'):
         return ['background-color: #3a3a1a; color: #FFAA00'] * len(row)
-    elif row[t('status')] == t('standby'):
+    elif status_val == t('standby'):
         return ['background-color: #3a1a1a; color: #FF5555'] * len(row)
+    elif status_val == t('disabled'):
+        return ['background-color: #2a0a0a; color: #FF2222; text-decoration: line-through;'] * len(row)
     return [''] * len(row)
 
 st.dataframe(
@@ -525,7 +630,7 @@ st.dataframe(
 )
 
 # ============================================================
-# 🌍 الخريطة ثلاثية الأبعاد (نسخة مستقرة)
+# 🌍 الخريطة ثلاثية الأبعاد
 # ============================================================
 st.markdown("---")
 st.subheader(t('3d_globe'))
@@ -543,15 +648,16 @@ if not df.empty and len(df) > 0:
                 color=df[t('status')].map({
                     t('active'): '#00FF00',
                     t('calibration'): '#FFAA00',
-                    t('standby'): '#FF5555'
-                }).tolist(),
+                    t('standby'): '#FF5555',
+                    t('disabled'): '#FF0000'
+                }).fillna('#888888').tolist(),
                 symbol='circle',
                 line=dict(width=1, color='rgba(255,255,255,0.3)')
             ),
             text=df[t('satellite')].tolist(),
             hoverinfo='text',
             hovertext=[
-                f"{row[t('satellite')]}<br>Lat: {row[t('latitude')]}°<br>Lon: {row[t('longitude')]}°<br>Alt: {row[t('altitude')]} km"
+                f"{row[t('satellite')]}<br>Status: {row[t('status')]}<br>Lat: {row[t('latitude')]}°<br>Lon: {row[t('longitude')]}°<br>Alt: {row[t('altitude')]} km"
                 for _, row in df.iterrows()
             ]
         ))
@@ -615,7 +721,8 @@ fig_hist = px.histogram(
     color_discrete_map={
         t('active'): '#00FF00',
         t('calibration'): '#FFAA00',
-        t('standby'): '#FF5555'
+        t('standby'): '#FF5555',
+        t('disabled'): '#FF0000'
     },
     nbins=20
 )
@@ -629,18 +736,23 @@ fig_hist.update_layout(
 st.plotly_chart(fig_hist, use_container_width=True)
 
 # ============================================================
-# 📈 منحنى Latency
+# 📈 منحنى Latency (مع تأثير التشويش)
 # ============================================================
 st.markdown("---")
 st.subheader(t('latency_chart'))
 
-latency_data = pd.DataFrame({
-    t('step'): list(range(1, 21)),
-    t('latency_ms'): [round(3.0 + i * 0.15 + random.uniform(-0.3, 0.3), 2) for i in range(20)]
-})
+latency_data = []
+for i in range(20):
+    jamming_add = jamming_effect * random.uniform(3.0, 8.0) * ((i + 1) / 10)
+    val = 4.0 + i * 0.2 + random.uniform(-0.2, 0.2) + jamming_add
+    latency_data.append({
+        t('step'): i + 1,
+        t('latency_ms'): round(max(1.0, val), 2)
+    })
+latency_df = pd.DataFrame(latency_data)
 
 fig_latency = px.line(
-    latency_data,
+    latency_df,
     x=t('step'),
     y=t('latency_ms'),
     title=t('latency_chart'),
@@ -664,6 +776,9 @@ fig_latency.update_layout(
     yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)')
 )
 st.plotly_chart(fig_latency, use_container_width=True)
+
+if jamming_effect > 0:
+    st.caption(f"📡 تأثير التشويش على زمن الانتقال: +{jamming_effect*100:.0f}% إضافي")
 
 # ============================================================
 # 📌 الحالة السفلية
