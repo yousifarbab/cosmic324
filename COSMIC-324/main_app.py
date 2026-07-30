@@ -1,11 +1,16 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import random
+import requests
+import math
 from datetime import datetime
+from typing import Dict, List, Optional
+from types import SimpleNamespace
 
 # ============================================================
-# 🌍 نظام الترجمة (7 لغات)
+# 🌍 نظام الترجمة (7 لغات) - مختصر للعربية والإنجليزية
 # ============================================================
 LANGUAGES = {
     "ar": {
@@ -27,7 +32,13 @@ LANGUAGES = {
         "latency_chart": "📈 تطور زمن الانتقال",
         "step": "الخطوة",
         "latency_ms": "زمن الانتقال (مللي ثانية)",
-        "last_update": "آخر تحديث"
+        "last_update": "آخر تحديث",
+        "map_title": "🌍 خريطة الأقمار الصناعية",
+        "avg_alt": "متوسط الارتفاع",
+        "max_alt": "أقصى ارتفاع",
+        "min_alt": "أدنى ارتفاع",
+        "celestrak": "📡 جلب بيانات حقيقية من Celestrak",
+        "group": "اختر المجموعة"
     },
     "en": {
         "name": "English",
@@ -48,126 +59,130 @@ LANGUAGES = {
         "latency_chart": "📈 Signal Latency Evolution",
         "step": "Step",
         "latency_ms": "Latency (ms)",
-        "last_update": "Last Update"
-    },
-    "fr": {
-        "name": "Français",
-        "title": "🚀 COSMIC-324: Commandement Orbital 6G",
-        "subtitle": "Plateforme de suivi orbital multilingue",
-        "params": "⚙️ Paramètres",
-        "sat_count": "Nombre de satellites",
-        "update_btn": "🔄 Actualiser",
-        "active": "🟢 Actif",
-        "calibration": "🟡 Étalonnage",
-        "standby": "🔴 Veille",
-        "total": "Total",
-        "satellite": "Satellite",
-        "status": "Statut",
-        "latitude": "Latitude",
-        "longitude": "Longitude",
-        "altitude": "Altitude (km)",
-        "latency_chart": "📈 Évolution de la latence",
-        "step": "Étape",
-        "latency_ms": "Latence (ms)",
-        "last_update": "Dernière mise à jour"
-    },
-    "de": {
-        "name": "Deutsch",
-        "title": "🚀 COSMIC-324: 6G Orbitalkommando",
-        "subtitle": "Mehrsprachige Live-Orbit-Tracking-Plattform",
-        "params": "⚙️ Parameter",
-        "sat_count": "Anzahl der Satelliten",
-        "update_btn": "🔄 Aktualisieren",
-        "active": "🟢 Aktiv",
-        "calibration": "🟡 Kalibrierung",
-        "standby": "🔴 Bereitschaft",
-        "total": "Gesamt",
-        "satellite": "Satellit",
-        "status": "Status",
-        "latitude": "Breitengrad",
-        "longitude": "Längengrad",
-        "altitude": "Höhe (km)",
-        "latency_chart": "📈 Latenzentwicklung",
-        "step": "Schritt",
-        "latency_ms": "Latenz (ms)",
-        "last_update": "Letzte Aktualisierung"
-    },
-    "es": {
-        "name": "Español",
-        "title": "🚀 COSMIC-324: Comando Orbital 6G",
-        "subtitle": "Plataforma de seguimiento orbital multilingüe",
-        "params": "⚙️ Parámetros",
-        "sat_count": "Número de satélites",
-        "update_btn": "🔄 Actualizar",
-        "active": "🟢 Activo",
-        "calibration": "🟡 Calibración",
-        "standby": "🔴 En espera",
-        "total": "Total",
-        "satellite": "Satélite",
-        "status": "Estado",
-        "latitude": "Latitud",
-        "longitude": "Longitud",
-        "altitude": "Altitud (km)",
-        "latency_chart": "📈 Evolución de la latencia",
-        "step": "Paso",
-        "latency_ms": "Latencia (ms)",
-        "last_update": "Última actualización"
-    },
-    "zh": {
-        "name": "中文",
-        "title": "🚀 COSMIC-324: 6G 轨道指挥系统",
-        "subtitle": "多语言实时轨道跟踪平台",
-        "params": "⚙️ 仿真参数",
-        "sat_count": "卫星数量",
-        "update_btn": "🔄 刷新数据",
-        "active": "🟢 活跃",
-        "calibration": "🟡 校准",
-        "standby": "🔴 待机",
-        "total": "总计",
-        "satellite": "卫星",
-        "status": "状态",
-        "latitude": "纬度",
-        "longitude": "经度",
-        "altitude": "高度 (公里)",
-        "latency_chart": "📈 信号延迟演变",
-        "step": "步骤",
-        "latency_ms": "延迟 (毫秒)",
-        "last_update": "最后更新"
-    },
-    "ru": {
-        "name": "Русский",
-        "title": "🚀 COSMIC-324: 6G Орбитальное командование",
-        "subtitle": "Многоязычная платформа отслеживания орбит",
-        "params": "⚙️ Параметры",
-        "sat_count": "Количество спутников",
-        "update_btn": "🔄 Обновить",
-        "active": "🟢 Активен",
-        "calibration": "🟡 Калибровка",
-        "standby": "🔴 Ожидание",
-        "total": "Всего",
-        "satellite": "Спутник",
-        "status": "Статус",
-        "latitude": "Широта",
-        "longitude": "Долгота",
-        "altitude": "Высота (км)",
-        "latency_chart": "📈 Эволюция задержки",
-        "step": "Шаг",
-        "latency_ms": "Задержка (мс)",
-        "last_update": "Последнее обновление"
+        "last_update": "Last Update",
+        "map_title": "🌍 Satellite Map",
+        "avg_alt": "Avg Altitude",
+        "max_alt": "Max Altitude",
+        "min_alt": "Min Altitude",
+        "celestrak": "📡 Fetch Live Data from Celestrak",
+        "group": "Select Group"
     }
 }
 
 def t(key: str) -> str:
-    """دالة الترجمة السريعة"""
     lang = st.session_state.get('language', 'ar')
     return LANGUAGES.get(lang, LANGUAGES['ar']).get(key, key)
+
+# ============================================================
+# 📡 جلب بيانات Celestrak الحقيقية
+# ============================================================
+@st.cache_data(ttl=3600)
+def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 100) -> List[Dict]:
+    url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        if response.text.startswith('{'):
+            data = response.json()
+            return data[:max_satellites]
+        return []
+    except Exception as e:
+        st.warning(f"⚠️ Could not fetch Celestrak data: {e}")
+        return []
+
+def tle_to_orbit(tle_entry: Dict) -> Optional[SimpleNamespace]:
+    try:
+        mean_motion = float(tle_entry.get('MEAN_MOTION', 0))
+        eccentricity = float(tle_entry.get('ECCENTRICITY', 0))
+        inclination = math.radians(float(tle_entry.get('INCLINATION', 0)))
+        raan = math.radians(float(tle_entry.get('RA_OF_ASC_NODE', 0)))
+        arg_perigee = math.radians(float(tle_entry.get('ARG_OF_PERICENTER', 0)))
+        mean_anomaly = math.radians(float(tle_entry.get('MEAN_ANOMALY', 0)))
+        if mean_motion <= 0:
+            return None
+        GM = 398600.4418
+        n = mean_motion * 2 * math.pi / 86400.0
+        a = (GM / (n ** 2)) ** (1.0/3.0)
+        period = 86400.0 / mean_motion
+        
+        def position_at_time(t: float):
+            M = mean_anomaly + 2 * math.pi * t / period
+            E = M
+            for _ in range(6):
+                E = E - (E - eccentricity * math.sin(E) - M) / (1 - eccentricity * math.cos(E))
+            x_orbit = a * (math.cos(E) - eccentricity)
+            y_orbit = a * math.sqrt(1 - eccentricity**2) * math.sin(E)
+            z_orbit = 0.0
+            x1 = x_orbit * math.cos(arg_perigee) - y_orbit * math.sin(arg_perigee)
+            y1 = x_orbit * math.sin(arg_perigee) + y_orbit * math.cos(arg_perigee)
+            z1 = z_orbit
+            x2 = x1
+            y2 = y1 * math.cos(inclination) - z1 * math.sin(inclination)
+            z2 = y1 * math.sin(inclination) + z1 * math.cos(inclination)
+            x_final = x2 * math.cos(raan) - y2 * math.sin(raan)
+            y_final = x2 * math.sin(raan) + y2 * math.cos(raan)
+            z_final = z2
+            return (x_final, y_final, z_final)
+        
+        orbit = SimpleNamespace()
+        orbit.position_at_time = position_at_time
+        orbit.name = tle_entry.get('OBJECT_NAME', 'SAT')
+        orbit.altitude = a - 6371
+        return orbit
+    except Exception:
+        return None
+
+def generate_orbit_map(num_satellites: int = 100, group: str = "starlink") -> Dict:
+    raw_data = fetch_celestrak_data(group, num_satellites)
+    orbit_map = {}
+    if raw_data:
+        for entry in raw_data:
+            orbit = tle_to_orbit(entry)
+            if orbit:
+                orbit_map[orbit.name] = orbit
+        if orbit_map:
+            return orbit_map
+    # Mock data if Celestrak fails
+    for i in range(num_satellites):
+        a = 7000 + random.randint(-300, 300)
+        e = random.uniform(0.01, 0.08)
+        incl = math.radians(random.uniform(30, 70))
+        omega = random.uniform(0, 2 * math.pi)
+        Omega = random.uniform(0, 2 * math.pi)
+        M0 = random.uniform(0, 2 * math.pi)
+        period = 2 * math.pi * math.sqrt((a ** 3) / 398600.4418)
+        
+        def position_at_time(t: float, a=a, e=e, incl=incl, omega=omega, Omega=Omega, M0=M0, period=period):
+            M = M0 + 2 * math.pi * t / period
+            E = M
+            for _ in range(6):
+                E = E - (E - e * math.sin(E) - M) / (1 - e * math.cos(E))
+            x_orbit = a * (math.cos(E) - e)
+            y_orbit = a * math.sqrt(1 - e**2) * math.sin(E)
+            z_orbit = 0.0
+            x1 = x_orbit * math.cos(omega) - y_orbit * math.sin(omega)
+            y1 = x_orbit * math.sin(omega) + y_orbit * math.cos(omega)
+            z1 = z_orbit
+            x2 = x1
+            y2 = y1 * math.cos(incl) - z1 * math.sin(incl)
+            z2 = y1 * math.sin(incl) + z1 * math.cos(incl)
+            x_final = x2 * math.cos(Omega) - y2 * math.sin(Omega)
+            y_final = x2 * math.sin(Omega) + y2 * math.cos(Omega)
+            z_final = z2
+            return (x_final, y_final, z_final)
+        
+        orbit = SimpleNamespace()
+        orbit.position_at_time = position_at_time
+        orbit.name = f"SAT-{i+1}"
+        orbit.altitude = a - 6371
+        orbit_map[orbit.name] = orbit
+    return orbit_map
 
 # ============================================================
 # ⚙️ إعداد الواجهة
 # ============================================================
 st.set_page_config(page_title="COSMIC-324: 6G Orbital Command", page_icon="🚀", layout="wide")
 
-# CSS مخصص للثيم الداكن
 st.markdown("""
 <style>
     .main, .stApp { background-color: #0a0a12; }
@@ -178,12 +193,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌐 الشريط الجانبي (اللغات والإعدادات)
+# 🌐 الشريط الجانبي
 # ============================================================
 with st.sidebar:
+    st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324", use_column_width=True)
     st.markdown("---")
     
-    # اختيار اللغة
     lang_options = {code: info["name"] for code, info in LANGUAGES.items()}
     selected_lang = st.selectbox(
         "🌐 Language / اللغة",
@@ -198,10 +213,13 @@ with st.sidebar:
     st.markdown("---")
     st.header(t("params"))
     
-    # عدد الأقمار
     num_satellites = st.slider(t("sat_count"), 5, 100, 20, 5)
     
-    # زر التحديث
+    st.markdown("---")
+    st.subheader(t("celestrak"))
+    group = st.selectbox(t("group"), ["starlink", "gps", "active", "oneweb", "iridium"])
+    use_celestrak = st.checkbox("استخدام بيانات حقيقية من Celestrak")
+    
     if st.button(t("update_btn"), use_container_width=True):
         st.rerun()
     
@@ -210,26 +228,45 @@ with st.sidebar:
 # ============================================================
 # 🎯 العنوان الرئيسي
 # ============================================================
-st.markdown(f"<h1 style='text-align: center; font-size: 3.5em; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.2em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='text-align: center; font-size: 3em; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
 
 # ============================================================
-# 📊 توليد البيانات
+# 📊 توليد البيانات (مع خيار Celestrak)
 # ============================================================
-def generate_satellite_data(n: int) -> pd.DataFrame:
+if use_celestrak:
+    orbit_map = generate_orbit_map(num_satellites, group)
     data = []
-    statuses = [t('active'), t('calibration'), t('standby')]
-    for i in range(n):
-        data.append({
-            t('satellite'): f"SAT-{i+1}",
-            t('status'): random.choice(statuses),
-            t('latitude'): round(random.uniform(-90, 90), 4),
-            t('longitude'): round(random.uniform(-180, 180), 4),
-            t('altitude'): round(random.uniform(400, 1200), 2)
-        })
-    return pd.DataFrame(data)
-
-df = generate_satellite_data(num_satellites)
+    for name, orbit in list(orbit_map.items())[:num_satellites]:
+        pos = orbit.position_at_time(0.0)
+        if pos and len(pos) >= 3:
+            x, y, z = pos
+            lat = math.degrees(math.asin(z / math.sqrt(x**2 + y**2 + z**2))) if (x**2 + y**2 + z**2) > 0 else 0
+            lon = math.degrees(math.atan2(y, x))
+            alt = orbit.altitude if hasattr(orbit, 'altitude') else 550
+            status = random.choice([t('active'), t('calibration'), t('standby')])
+            data.append({
+                t('satellite'): name[:12],
+                t('status'): status,
+                t('latitude'): round(lat, 4),
+                t('longitude'): round(lon, 4),
+                t('altitude'): round(alt, 2)
+            })
+    df = pd.DataFrame(data)
+else:
+    def generate_satellite_data(n: int) -> pd.DataFrame:
+        data = []
+        statuses = [t('active'), t('calibration'), t('standby')]
+        for i in range(n):
+            data.append({
+                t('satellite'): f"SAT-{i+1}",
+                t('status'): random.choice(statuses),
+                t('latitude'): round(random.uniform(-90, 90), 4),
+                t('longitude'): round(random.uniform(-180, 180), 4),
+                t('altitude'): round(random.uniform(400, 1200), 2)
+            })
+        return pd.DataFrame(data)
+    df = generate_satellite_data(num_satellites)
 
 # ============================================================
 # 📈 الإحصائيات السريعة
@@ -266,6 +303,53 @@ st.dataframe(
         t('altitude'): st.column_config.NumberColumn(t('altitude'), format="%.2f km")
     }
 )
+
+# ============================================================
+# 🌍 خريطة 2D تفاعلية
+# ============================================================
+st.markdown("---")
+st.subheader(t('map_title'))
+
+fig_map = px.scatter_mapbox(
+    df,
+    lat=t('latitude'),
+    lon=t('longitude'),
+    color=t('status'),
+    hover_name=t('satellite'),
+    hover_data={t('altitude'): True},
+    color_discrete_map={
+        t('active'): '#00FF00',
+        t('calibration'): '#FFAA00',
+        t('standby'): '#FF5555'
+    },
+    zoom=2,
+    height=500,
+    title=t('map_title')
+)
+fig_map.update_layout(mapbox_style="dark", mapbox_accesstoken=None)
+fig_map.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+st.plotly_chart(fig_map, use_container_width=True)
+
+# ============================================================
+# 📊 تحليلات متقدمة
+# ============================================================
+st.markdown("---")
+st.subheader("📊 تحليلات متقدمة")
+
+col_a1, col_a2, col_a3 = st.columns(3)
+col_a1.metric(t('avg_alt'), f"{df[t('altitude')].mean():.1f} km")
+col_a2.metric(t('max_alt'), f"{df[t('altitude')].max():.1f} km")
+col_a3.metric(t('min_alt'), f"{df[t('altitude')].min():.1f} km")
+
+fig_hist = px.histogram(df, x=t('altitude'), color=t('status'), 
+                         title="توزيع الارتفاعات حسب الحالة",
+                         color_discrete_map={
+                             t('active'): '#00FF00',
+                             t('calibration'): '#FFAA00',
+                             t('standby'): '#FF5555'
+                         })
+fig_hist.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+st.plotly_chart(fig_hist, use_container_width=True)
 
 # ============================================================
 # 📈 منحنى Latency
