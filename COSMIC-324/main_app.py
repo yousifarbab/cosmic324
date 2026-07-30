@@ -5,8 +5,7 @@ import plotly.graph_objects as go
 import random
 import requests
 import math
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional
 from types import SimpleNamespace
 
@@ -44,10 +43,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ تنبيه: انخفاض عدد الأقمار النشطة!",
         "alert_threshold": "عتبة التنبيه (مللي ثانية)",
         "active_threshold": "الحد الأدنى للأقمار النشطة",
-        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
-        "elevation": "الارتفاع",
-        "azimuth": "الزاوية الأفقية",
-        "distance": "المسافة"
+        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد"
     },
     "en": {
         "name": "English",
@@ -79,10 +75,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alert: Low Active Satellites!",
         "alert_threshold": "Alert Threshold (ms)",
         "active_threshold": "Min Active Satellites",
-        "3d_globe": "🌍 3D Constellation Globe",
-        "elevation": "Elevation",
-        "azimuth": "Azimuth",
-        "distance": "Distance"
+        "3d_globe": "🌍 3D Constellation Globe"
     },
     "fr": {
         "name": "Français",
@@ -114,10 +107,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alerte: Peu de satellites actifs!",
         "alert_threshold": "Seuil d'alerte (ms)",
         "active_threshold": "Min. satellites actifs",
-        "3d_globe": "🌍 Globe 3D de la constellation",
-        "elevation": "Élévation",
-        "azimuth": "Azimut",
-        "distance": "Distance"
+        "3d_globe": "🌍 Globe 3D de la constellation"
     },
     "de": {
         "name": "Deutsch",
@@ -149,10 +139,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Warnung: Wenig aktive Satelliten!",
         "alert_threshold": "Warnschwelle (ms)",
         "active_threshold": "Min. aktive Satelliten",
-        "3d_globe": "🌍 3D-Konstellationsglobus",
-        "elevation": "Höhenwinkel",
-        "azimuth": "Azimut",
-        "distance": "Entfernung"
+        "3d_globe": "🌍 3D-Konstellationsglobus"
     },
     "es": {
         "name": "Español",
@@ -184,10 +171,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alerta: ¡Pocos satélites activos!",
         "alert_threshold": "Umbral de alerta (ms)",
         "active_threshold": "Mín. satélites activos",
-        "3d_globe": "🌍 Globo 3D de la constelación",
-        "elevation": "Elevación",
-        "azimuth": "Azimut",
-        "distance": "Distancia"
+        "3d_globe": "🌍 Globo 3D de la constelación"
     },
     "zh": {
         "name": "中文",
@@ -219,10 +203,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ 警报：活跃卫星数量低！",
         "alert_threshold": "警报阈值（毫秒）",
         "active_threshold": "最低活跃卫星数",
-        "3d_globe": "🌍 3D星座球体",
-        "elevation": "仰角",
-        "azimuth": "方位角",
-        "distance": "距离"
+        "3d_globe": "🌍 3D星座球体"
     },
     "ru": {
         "name": "Русский",
@@ -254,10 +235,7 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Предупреждение: Мало активных спутников!",
         "alert_threshold": "Порог предупреждения (мс)",
         "active_threshold": "Мин. активных спутников",
-        "3d_globe": "🌍 3D-глобус созвездия",
-        "elevation": "Угол места",
-        "azimuth": "Азимут",
-        "distance": "Расстояние"
+        "3d_globe": "🌍 3D-глобус созвездия"
     }
 }
 
@@ -266,9 +244,9 @@ def t(key: str) -> str:
     return LANGUAGES.get(lang, LANGUAGES['ar']).get(key, key)
 
 # ============================================================
-# 📡 جلب بيانات Celestrak التلقائي (مع تخزين مؤقت)
+# 📡 جلب بيانات Celestrak التلقائي
 # ============================================================
-@st.cache_data(ttl=3600)  # تحديث كل ساعة
+@st.cache_data(ttl=3600)
 def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> List[Dict]:
     url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
     try:
@@ -324,7 +302,7 @@ def tle_to_orbit(tle_entry: Dict) -> Optional[SimpleNamespace]:
     except Exception:
         return None
 
-def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_celestrak: bool = True) -> Dict:
+def generate_orbit_map(num_satellites: int = 100, group: str = "starlink", use_celestrak: bool = True) -> Dict:
     if use_celestrak:
         raw_data = fetch_celestrak_data(group, num_satellites)
         orbit_map = {}
@@ -335,7 +313,7 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
                     orbit_map[orbit.name] = orbit
             if orbit_map:
                 return orbit_map
-    # Mock data if Celestrak fails or not used
+    # Mock data
     orbit_map = {}
     for i in range(min(num_satellites, 5000)):
         a = 7000 + random.randint(-500, 500)
@@ -394,7 +372,6 @@ with st.sidebar:
     st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324", use_column_width=True)
     st.markdown("---")
     
-    # اختيار اللغة
     lang_options = {code: info["name"] for code, info in LANGUAGES.items()}
     selected_lang = st.selectbox(
         "🌐 Language / اللغة",
@@ -409,22 +386,18 @@ with st.sidebar:
     st.markdown("---")
     st.header(t("params"))
     
-    # عدد الأقمار (حتى 5000)
     num_satellites = st.slider(t("sat_count"), 10, 5000, 100, 50)
     
-    # Celestrak
     st.markdown("---")
     st.subheader(t("celestrak"))
     group = st.selectbox(t("group"), ["starlink", "gps", "active", "oneweb", "iridium"])
     use_celestrak = st.checkbox("استخدام بيانات حقيقية من Celestrak (تحديث كل ساعة)", value=True)
     
-    # عتبات التنبيه
     st.markdown("---")
     st.subheader("🔔 إعدادات التنبيهات")
     alert_threshold = st.slider(t("alert_threshold"), 5.0, 50.0, 20.0, 1.0)
     active_threshold = st.slider(t("active_threshold"), 1, 50, 5, 1)
     
-    # زر التحديث
     if st.button(t("update_btn"), use_container_width=True):
         st.cache_data.clear()
         st.rerun()
@@ -438,7 +411,7 @@ st.markdown(f"<h1 style='text-align: center; font-size: 3em; text-shadow: 0 0 40
 st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
 
 # ============================================================
-# 📊 توليد البيانات (مع Celestrak التلقائي)
+# 📊 توليد البيانات
 # ============================================================
 with st.spinner("🔄 جاري تحميل بيانات الأقمار..."):
     orbit_map = generate_orbit_map(num_satellites, group, use_celestrak)
@@ -465,13 +438,11 @@ with st.spinner("🔄 جاري تحميل بيانات الأقمار..."):
 # 🔔 التنبيهات الذكية
 # ============================================================
 active_count = df[df[t('status')] == t('active')].shape[0]
-avg_latency = round(random.uniform(5, 25), 2)  # محاكاة لزمن الانتقال (سيتم ربطه لاحقاً)
+avg_latency = round(random.uniform(5, 25), 2)
 
-# تنبيه ارتفاع زمن الانتقال
 if avg_latency > alert_threshold:
     st.markdown(f"<div class='alert-box'>🚨 {t('alert_latency')} (القيمة الحالية: {avg_latency} ms، الحد الأقصى: {alert_threshold} ms)</div>", unsafe_allow_html=True)
 
-# تنبيه انخفاض الأقمار النشطة
 if active_count < active_threshold:
     st.markdown(f"<div class='alert-box'>🚨 {t('alert_satellites')} (النشطة: {active_count}، الحد الأدنى: {active_threshold})</div>", unsafe_allow_html=True)
 
@@ -512,14 +483,15 @@ st.dataframe(
 )
 
 # ============================================================
-# 🌍 خريطة 3D تفاعلية (Plotly Scattergeo 3D)
+# 🌍 خريطة 3D (المصححة)
 # ============================================================
 st.markdown("---")
 st.subheader(t('3d_globe'))
 
+# إنشاء كائن الشكل الفارغ أولاً، ثم إضافة البيانات إليه
 fig_3d = go.Figure()
 
-# إضافة الأقمار كنقاط على الكرة الأرضية
+# إضافة الأقمار
 fig_3d.add_trace(go.Scattergeo(
     lon=df[t('longitude')],
     lat=df[t('latitude')],
@@ -554,7 +526,7 @@ fig_3d.add_trace(go.Scattergeo(
     hovertext=['🛰️ Ground Station<br>Lat: 0°<br>Lon: 0°<br>Altitude: 0 km']
 ))
 
-# تنسيق الخريطة
+# تحديث التخطيط
 fig_3d.update_layout(
     title=dict(
         text=t('3d_globe'),
@@ -624,12 +596,11 @@ fig_hist.update_layout(
 st.plotly_chart(fig_hist, use_container_width=True)
 
 # ============================================================
-# 📈 منحنى Latency (محاكاة مع تنبيه)
+# 📈 منحنى Latency
 # ============================================================
 st.markdown("---")
 st.subheader(t('latency_chart'))
 
-# توليد بيانات Latency (محاكاة)
 latency_data = pd.DataFrame({
     t('step'): list(range(1, 21)),
     t('latency_ms'): [round(3.0 + i * 0.15 + random.uniform(-0.3, 0.3), 2) for i in range(20)]
@@ -643,15 +614,12 @@ fig_latency = px.line(
     markers=True
 )
 fig_latency.update_traces(line_color='#00CCFF', line_width=3, marker_size=8)
-
-# إضافة خط عتبة التنبيه
 fig_latency.add_hline(
     y=alert_threshold,
     line_dash="dash",
     line_color="red",
     annotation_text=f"⚠️ Alert Threshold: {alert_threshold} ms"
 )
-
 fig_latency.update_layout(
     xaxis_title=t('step'),
     yaxis_title=t('latency_ms'),
@@ -671,6 +639,5 @@ col_f1.caption(f"🛰️ COSMIC-324 v4.0 | {len(df)} {t('satellite')}")
 col_f2.caption(f"🌍 {LANGUAGES[st.session_state.get('language', 'ar')]['name']}")
 col_f3.caption(f"🔐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-# عرض معلومات Celestrak إذا كانت مفعلة
 if use_celestrak:
     st.caption(f"📡 بيانات حية من Celestrak (المجموعة: {group}) - تحديث تلقائي كل ساعة")
