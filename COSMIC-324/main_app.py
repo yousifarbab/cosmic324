@@ -9,6 +9,8 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional
 from types import SimpleNamespace
+import io
+from fpdf import FPDF
 
 # ============================================================
 # 🌍 نظام الترجمة (7 لغات)
@@ -276,11 +278,10 @@ def t(key: str) -> str:
 # 📡 جلب بيانات Celestrak
 # ============================================================
 _last_successful_data = None
-_last_successful_time = None
 
 @st.cache_data(ttl=1800)
 def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> List[Dict]:
-    global _last_successful_data, _last_successful_time
+    global _last_successful_data
     url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
     max_retries = 3
     retry_delay = 2
@@ -293,7 +294,6 @@ def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) ->
                 data = response.json()
                 if data:
                     _last_successful_data = data
-                    _last_successful_time = datetime.now()
                     return data[:max_satellites]
                 else:
                     raise ValueError("البيانات المستلمة فارغة")
@@ -313,7 +313,8 @@ def tle_to_orbit(tle_entry: Dict) -> Optional[SimpleNamespace]:
     try:
         mean_motion = float(tle_entry.get('MEAN_MOTION', 0))
         eccentricity = float(tle_entry.get('ECCENTRICITY', 0))
-        inclination = math.radians(float(tle_entry.get('INCLINATION', 0)))
+        inclination = float(tle_entry.get('INCLINATION', 0))
+        inclination_rad = math.radians(inclination)
         raan = math.radians(float(tle_entry.get('RA_OF_ASC_NODE', 0)))
         arg_perigee = math.radians(float(tle_entry.get('ARG_OF_PERICENTER', 0)))
         mean_anomaly = math.radians(float(tle_entry.get('MEAN_ANOMALY', 0)))
@@ -336,8 +337,8 @@ def tle_to_orbit(tle_entry: Dict) -> Optional[SimpleNamespace]:
             y1 = x_orbit * math.sin(arg_perigee) + y_orbit * math.cos(arg_perigee)
             z1 = z_orbit
             x2 = x1
-            y2 = y1 * math.cos(inclination) - z1 * math.sin(inclination)
-            z2 = y1 * math.sin(inclination) + z1 * math.cos(inclination)
+            y2 = y1 * math.cos(inclination_rad) - z1 * math.sin(inclination_rad)
+            z2 = y1 * math.sin(inclination_rad) + z1 * math.cos(inclination_rad)
             x_final = x2 * math.cos(raan) - y2 * math.sin(raan)
             y_final = x2 * math.sin(raan) + y2 * math.cos(raan)
             z_final = z2
@@ -347,6 +348,9 @@ def tle_to_orbit(tle_entry: Dict) -> Optional[SimpleNamespace]:
         orbit.position_at_time = position_at_time
         orbit.name = tle_entry.get('OBJECT_NAME', 'SAT')
         orbit.altitude = a - 6371
+        orbit.a = a
+        orbit.e = eccentricity
+        orbit.i = inclination_rad
         return orbit
     except Exception:
         return None
@@ -396,11 +400,14 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
         orbit.position_at_time = position_at_time
         orbit.name = f"SAT-{i+1}"
         orbit.altitude = a - 6371
+        orbit.a = a
+        orbit.e = e
+        orbit.i = incl
         orbit_map[orbit.name] = orbit
     return orbit_map
 
 # ============================================================
-# 🧪 دالة تطبيق محاكي السيناريوهات
+# 🧪 محاكي السيناريوهات
 # ============================================================
 def apply_scenario(df: pd.DataFrame, scenario: str, custom_jamming: float = 0.0, custom_lost_sats: int = 0) -> pd.DataFrame:
     df_scenario = df.copy()
@@ -440,6 +447,78 @@ def apply_scenario(df: pd.DataFrame, scenario: str, custom_jamming: float = 0.0,
     st.session_state.jamming_applied = jamming_factor
     
     return df_scenario
+
+# ============================================================
+# 📄 نظام تصدير تقارير PDF
+# ============================================================
+def generate_pdf_report(df, latency_df, scenario_info, alert_info):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, "COSMIC-324: Orbital Status Report", ln=True, align='C')
+    pdf.set_font("Arial", 'I', 10)
+    pdf.cell(200, 10, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align='C')
+    pdf.ln(10)
+    
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(200, 10, "1. Constellation Summary", ln=True)
+    pdf.set_font("Arial", '', 10)
+    pdf.cell(100, 8, f"Total Satellites: {len(df)}", ln=False)
+    pdf.cell(100, 8, f"Active: {df[df[t('status')] == t('active')].shape[0]}", ln=True)
+    pdf.cell(100, 8, f"Calibration: {df[df[t('status')] == t('calibration')].shape[0]}", ln=False)
+    pdf.cell(100, 8, f"Standby: {df[df[t('status')] == t('standby')].shape[0]}", ln=True)
+    pdf.ln(5)
+    
+    if alert_info:
+        pdf.set_font("Arial", 'B', 12)
+        pdf.set_text_color(255, 0, 0)
+        pdf.cell(200, 10, "2. Active Alerts", ln=True)
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_font("Arial", '', 10)
+        for alert in alert_info:
+            pdf.cell(200, 8, f"⚠️ {alert}", ln=True)
+        pdf.ln(5)
+    
+    if scenario_info:
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(200, 10, "3. Applied Scenario", ln=True)
+        pdf.set_font("Arial", '', 10)
+        pdf.cell(200, 8, f"Scenario: {scenario_info.get('name', 'None')}", ln=True)
+        pdf.cell(200, 8, f"Lost Satellites: {scenario_info.get('lost', 0)}", ln=True)
+        pdf.cell(200, 8, f"Jamming Level: {scenario_info.get('jamming', 0)*100:.0f}%", ln=True)
+        pdf.ln(5)
+    
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(200, 10, "4. Telemetry Data (Sample)", ln=True)
+    pdf.set_font("Arial", 'B', 8)
+    headers = ["Satellite", "Status", "Latitude", "Longitude", "Altitude (km)"]
+    col_widths = [30, 25, 30, 30, 30]
+    for i, header in enumerate(headers):
+        pdf.cell(col_widths[i], 8, header, border=1)
+    pdf.ln()
+    
+    pdf.set_font("Arial", '', 8)
+    for _, row in df.head(10).iterrows():
+        pdf.cell(col_widths[0], 8, str(row[t('satellite')])[:10], border=1)
+        pdf.cell(col_widths[1], 8, str(row[t('status')]), border=1)
+        pdf.cell(col_widths[2], 8, str(row[t('latitude')]), border=1)
+        pdf.cell(col_widths[3], 8, str(row[t('longitude')]), border=1)
+        pdf.cell(col_widths[4], 8, str(row[t('altitude')]), border=1)
+        pdf.ln()
+    pdf.ln(5)
+    
+    if latency_df is not None and not latency_df.empty:
+        pdf.set_font("Arial", 'B', 12)
+        pdf.cell(200, 10, "5. Latency Statistics", ln=True)
+        pdf.set_font("Arial", '', 10)
+        pdf.cell(100, 8, f"Min: {latency_df[t('latency_ms')].min():.2f} ms", ln=False)
+        pdf.cell(100, 8, f"Max: {latency_df[t('latency_ms')].max():.2f} ms", ln=True)
+        pdf.cell(100, 8, f"Avg: {latency_df[t('latency_ms')].mean():.2f} ms", ln=False)
+        pdf.cell(100, 8, f"Jitter: {latency_df[t('latency_ms')].std():.2f} ms", ln=True)
+        
+    return pdf.output(dest='S').encode('latin1')
 
 # ============================================================
 # ⚙️ إعداد الواجهة
@@ -489,9 +568,7 @@ with st.sidebar:
     alert_threshold = st.slider(t("alert_threshold"), 5.0, 50.0, 20.0, 1.0)
     active_threshold = st.slider(t("active_threshold"), 1, 50, 5, 1)
     
-    # ============================================================
-    # 🧪 محاكي السيناريوهات (Scenario Simulator)
-    # ============================================================
+    # محاكي السيناريوهات
     st.markdown("---")
     st.subheader("🧪 محاكي السيناريوهات")
 
@@ -517,6 +594,44 @@ with st.sidebar:
             st.session_state.custom_lost_sats = custom_lost_sats
         st.rerun()
 
+    # تصدير التقرير من الشريط الجانبي
+    st.markdown("---")
+    st.subheader("📄 Export Report")
+    
+    # تهيئة أولية لبيانات الـ Latency للجلسة إن لم تكن موجودة
+    if 'latest_latency_df' not in st.session_state:
+        st.session_state.latest_latency_df = pd.DataFrame()
+
+    if st.button("📥 Download PDF Report", use_container_width=True):
+        # سنقوم بتوليد بيانات مؤقتة للتقرير إذا دعت الحاجة
+        temp_latency_df = st.session_state.latest_latency_df
+        scenario_info = {
+            'name': st.session_state.get('selected_scenario', 'Nominal'),
+            'lost': st.session_state.get('lost_count', 0),
+            'jamming': st.session_state.get('jamming_applied', 0.0)
+        }
+        
+        # حساب المتغيرات محلياً للتقرير
+        active_cnt_temp = df[df[t('status')] == t('active')].shape[0] if 'df' in locals() else 0
+        jam_eff_temp = st.session_state.get('jamming_effect', 0.0)
+        base_avg_lat_temp = 10.0
+        avg_lat_temp = base_avg_lat_temp * (1.0 + jam_eff_temp * 1.5)
+        
+        alert_info = []
+        if avg_lat_temp > alert_threshold:
+            alert_info.append(f"High Latency: {avg_lat_temp:.2f} ms (Threshold: {alert_threshold} ms)")
+        if active_cnt_temp < active_threshold:
+            alert_info.append(f"Low Active Satellites: {active_cnt_temp} (Threshold: {active_threshold})")
+        
+        if 'df' in locals() and not df.empty:
+            pdf_data = generate_pdf_report(df, temp_latency_df, scenario_info, alert_info)
+            st.download_button(
+                label="📥 Click here to save PDF",
+                data=pdf_data,
+                file_name=f"COSMIC324_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf"
+            )
+
     st.markdown("---")
     if st.button(t("update_btn"), use_container_width=True):
         st.cache_data.clear()
@@ -538,15 +653,28 @@ st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.1em;'>{
 with st.spinner("🔄 جاري تحميل بيانات الأقمار..."):
     orbit_map = generate_orbit_map(num_satellites, group, use_celestrak)
     
+    # حفظ الخريطة في الذاكرة المؤقتة للتحكم لاحقاً
+    if 'orbit_map' not in st.session_state:
+        st.session_state.orbit_map = orbit_map
+    else:
+        st.session_state.orbit_map.update(orbit_map)
+
     data = []
-    for name, orbit in list(orbit_map.items())[:num_satellites]:
+    for name, orbit in list(st.session_state.orbit_map.items())[:num_satellites]:
         pos = orbit.position_at_time(0.0)
         if pos and len(pos) >= 3:
             x, y, z = pos
             lat = math.degrees(math.asin(z / math.sqrt(x**2 + y**2 + z**2))) if (x**2 + y**2 + z**2) > 0 else 0
             lon = math.degrees(math.atan2(y, x))
             alt = orbit.altitude if hasattr(orbit, 'altitude') else 550
-            status = random.choice([t('active'), t('calibration'), t('standby')])
+            
+            # التحقق من الحالة المخزنة يدوياً في الجلسة إن وجدت
+            sat_status_key = f"status_{name}"
+            if sat_status_key in st.session_state:
+                status = st.session_state[sat_status_key]
+            else:
+                status = random.choice([t('active'), t('calibration'), t('standby')])
+                
             data.append({
                 t('satellite'): name[:15],
                 t('status'): status,
@@ -556,7 +684,7 @@ with st.spinner("🔄 جاري تحميل بيانات الأقمار..."):
             })
     df = pd.DataFrame(data)
 
-# تطبيق السيناريو إذا تم تفعيله
+# تطبيق السيناريو إذا تم تفعليه
 if st.session_state.get('run_scenario', False):
     scenario = st.session_state.get('selected_scenario', 'بدون سيناريو (Nominal)')
     custom_jamming = st.session_state.get('custom_jamming', 0.0)
@@ -630,6 +758,41 @@ st.dataframe(
 )
 
 # ============================================================
+# 🎛️ التحكم في العقد المدارية (الميزة الجديدة)
+# ============================================================
+st.markdown("---")
+st.subheader("🎛️ Orbital Node Control")
+
+node_names = df[t('satellite')].tolist()
+if node_names:
+    selected_node = st.selectbox("Select Satellite for Control", node_names, index=0)
+    
+    node_row = df[df[t('satellite')] == selected_node]
+    if not node_row.empty:
+        current_node_status = node_row.iloc[0][t('status')]
+        current_node_alt = node_row.iloc[0][t('altitude')]
+        st.caption(f"📍 **{selected_node}** | Status: {current_node_status} | Alt: {current_node_alt} km")
+        
+        col_c1, col_c2, col_c3 = st.columns(3)
+        with col_c1:
+            if st.button("🟢 Set Active", use_container_width=True):
+                st.session_state[f"status_{selected_node}"] = t('active')
+                st.rerun()
+        with col_c2:
+            if st.button("🟡 Set Calibration", use_container_width=True):
+                st.session_state[f"status_{selected_node}"] = t('calibration')
+                st.rerun()
+        with col_c3:
+            if st.button("🔴 Set Standby", use_container_width=True):
+                st.session_state[f"status_{selected_node}"] = t('standby')
+                st.rerun()
+                
+        if selected_node in st.session_state.get('orbit_map', {}):
+            orb_obj = st.session_state.orbit_map[selected_node]
+            if hasattr(orb_obj, 'a'):
+                st.caption(f"🛰️ Orbital Elements: a={orb_obj.a:.1f} km, e={orb_obj.e:.3f}, i={math.degrees(orb_obj.i):.1f}°")
+
+# ============================================================
 # 🌍 الخريطة ثلاثية الأبعاد
 # ============================================================
 st.markdown("---")
@@ -699,8 +862,6 @@ if not df.empty and len(df) > 0:
 
     except Exception as e:
         st.error(f"⚠️ حدث خطأ أثناء إنشاء الخريطة: {e}")
-else:
-    st.warning("⚠️ لا توجد بيانات كافية لعرض الخريطة.")
 
 # ============================================================
 # 📊 تحليلات متقدمة
@@ -736,7 +897,7 @@ fig_hist.update_layout(
 st.plotly_chart(fig_hist, use_container_width=True)
 
 # ============================================================
-# 📈 منحنى Latency (مع تأثير التشويش)
+# 📈 منحنى Latency
 # ============================================================
 st.markdown("---")
 st.subheader(t('latency_chart'))
@@ -750,6 +911,7 @@ for i in range(20):
         t('latency_ms'): round(max(1.0, val), 2)
     })
 latency_df = pd.DataFrame(latency_data)
+st.session_state.latest_latency_df = latency_df
 
 fig_latency = px.line(
     latency_df,
@@ -785,7 +947,7 @@ if jamming_effect > 0:
 # ============================================================
 st.markdown("---")
 col_f1, col_f2, col_f3 = st.columns(3)
-col_f1.caption(f"🛰️ COSMIC-324 v4.0 | {len(df)} {t('satellite')}")
+col_f1.caption(f"🛰️ COSMIC-324 v5.0 | {len(df)} {t('satellite')}")
 col_f2.caption(f"🌍 {LANGUAGES[st.session_state.get('language', 'ar')]['name']}")
 col_f3.caption(f"🔐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
