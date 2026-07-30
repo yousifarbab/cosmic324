@@ -5,12 +5,13 @@ import plotly.graph_objects as go
 import random
 import requests
 import math
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from types import SimpleNamespace
 
 # ============================================================
-# 🌍 نظام الترجمة (7 لغات) - مختصر للعربية والإنجليزية
+# 🌍 نظام الترجمة (7 لغات) - كامل
 # ============================================================
 LANGUAGES = {
     "ar": {
@@ -18,7 +19,7 @@ LANGUAGES = {
         "title": "🚀 كوزميك-324: القيادة المدارية 6G",
         "subtitle": "منصة التتبع المداري الحي متعددة اللغات",
         "params": "⚙️ إعدادات المحاكاة",
-        "sat_count": "عدد الأقمار",
+        "sat_count": "عدد الأقمار (حتى 5000)",
         "update_btn": "🔄 تحديث البيانات",
         "active": "🟢 نشط",
         "calibration": "🟡 معايرة",
@@ -33,19 +34,27 @@ LANGUAGES = {
         "step": "الخطوة",
         "latency_ms": "زمن الانتقال (مللي ثانية)",
         "last_update": "آخر تحديث",
-        "map_title": "🌍 خريطة الأقمار الصناعية",
+        "map_title": "🌍 خريطة الأقمار ثلاثية الأبعاد",
         "avg_alt": "متوسط الارتفاع",
         "max_alt": "أقصى ارتفاع",
         "min_alt": "أدنى ارتفاع",
-        "celestrak": "📡 جلب بيانات حقيقية من Celestrak",
-        "group": "اختر المجموعة"
+        "celestrak": "📡 جلب بيانات حقيقية من Celestrak (تلقائي كل ساعة)",
+        "group": "اختر المجموعة",
+        "alert_latency": "⚠️ تنبيه: ارتفاع زمن الانتقال!",
+        "alert_satellites": "⚠️ تنبيه: انخفاض عدد الأقمار النشطة!",
+        "alert_threshold": "عتبة التنبيه (مللي ثانية)",
+        "active_threshold": "الحد الأدنى للأقمار النشطة",
+        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
+        "elevation": "الارتفاع",
+        "azimuth": "الزاوية الأفقية",
+        "distance": "المسافة"
     },
     "en": {
         "name": "English",
         "title": "🚀 COSMIC-324: 6G Orbital Command",
         "subtitle": "Multi-language Live Orbital Tracking Platform",
         "params": "⚙️ Simulation Parameters",
-        "sat_count": "Number of Satellites",
+        "sat_count": "Number of Satellites (Up to 5000)",
         "update_btn": "🔄 Refresh Data",
         "active": "🟢 Active",
         "calibration": "🟡 Calibration",
@@ -60,12 +69,195 @@ LANGUAGES = {
         "step": "Step",
         "latency_ms": "Latency (ms)",
         "last_update": "Last Update",
-        "map_title": "🌍 Satellite Map",
+        "map_title": "🌍 3D Satellite Map",
         "avg_alt": "Avg Altitude",
         "max_alt": "Max Altitude",
         "min_alt": "Min Altitude",
-        "celestrak": "📡 Fetch Live Data from Celestrak",
-        "group": "Select Group"
+        "celestrak": "📡 Fetch Live Data from Celestrak (Auto every hour)",
+        "group": "Select Group",
+        "alert_latency": "⚠️ Alert: High Latency!",
+        "alert_satellites": "⚠️ Alert: Low Active Satellites!",
+        "alert_threshold": "Alert Threshold (ms)",
+        "active_threshold": "Min Active Satellites",
+        "3d_globe": "🌍 3D Constellation Globe",
+        "elevation": "Elevation",
+        "azimuth": "Azimuth",
+        "distance": "Distance"
+    },
+    "fr": {
+        "name": "Français",
+        "title": "🚀 COSMIC-324: Commandement Orbital 6G",
+        "subtitle": "Plateforme de suivi orbital multilingue",
+        "params": "⚙️ Paramètres",
+        "sat_count": "Nombre de satellites (jusqu'à 5000)",
+        "update_btn": "🔄 Actualiser",
+        "active": "🟢 Actif",
+        "calibration": "🟡 Étalonnage",
+        "standby": "🔴 Veille",
+        "total": "Total",
+        "satellite": "Satellite",
+        "status": "Statut",
+        "latitude": "Latitude",
+        "longitude": "Longitude",
+        "altitude": "Altitude (km)",
+        "latency_chart": "📈 Évolution de la latence",
+        "step": "Étape",
+        "latency_ms": "Latence (ms)",
+        "last_update": "Dernière mise à jour",
+        "map_title": "🌍 Carte 3D des satellites",
+        "avg_alt": "Altitude moyenne",
+        "max_alt": "Altitude max",
+        "min_alt": "Altitude min",
+        "celestrak": "📡 Données en direct de Celestrak (auto toutes les heures)",
+        "group": "Choisir le groupe",
+        "alert_latency": "⚠️ Alerte: Latence élevée!",
+        "alert_satellites": "⚠️ Alerte: Peu de satellites actifs!",
+        "alert_threshold": "Seuil d'alerte (ms)",
+        "active_threshold": "Min. satellites actifs",
+        "3d_globe": "🌍 Globe 3D de la constellation",
+        "elevation": "Élévation",
+        "azimuth": "Azimut",
+        "distance": "Distance"
+    },
+    "de": {
+        "name": "Deutsch",
+        "title": "🚀 COSMIC-324: 6G Orbitalkommando",
+        "subtitle": "Mehrsprachige Live-Orbit-Tracking-Plattform",
+        "params": "⚙️ Parameter",
+        "sat_count": "Anzahl der Satelliten (bis 5000)",
+        "update_btn": "🔄 Aktualisieren",
+        "active": "🟢 Aktiv",
+        "calibration": "🟡 Kalibrierung",
+        "standby": "🔴 Bereitschaft",
+        "total": "Gesamt",
+        "satellite": "Satellit",
+        "status": "Status",
+        "latitude": "Breitengrad",
+        "longitude": "Längengrad",
+        "altitude": "Höhe (km)",
+        "latency_chart": "📈 Latenzentwicklung",
+        "step": "Schritt",
+        "latency_ms": "Latenz (ms)",
+        "last_update": "Letzte Aktualisierung",
+        "map_title": "🌍 3D-Satellitenkarte",
+        "avg_alt": "Durchschn. Höhe",
+        "max_alt": "Max. Höhe",
+        "min_alt": "Min. Höhe",
+        "celestrak": "📡 Live-Daten von Celestrak (auto stündlich)",
+        "group": "Gruppe wählen",
+        "alert_latency": "⚠️ Warnung: Hohe Latenz!",
+        "alert_satellites": "⚠️ Warnung: Wenig aktive Satelliten!",
+        "alert_threshold": "Warnschwelle (ms)",
+        "active_threshold": "Min. aktive Satelliten",
+        "3d_globe": "🌍 3D-Konstellationsglobus",
+        "elevation": "Höhenwinkel",
+        "azimuth": "Azimut",
+        "distance": "Entfernung"
+    },
+    "es": {
+        "name": "Español",
+        "title": "🚀 COSMIC-324: Comando Orbital 6G",
+        "subtitle": "Plataforma de seguimiento orbital multilingüe",
+        "params": "⚙️ Parámetros",
+        "sat_count": "Número de satélites (hasta 5000)",
+        "update_btn": "🔄 Actualizar",
+        "active": "🟢 Activo",
+        "calibration": "🟡 Calibración",
+        "standby": "🔴 En espera",
+        "total": "Total",
+        "satellite": "Satélite",
+        "status": "Estado",
+        "latitude": "Latitud",
+        "longitude": "Longitud",
+        "altitude": "Altitud (km)",
+        "latency_chart": "📈 Evolución de la latencia",
+        "step": "Paso",
+        "latency_ms": "Latencia (ms)",
+        "last_update": "Última actualización",
+        "map_title": "🌍 Mapa 3D de satélites",
+        "avg_alt": "Altitud media",
+        "max_alt": "Altitud máxima",
+        "min_alt": "Altitud mínima",
+        "celestrak": "📡 Datos en vivo de Celestrak (auto cada hora)",
+        "group": "Seleccionar grupo",
+        "alert_latency": "⚠️ Alerta: ¡Latencia alta!",
+        "alert_satellites": "⚠️ Alerta: ¡Pocos satélites activos!",
+        "alert_threshold": "Umbral de alerta (ms)",
+        "active_threshold": "Mín. satélites activos",
+        "3d_globe": "🌍 Globo 3D de la constelación",
+        "elevation": "Elevación",
+        "azimuth": "Azimut",
+        "distance": "Distancia"
+    },
+    "zh": {
+        "name": "中文",
+        "title": "🚀 COSMIC-324: 6G 轨道指挥系统",
+        "subtitle": "多语言实时轨道跟踪平台",
+        "params": "⚙️ 仿真参数",
+        "sat_count": "卫星数量（最多5000）",
+        "update_btn": "🔄 刷新数据",
+        "active": "🟢 活跃",
+        "calibration": "🟡 校准",
+        "standby": "🔴 待机",
+        "total": "总计",
+        "satellite": "卫星",
+        "status": "状态",
+        "latitude": "纬度",
+        "longitude": "经度",
+        "altitude": "高度（公里）",
+        "latency_chart": "📈 信号延迟演变",
+        "step": "步骤",
+        "latency_ms": "延迟（毫秒）",
+        "last_update": "最后更新",
+        "map_title": "🌍 3D卫星地图",
+        "avg_alt": "平均高度",
+        "max_alt": "最大高度",
+        "min_alt": "最小高度",
+        "celestrak": "📡 从Celestrak获取实时数据（每小时自动）",
+        "group": "选择星群",
+        "alert_latency": "⚠️ 警报：高延迟！",
+        "alert_satellites": "⚠️ 警报：活跃卫星数量低！",
+        "alert_threshold": "警报阈值（毫秒）",
+        "active_threshold": "最低活跃卫星数",
+        "3d_globe": "🌍 3D星座球体",
+        "elevation": "仰角",
+        "azimuth": "方位角",
+        "distance": "距离"
+    },
+    "ru": {
+        "name": "Русский",
+        "title": "🚀 COSMIC-324: 6G Орбитальное командование",
+        "subtitle": "Многоязычная платформа отслеживания орбит",
+        "params": "⚙️ Параметры",
+        "sat_count": "Количество спутников (до 5000)",
+        "update_btn": "🔄 Обновить",
+        "active": "🟢 Активен",
+        "calibration": "🟡 Калибровка",
+        "standby": "🔴 Ожидание",
+        "total": "Всего",
+        "satellite": "Спутник",
+        "status": "Статус",
+        "latitude": "Широта",
+        "longitude": "Долгота",
+        "altitude": "Высота (км)",
+        "latency_chart": "📈 Эволюция задержки",
+        "step": "Шаг",
+        "latency_ms": "Задержка (мс)",
+        "last_update": "Последнее обновление",
+        "map_title": "🌍 3D-карта спутников",
+        "avg_alt": "Сред. высота",
+        "max_alt": "Макс. высота",
+        "min_alt": "Мин. высота",
+        "celestrak": "📡 Живые данные из Celestrak (авто каждый час)",
+        "group": "Выбрать группу",
+        "alert_latency": "⚠️ Предупреждение: Высокая задержка!",
+        "alert_satellites": "⚠️ Предупреждение: Мало активных спутников!",
+        "alert_threshold": "Порог предупреждения (мс)",
+        "active_threshold": "Мин. активных спутников",
+        "3d_globe": "🌍 3D-глобус созвездия",
+        "elevation": "Угол места",
+        "azimuth": "Азимут",
+        "distance": "Расстояние"
     }
 }
 
@@ -74,10 +266,10 @@ def t(key: str) -> str:
     return LANGUAGES.get(lang, LANGUAGES['ar']).get(key, key)
 
 # ============================================================
-# 📡 جلب بيانات Celestrak الحقيقية
+# 📡 جلب بيانات Celestrak التلقائي (مع تخزين مؤقت)
 # ============================================================
-@st.cache_data(ttl=3600)
-def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 100) -> List[Dict]:
+@st.cache_data(ttl=3600)  # تحديث كل ساعة
+def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> List[Dict]:
     url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
     try:
         response = requests.get(url, timeout=30)
@@ -132,19 +324,21 @@ def tle_to_orbit(tle_entry: Dict) -> Optional[SimpleNamespace]:
     except Exception:
         return None
 
-def generate_orbit_map(num_satellites: int = 100, group: str = "starlink") -> Dict:
-    raw_data = fetch_celestrak_data(group, num_satellites)
+def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_celestrak: bool = True) -> Dict:
+    if use_celestrak:
+        raw_data = fetch_celestrak_data(group, num_satellites)
+        orbit_map = {}
+        if raw_data:
+            for entry in raw_data:
+                orbit = tle_to_orbit(entry)
+                if orbit:
+                    orbit_map[orbit.name] = orbit
+            if orbit_map:
+                return orbit_map
+    # Mock data if Celestrak fails or not used
     orbit_map = {}
-    if raw_data:
-        for entry in raw_data:
-            orbit = tle_to_orbit(entry)
-            if orbit:
-                orbit_map[orbit.name] = orbit
-        if orbit_map:
-            return orbit_map
-    # Mock data if Celestrak fails
-    for i in range(num_satellites):
-        a = 7000 + random.randint(-300, 300)
+    for i in range(min(num_satellites, 5000)):
+        a = 7000 + random.randint(-500, 500)
         e = random.uniform(0.01, 0.08)
         incl = math.radians(random.uniform(30, 70))
         omega = random.uniform(0, 2 * math.pi)
@@ -189,6 +383,7 @@ st.markdown("""
     .stMetric { background: linear-gradient(145deg, #1a1a2e, #0d0d1a); border-radius: 12px; padding: 15px; border: 1px solid rgba(0, 204, 255, 0.15); }
     h1, h2, h3, h4, h5 { color: #00CCFF; font-family: 'Arial Black', sans-serif; }
     .stButton > button { background: linear-gradient(135deg, #00CCFF, #0066AA); color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: bold; }
+    .alert-box { padding: 10px 15px; border-radius: 8px; margin: 10px 0; border: 1px solid #FF5555; background-color: rgba(255, 85, 85, 0.1); }
 </style>
 """, unsafe_allow_html=True)
 
@@ -199,6 +394,7 @@ with st.sidebar:
     st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324", use_column_width=True)
     st.markdown("---")
     
+    # اختيار اللغة
     lang_options = {code: info["name"] for code, info in LANGUAGES.items()}
     selected_lang = st.selectbox(
         "🌐 Language / اللغة",
@@ -213,14 +409,24 @@ with st.sidebar:
     st.markdown("---")
     st.header(t("params"))
     
-    num_satellites = st.slider(t("sat_count"), 5, 100, 20, 5)
+    # عدد الأقمار (حتى 5000)
+    num_satellites = st.slider(t("sat_count"), 10, 5000, 100, 50)
     
+    # Celestrak
     st.markdown("---")
     st.subheader(t("celestrak"))
     group = st.selectbox(t("group"), ["starlink", "gps", "active", "oneweb", "iridium"])
-    use_celestrak = st.checkbox("استخدام بيانات حقيقية من Celestrak")
+    use_celestrak = st.checkbox("استخدام بيانات حقيقية من Celestrak (تحديث كل ساعة)", value=True)
     
+    # عتبات التنبيه
+    st.markdown("---")
+    st.subheader("🔔 إعدادات التنبيهات")
+    alert_threshold = st.slider(t("alert_threshold"), 5.0, 50.0, 20.0, 1.0)
+    active_threshold = st.slider(t("active_threshold"), 1, 50, 5, 1)
+    
+    # زر التحديث
     if st.button(t("update_btn"), use_container_width=True):
+        st.cache_data.clear()
         st.rerun()
     
     st.caption(f"{t('last_update')}: {datetime.now().strftime('%H:%M:%S')}")
@@ -232,10 +438,11 @@ st.markdown(f"<h1 style='text-align: center; font-size: 3em; text-shadow: 0 0 40
 st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
 
 # ============================================================
-# 📊 توليد البيانات (مع خيار Celestrak)
+# 📊 توليد البيانات (مع Celestrak التلقائي)
 # ============================================================
-if use_celestrak:
-    orbit_map = generate_orbit_map(num_satellites, group)
+with st.spinner("🔄 جاري تحميل بيانات الأقمار..."):
+    orbit_map = generate_orbit_map(num_satellites, group, use_celestrak)
+    
     data = []
     for name, orbit in list(orbit_map.items())[:num_satellites]:
         pos = orbit.position_at_time(0.0)
@@ -246,34 +453,34 @@ if use_celestrak:
             alt = orbit.altitude if hasattr(orbit, 'altitude') else 550
             status = random.choice([t('active'), t('calibration'), t('standby')])
             data.append({
-                t('satellite'): name[:12],
+                t('satellite'): name[:15],
                 t('status'): status,
                 t('latitude'): round(lat, 4),
                 t('longitude'): round(lon, 4),
                 t('altitude'): round(alt, 2)
             })
     df = pd.DataFrame(data)
-else:
-    def generate_satellite_data(n: int) -> pd.DataFrame:
-        data = []
-        statuses = [t('active'), t('calibration'), t('standby')]
-        for i in range(n):
-            data.append({
-                t('satellite'): f"SAT-{i+1}",
-                t('status'): random.choice(statuses),
-                t('latitude'): round(random.uniform(-90, 90), 4),
-                t('longitude'): round(random.uniform(-180, 180), 4),
-                t('altitude'): round(random.uniform(400, 1200), 2)
-            })
-        return pd.DataFrame(data)
-    df = generate_satellite_data(num_satellites)
+
+# ============================================================
+# 🔔 التنبيهات الذكية
+# ============================================================
+active_count = df[df[t('status')] == t('active')].shape[0]
+avg_latency = round(random.uniform(5, 25), 2)  # محاكاة لزمن الانتقال (سيتم ربطه لاحقاً)
+
+# تنبيه ارتفاع زمن الانتقال
+if avg_latency > alert_threshold:
+    st.markdown(f"<div class='alert-box'>🚨 {t('alert_latency')} (القيمة الحالية: {avg_latency} ms، الحد الأقصى: {alert_threshold} ms)</div>", unsafe_allow_html=True)
+
+# تنبيه انخفاض الأقمار النشطة
+if active_count < active_threshold:
+    st.markdown(f"<div class='alert-box'>🚨 {t('alert_satellites')} (النشطة: {active_count}، الحد الأدنى: {active_threshold})</div>", unsafe_allow_html=True)
 
 # ============================================================
 # 📈 الإحصائيات السريعة
 # ============================================================
 col1, col2, col3, col4 = st.columns(4)
 col1.metric(t('total'), len(df))
-col2.metric(t('active'), df[df[t('status')] == t('active')].shape[0])
+col2.metric(t('active'), active_count)
 col3.metric(t('calibration'), df[df[t('status')] == t('calibration')].shape[0])
 col4.metric(t('standby'), df[df[t('status')] == t('standby')].shape[0])
 
@@ -305,30 +512,83 @@ st.dataframe(
 )
 
 # ============================================================
-# 🌍 خريطة 2D تفاعلية
+# 🌍 خريطة 3D تفاعلية (Plotly Scattergeo 3D)
 # ============================================================
 st.markdown("---")
-st.subheader(t('map_title'))
+st.subheader(t('3d_globe'))
 
-fig_map = px.scatter_mapbox(
-    df,
-    lat=t('latitude'),
-    lon=t('longitude'),
-    color=t('status'),
-    hover_name=t('satellite'),
-    hover_data={t('altitude'): True},
-    color_discrete_map={
-        t('active'): '#00FF00',
-        t('calibration'): '#FFAA00',
-        t('standby'): '#FF5555'
-    },
-    zoom=2,
-    height=500,
-    title=t('map_title')
+fig_3d = go.Figure()
+
+# إضافة الأقمار كنقاط على الكرة الأرضية
+fig_3d.add_trace(go.Scattergeo(
+    lon=df[t('longitude')],
+    lat=df[t('latitude')],
+    mode='markers+text',
+    marker=dict(
+        size=8,
+        color=df[t('status')].map({
+            t('active'): '#00FF00',
+            t('calibration'): '#FFAA00',
+            t('standby'): '#FF5555'
+        }),
+        symbol='circle',
+        line=dict(width=1, color='rgba(255,255,255,0.3)')
+    ),
+    text=df[t('satellite')],
+    textposition='top center',
+    textfont=dict(size=9, color='white'),
+    hoverinfo='text',
+    hovertext=df.apply(lambda row: f"{row[t('satellite')]}<br>Lat: {row[t('latitude')]}°<br>Lon: {row[t('longitude')]}°<br>Alt: {row[t('altitude')]} km", axis=1)
+))
+
+# إضافة المحطة الأرضية
+fig_3d.add_trace(go.Scattergeo(
+    lon=[0],
+    lat=[0],
+    mode='markers+text',
+    marker=dict(size=16, color='#FF3366', symbol='star'),
+    text=['🛰️ Ground'],
+    textposition='bottom center',
+    textfont=dict(size=12, color='#FF6699'),
+    hoverinfo='text',
+    hovertext=['🛰️ Ground Station<br>Lat: 0°<br>Lon: 0°<br>Altitude: 0 km']
+))
+
+# تنسيق الخريطة
+fig_3d.update_layout(
+    title=dict(
+        text=t('3d_globe'),
+        font=dict(size=22, color='#00CCFF', family='Arial Black'),
+        x=0.5
+    ),
+    geo=dict(
+        projection_type='orthographic',
+        showland=True,
+        landcolor='rgb(10, 10, 20)',
+        coastlinecolor='rgb(60, 60, 80)',
+        showocean=True,
+        oceancolor='rgb(5, 5, 15)',
+        showcountries=True,
+        countrycolor='rgb(50, 50, 70)',
+        bgcolor='rgba(0,0,0,0)'
+    ),
+    paper_bgcolor='rgba(0,0,0,0)',
+    plot_bgcolor='rgba(0,0,0,0)',
+    height=650,
+    margin=dict(l=0, r=0, t=40, b=0),
+    updatemenus=[dict(
+        type="buttons",
+        buttons=[
+            dict(label="🔄 Rotate", method="relayout", args={"geo.projection.rotation.lon": 20, "geo.projection.rotation.lat": 5}),
+            dict(label="⏺ Reset", method="relayout", args={"geo.projection.rotation.lon": 0, "geo.projection.rotation.lat": 0})
+        ],
+        direction="right",
+        x=0.05,
+        y=0.02
+    )]
 )
-fig_map.update_layout(mapbox_style="dark", mapbox_accesstoken=None)
-fig_map.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-st.plotly_chart(fig_map, use_container_width=True)
+
+st.plotly_chart(fig_3d, use_container_width=True)
 
 # ============================================================
 # 📊 تحليلات متقدمة
@@ -341,48 +601,76 @@ col_a1.metric(t('avg_alt'), f"{df[t('altitude')].mean():.1f} km")
 col_a2.metric(t('max_alt'), f"{df[t('altitude')].max():.1f} km")
 col_a3.metric(t('min_alt'), f"{df[t('altitude')].min():.1f} km")
 
-fig_hist = px.histogram(df, x=t('altitude'), color=t('status'), 
-                         title="توزيع الارتفاعات حسب الحالة",
-                         color_discrete_map={
-                             t('active'): '#00FF00',
-                             t('calibration'): '#FFAA00',
-                             t('standby'): '#FF5555'
-                         })
-fig_hist.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+# رسم بياني لتوزيع الارتفاعات
+fig_hist = px.histogram(
+    df,
+    x=t('altitude'),
+    color=t('status'),
+    title="توزيع الارتفاعات حسب الحالة",
+    color_discrete_map={
+        t('active'): '#00FF00',
+        t('calibration'): '#FFAA00',
+        t('standby'): '#FF5555'
+    },
+    nbins=20
+)
+fig_hist.update_layout(
+    xaxis_title=t('altitude'),
+    yaxis_title="العدد",
+    plot_bgcolor='rgba(0,0,0,0)',
+    paper_bgcolor='rgba(0,0,0,0)',
+    bargap=0.1
+)
 st.plotly_chart(fig_hist, use_container_width=True)
 
 # ============================================================
-# 📈 منحنى Latency
+# 📈 منحنى Latency (محاكاة مع تنبيه)
 # ============================================================
 st.markdown("---")
 st.subheader(t('latency_chart'))
 
+# توليد بيانات Latency (محاكاة)
 latency_data = pd.DataFrame({
     t('step'): list(range(1, 21)),
-    t('latency_ms'): [round(3.0 + i * 0.1 + random.uniform(-0.2, 0.2), 2) for i in range(20)]
+    t('latency_ms'): [round(3.0 + i * 0.15 + random.uniform(-0.3, 0.3), 2) for i in range(20)]
 })
 
-fig = px.line(
+fig_latency = px.line(
     latency_data,
     x=t('step'),
     y=t('latency_ms'),
     title=t('latency_chart'),
     markers=True
 )
-fig.update_traces(line_color='#00CCFF', line_width=3, marker_size=8)
-fig.update_layout(
+fig_latency.update_traces(line_color='#00CCFF', line_width=3, marker_size=8)
+
+# إضافة خط عتبة التنبيه
+fig_latency.add_hline(
+    y=alert_threshold,
+    line_dash="dash",
+    line_color="red",
+    annotation_text=f"⚠️ Alert Threshold: {alert_threshold} ms"
+)
+
+fig_latency.update_layout(
     xaxis_title=t('step'),
     yaxis_title=t('latency_ms'),
     plot_bgcolor='rgba(0,0,0,0)',
-    paper_bgcolor='rgba(0,0,0,0)'
+    paper_bgcolor='rgba(0,0,0,0)',
+    xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
+    yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)')
 )
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig_latency, use_container_width=True)
 
 # ============================================================
 # 📌 الحالة السفلية
 # ============================================================
 st.markdown("---")
 col_f1, col_f2, col_f3 = st.columns(3)
-col_f1.caption(f"🛰️ COSMIC-324 v3.0 | {len(df)} {t('satellite')}")
+col_f1.caption(f"🛰️ COSMIC-324 v4.0 | {len(df)} {t('satellite')}")
 col_f2.caption(f"🌍 {LANGUAGES[st.session_state.get('language', 'ar')]['name']}")
 col_f3.caption(f"🔐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+# عرض معلومات Celestrak إذا كانت مفعلة
+if use_celestrak:
+    st.caption(f"📡 بيانات حية من Celestrak (المجموعة: {group}) - تحديث تلقائي كل ساعة")
