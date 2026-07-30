@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import random
 import requests
 import math
+import time
 from datetime import datetime
 from typing import Dict, List, Optional
 from types import SimpleNamespace
@@ -43,7 +44,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ تنبيه: انخفاض عدد الأقمار النشطة!",
         "alert_threshold": "عتبة التنبيه (مللي ثانية)",
         "active_threshold": "الحد الأدنى للأقمار النشطة",
-        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد"
+        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
+        "elevation": "الارتفاع",
+        "azimuth": "الزاوية الأفقية",
+        "distance": "المسافة"
     },
     "en": {
         "name": "English",
@@ -75,7 +79,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alert: Low Active Satellites!",
         "alert_threshold": "Alert Threshold (ms)",
         "active_threshold": "Min Active Satellites",
-        "3d_globe": "🌍 3D Constellation Globe"
+        "3d_globe": "🌍 3D Constellation Globe",
+        "elevation": "Elevation",
+        "azimuth": "Azimuth",
+        "distance": "Distance"
     },
     "fr": {
         "name": "Français",
@@ -107,7 +114,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alerte: Peu de satellites actifs!",
         "alert_threshold": "Seuil d'alerte (ms)",
         "active_threshold": "Min. satellites actifs",
-        "3d_globe": "🌍 Globe 3D de la constellation"
+        "3d_globe": "🌍 Globe 3D de la constellation",
+        "elevation": "Élévation",
+        "azimuth": "Azimut",
+        "distance": "Distance"
     },
     "de": {
         "name": "Deutsch",
@@ -139,7 +149,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Warnung: Wenig aktive Satelliten!",
         "alert_threshold": "Warnschwelle (ms)",
         "active_threshold": "Min. aktive Satelliten",
-        "3d_globe": "🌍 3D-Konstellationsglobus"
+        "3d_globe": "🌍 3D-Konstellationsglobus",
+        "elevation": "Höhenwinkel",
+        "azimuth": "Azimut",
+        "distance": "Entfernung"
     },
     "es": {
         "name": "Español",
@@ -171,7 +184,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alerta: ¡Pocos satélites activos!",
         "alert_threshold": "Umbral de alerta (ms)",
         "active_threshold": "Mín. satélites activos",
-        "3d_globe": "🌍 Globo 3D de la constelación"
+        "3d_globe": "🌍 Globo 3D de la constelación",
+        "elevation": "Elevación",
+        "azimuth": "Azimut",
+        "distance": "Distancia"
     },
     "zh": {
         "name": "中文",
@@ -203,7 +219,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ 警报：活跃卫星数量低！",
         "alert_threshold": "警报阈值（毫秒）",
         "active_threshold": "最低活跃卫星数",
-        "3d_globe": "🌍 3D星座球体"
+        "3d_globe": "🌍 3D星座球体",
+        "elevation": "仰角",
+        "azimuth": "方位角",
+        "distance": "距离"
     },
     "ru": {
         "name": "Русский",
@@ -235,7 +254,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Предупреждение: Мало активных спутников!",
         "alert_threshold": "Порог предупреждения (мс)",
         "active_threshold": "Мин. активных спутников",
-        "3d_globe": "🌍 3D-глобус созвездия"
+        "3d_globe": "🌍 3D-глобус созвездия",
+        "elevation": "Угол места",
+        "azimuth": "Азимут",
+        "distance": "Расстояние"
     }
 }
 
@@ -244,20 +266,41 @@ def t(key: str) -> str:
     return LANGUAGES.get(lang, LANGUAGES['ar']).get(key, key)
 
 # ============================================================
-# 📡 جلب بيانات Celestrak
+# 📡 جلب بيانات Celestrak (مع إعادة محاولة وتخزين مؤقت ذكي)
 # ============================================================
-@st.cache_data(ttl=3600)
+_last_successful_data = None
+_last_successful_time = None
+
+@st.cache_data(ttl=1800)
 def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> List[Dict]:
+    global _last_successful_data, _last_successful_time
     url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-        if response.text.startswith('{'):
-            data = response.json()
-            return data[:max_satellites]
-        return []
-    except Exception:
-        return []
+    max_retries = 3
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, timeout=15)
+            response.raise_for_status()
+            if response.text and response.text.startswith('{'):
+                data = response.json()
+                if data:
+                    _last_successful_data = data
+                    _last_successful_time = datetime.now()
+                    return data[:max_satellites]
+                else:
+                    raise ValueError("البيانات المستلمة فارغة")
+            else:
+                raise ValueError("الاستجابة ليست بصيغة JSON صالحة")
+        except Exception:
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay * (attempt + 1))
+            else:
+                if _last_successful_data:
+                    return _last_successful_data[:max_satellites]
+                else:
+                    return []
+    return []
 
 def tle_to_orbit(tle_entry: Dict) -> Optional[SimpleNamespace]:
     try:
@@ -312,7 +355,7 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
                     orbit_map[orbit.name] = orbit
             if orbit_map:
                 return orbit_map
-    # Mock data
+    
     orbit_map = {}
     for i in range(min(num_satellites, 5000)):
         a = 7000 + random.randint(-500, 500)
@@ -482,7 +525,7 @@ st.dataframe(
 )
 
 # ============================================================
-# 🌍 الخريطة ثلاثية الأبعاد (باستخدام go.Figure المبسط)
+# 🌍 الخريطة ثلاثية الأبعاد (نسخة مستقرة)
 # ============================================================
 st.markdown("---")
 st.subheader(t('3d_globe'))
