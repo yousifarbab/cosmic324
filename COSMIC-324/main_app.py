@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 from types import SimpleNamespace
 
 # ============================================================
-# 🌍 نظام الترجمة (7 لغات) - كامل
+# 🌍 نظام الترجمة (7 لغات)
 # ============================================================
 LANGUAGES = {
     "ar": {
@@ -43,7 +43,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ تنبيه: انخفاض عدد الأقمار النشطة!",
         "alert_threshold": "عتبة التنبيه (مللي ثانية)",
         "active_threshold": "الحد الأدنى للأقمار النشطة",
-        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد"
+        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
+        "elevation": "الارتفاع",
+        "azimuth": "الزاوية الأفقية",
+        "distance": "المسافة"
     },
     "en": {
         "name": "English",
@@ -75,7 +78,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alert: Low Active Satellites!",
         "alert_threshold": "Alert Threshold (ms)",
         "active_threshold": "Min Active Satellites",
-        "3d_globe": "🌍 3D Constellation Globe"
+        "3d_globe": "🌍 3D Constellation Globe",
+        "elevation": "Elevation",
+        "azimuth": "Azimuth",
+        "distance": "Distance"
     },
     "fr": {
         "name": "Français",
@@ -107,7 +113,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alerte: Peu de satellites actifs!",
         "alert_threshold": "Seuil d'alerte (ms)",
         "active_threshold": "Min. satellites actifs",
-        "3d_globe": "🌍 Globe 3D de la constellation"
+        "3d_globe": "🌍 Globe 3D de la constellation",
+        "elevation": "Élévation",
+        "azimuth": "Azimut",
+        "distance": "Distance"
     },
     "de": {
         "name": "Deutsch",
@@ -139,7 +148,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Warnung: Wenig aktive Satelliten!",
         "alert_threshold": "Warnschwelle (ms)",
         "active_threshold": "Min. aktive Satelliten",
-        "3d_globe": "🌍 3D-Konstellationsglobus"
+        "3d_globe": "🌍 3D-Konstellationsglobus",
+        "elevation": "Höhenwinkel",
+        "azimuth": "Azimut",
+        "distance": "Entfernung"
     },
     "es": {
         "name": "Español",
@@ -171,7 +183,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alerta: ¡Pocos satélites activos!",
         "alert_threshold": "Umbral de alerta (ms)",
         "active_threshold": "Mín. satélites activos",
-        "3d_globe": "🌍 Globo 3D de la constelación"
+        "3d_globe": "🌍 Globo 3D de la constelación",
+        "elevation": "Elevación",
+        "azimuth": "Azimut",
+        "distance": "Distancia"
     },
     "zh": {
         "name": "中文",
@@ -203,7 +218,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ 警报：活跃卫星数量低！",
         "alert_threshold": "警报阈值（毫秒）",
         "active_threshold": "最低活跃卫星数",
-        "3d_globe": "🌍 3D星座球体"
+        "3d_globe": "🌍 3D星座球体",
+        "elevation": "仰角",
+        "azimuth": "方位角",
+        "distance": "距离"
     },
     "ru": {
         "name": "Русский",
@@ -235,7 +253,10 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Предупреждение: Мало активных спутников!",
         "alert_threshold": "Порог предупреждения (мс)",
         "active_threshold": "Мин. активных спутников",
-        "3d_globe": "🌍 3D-глобус созвездия"
+        "3d_globe": "🌍 3D-глобус созвездия",
+        "elevation": "Угол места",
+        "azimuth": "Азимут",
+        "distance": "Расстояние"
     }
 }
 
@@ -244,7 +265,7 @@ def t(key: str) -> str:
     return LANGUAGES.get(lang, LANGUAGES['ar']).get(key, key)
 
 # ============================================================
-# 📡 جلب بيانات Celestrak التلقائي
+# 📡 جلب بيانات Celestrak
 # ============================================================
 @st.cache_data(ttl=3600)
 def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> List[Dict]:
@@ -302,7 +323,7 @@ def tle_to_orbit(tle_entry: Dict) -> Optional[SimpleNamespace]:
     except Exception:
         return None
 
-def generate_orbit_map(num_satellites: int = 100, group: str = "starlink", use_celestrak: bool = True) -> Dict:
+def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_celestrak: bool = True) -> Dict:
     if use_celestrak:
         raw_data = fetch_celestrak_data(group, num_satellites)
         orbit_map = {}
@@ -313,7 +334,7 @@ def generate_orbit_map(num_satellites: int = 100, group: str = "starlink", use_c
                     orbit_map[orbit.name] = orbit
             if orbit_map:
                 return orbit_map
-    # Mock data
+    # Mock data if Celestrak fails
     orbit_map = {}
     for i in range(min(num_satellites, 5000)):
         a = 7000 + random.randint(-500, 500)
@@ -483,12 +504,12 @@ st.dataframe(
 )
 
 # ============================================================
-# 🌍 خريطة 3D (المصححة)
+# 🌍 الخريطة ثلاثية الأبعاد (المصححة)
 # ============================================================
 st.markdown("---")
 st.subheader(t('3d_globe'))
 
-# إنشاء كائن الشكل الفارغ أولاً، ثم إضافة البيانات إليه
+# إنشاء الخريطة
 fig_3d = go.Figure()
 
 # إضافة الأقمار
@@ -526,38 +547,44 @@ fig_3d.add_trace(go.Scattergeo(
     hovertext=['🛰️ Ground Station<br>Lat: 0°<br>Lon: 0°<br>Altitude: 0 km']
 ))
 
-# تحديث التخطيط
+# تحديث التخطيط (مع تصحيح title)
 fig_3d.update_layout(
-    title=dict(
-        text=t('3d_globe'),
-        font=dict(size=22, color='#00CCFF', family='Arial Black'),
-        x=0.5
-    ),
-    geo=dict(
-        projection_type='orthographic',
-        showland=True,
-        landcolor='rgb(10, 10, 20)',
-        coastlinecolor='rgb(60, 60, 80)',
-        showocean=True,
-        oceancolor='rgb(5, 5, 15)',
-        showcountries=True,
-        countrycolor='rgb(50, 50, 70)',
-        bgcolor='rgba(0,0,0,0)'
-    ),
+    title={
+        'text': t('3d_globe'),
+        'font': {'size': 22, 'color': '#00CCFF', 'family': 'Arial Black'},
+        'x': 0.5
+    },
+    geo={
+        'projection_type': 'orthographic',
+        'showland': True,
+        'landcolor': 'rgb(10, 10, 20)',
+        'coastlinecolor': 'rgb(60, 60, 80)',
+        'showocean': True,
+        'oceancolor': 'rgb(5, 5, 15)',
+        'showcountries': True,
+        'countrycolor': 'rgb(50, 50, 70)',
+        'bgcolor': 'rgba(0,0,0,0)'
+    },
     paper_bgcolor='rgba(0,0,0,0)',
     plot_bgcolor='rgba(0,0,0,0)',
     height=650,
-    margin=dict(l=0, r=0, t=40, b=0),
-    updatemenus=[dict(
-        type="buttons",
-        buttons=[
-            dict(label="🔄 Rotate", method="relayout", args={"geo.projection.rotation.lon": 20, "geo.projection.rotation.lat": 5}),
-            dict(label="⏺ Reset", method="relayout", args={"geo.projection.rotation.lon": 0, "geo.projection.rotation.lat": 0})
-        ],
-        direction="right",
-        x=0.05,
-        y=0.02
-    )]
+    margin=dict(l=0, r=0, t=40, b=0)
+)
+
+# إضافة أزرار التحكم
+fig_3d.update_layout(
+    updatemenus=[
+        dict(
+            type="buttons",
+            buttons=[
+                dict(label="🔄 Rotate", method="relayout", args={"geo.projection.rotation.lon": 20, "geo.projection.rotation.lat": 5}),
+                dict(label="⏺ Reset", method="relayout", args={"geo.projection.rotation.lon": 0, "geo.projection.rotation.lat": 0})
+            ],
+            direction="right",
+            x=0.05,
+            y=0.02
+        )
+    ]
 )
 
 st.plotly_chart(fig_3d, use_container_width=True)
@@ -573,7 +600,6 @@ col_a1.metric(t('avg_alt'), f"{df[t('altitude')].mean():.1f} km")
 col_a2.metric(t('max_alt'), f"{df[t('altitude')].max():.1f} km")
 col_a3.metric(t('min_alt'), f"{df[t('altitude')].min():.1f} km")
 
-# رسم بياني لتوزيع الارتفاعات
 fig_hist = px.histogram(
     df,
     x=t('altitude'),
@@ -614,12 +640,14 @@ fig_latency = px.line(
     markers=True
 )
 fig_latency.update_traces(line_color='#00CCFF', line_width=3, marker_size=8)
+
 fig_latency.add_hline(
     y=alert_threshold,
     line_dash="dash",
     line_color="red",
     annotation_text=f"⚠️ Alert Threshold: {alert_threshold} ms"
 )
+
 fig_latency.update_layout(
     xaxis_title=t('step'),
     yaxis_title=t('latency_ms'),
