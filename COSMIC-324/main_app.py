@@ -277,8 +277,7 @@ def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) ->
             data = response.json()
             return data[:max_satellites]
         return []
-    except Exception as e:
-        st.warning(f"⚠️ Could not fetch Celestrak data: {e}")
+    except Exception:
         return []
 
 def tle_to_orbit(tle_entry: Dict) -> Optional[SimpleNamespace]:
@@ -334,7 +333,6 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
                     orbit_map[orbit.name] = orbit
             if orbit_map:
                 return orbit_map
-    # Mock data if Celestrak fails
     orbit_map = {}
     for i in range(min(num_satellites, 5000)):
         a = 7000 + random.randint(-500, 500)
@@ -504,15 +502,13 @@ st.dataframe(
 )
 
 # ============================================================
-# 🌍 الخريطة ثلاثية الأبعاد (المصححة)
+# 🌍 الخريطة ثلاثية الأبعاد (الإصدار المستقر)
 # ============================================================
 st.markdown("---")
 st.subheader(t('3d_globe'))
 
-# إنشاء الخريطة
 fig_3d = go.Figure()
 
-# إضافة الأقمار
 fig_3d.add_trace(go.Scattergeo(
     lon=df[t('longitude')],
     lat=df[t('latitude')],
@@ -534,7 +530,6 @@ fig_3d.add_trace(go.Scattergeo(
     hovertext=df.apply(lambda row: f"{row[t('satellite')]}<br>Lat: {row[t('latitude')]}°<br>Lon: {row[t('longitude')]}°<br>Alt: {row[t('altitude')]} km", axis=1)
 ))
 
-# إضافة المحطة الأرضية
 fig_3d.add_trace(go.Scattergeo(
     lon=[0],
     lat=[0],
@@ -547,7 +542,8 @@ fig_3d.add_trace(go.Scattergeo(
     hovertext=['🛰️ Ground Station<br>Lat: 0°<br>Lon: 0°<br>Altitude: 0 km']
 ))
 
-# تحديث التخطيط (مع تصحيح title)
+rot_lon = st.session_state.get('rotation_lon', 0)
+
 fig_3d.update_layout(
     title={
         'text': t('3d_globe'),
@@ -556,6 +552,7 @@ fig_3d.update_layout(
     },
     geo={
         'projection_type': 'orthographic',
+        'projection_rotation': {'lon': rot_lon, 'lat': 0},
         'showland': True,
         'landcolor': 'rgb(10, 10, 20)',
         'coastlinecolor': 'rgb(60, 60, 80)',
@@ -571,23 +568,17 @@ fig_3d.update_layout(
     margin=dict(l=0, r=0, t=40, b=0)
 )
 
-# إضافة أزرار التحكم
-fig_3d.update_layout(
-    updatemenus=[
-        dict(
-            type="buttons",
-            buttons=[
-                dict(label="🔄 Rotate", method="relayout", args={"geo.projection.rotation.lon": 20, "geo.projection.rotation.lat": 5}),
-                dict(label="⏺ Reset", method="relayout", args={"geo.projection.rotation.lon": 0, "geo.projection.rotation.lat": 0})
-            ],
-            direction="right",
-            x=0.05,
-            y=0.02
-        )
-    ]
-)
-
 st.plotly_chart(fig_3d, use_container_width=True)
+
+col_btn1, col_btn2 = st.columns(2)
+with col_btn1:
+    if st.button("🔄 Rotate Globe"):
+        st.session_state.rotation_lon = st.session_state.get('rotation_lon', 0) + 20
+        st.rerun()
+with col_btn2:
+    if st.button("⏺ Reset View"):
+        st.session_state.rotation_lon = 0
+        st.rerun()
 
 # ============================================================
 # 📊 تحليلات متقدمة
