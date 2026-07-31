@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 from types import SimpleNamespace
 
 # ============================================================
-# 🌍 نظام الترجمة (7 لغات) - الإصدار المحسّن
+# 🌍 نظام الترجمة (7 لغات)
 # ============================================================
 LANGUAGES = {
     "ar": {
@@ -122,7 +122,7 @@ def t(key: str) -> str:
     return LANGUAGES.get(lang, LANGUAGES['en']).get(key, key)
 
 # ============================================================
-# 📡 جلب بيانات Celestrak (مع تخزين مؤقت للكائنات)
+# 📡 جلب بيانات Celestrak
 # ============================================================
 _last_successful_data = None
 
@@ -145,9 +145,6 @@ def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) ->
 
 @st.cache_resource
 def generate_orbit_map_optimized(num_satellites: int = 5000, group: str = "starlink", use_celestrak: bool = True):
-    """
-    دالة محسّنة مع تخزين مؤقت للكائنات الكاملة لتسريع الأداء.
-    """
     if use_celestrak:
         raw_data = fetch_celestrak_data(group, num_satellites)
         orbit_map = {}
@@ -213,7 +210,6 @@ def generate_orbit_map_optimized(num_satellites: int = 5000, group: str = "starl
             if orbit_map:
                 return orbit_map
 
-    # Mock data (بيانات محاكاة)
     orbit_map = {}
     for i in range(min(num_satellites, 5000)):
         a = 7000 + random.randint(-500, 500)
@@ -283,7 +279,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌐 الشريط الجانبي (الإعدادات + التسعير + التحديث التلقائي)
+# 🌐 الشريط الجانبي
 # ============================================================
 with st.sidebar:
     st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324+Titan+X", use_column_width=True)
@@ -299,7 +295,6 @@ with st.sidebar:
     st.markdown("---")
     st.header(t("params"))
     
-    # وضع الأداء
     perf_mode = st.radio(t("performance_mode"), [t("full_resolution"), t("high_speed")], index=0)
     if perf_mode == t("high_speed"):
         max_display_sats = 100
@@ -320,7 +315,6 @@ with st.sidebar:
     alert_threshold = st.slider(t("alert_threshold"), 5.0, 50.0, 20.0, 1.0)
     active_threshold = st.slider(t("active_threshold"), 1, 50, 5, 1)
     
-    # ===== التحديث التلقائي =====
     st.markdown("---")
     st.subheader(t("auto_refresh"))
     refresh_interval = st.number_input(t("refresh_interval"), 5, 60, 10, 5)
@@ -368,7 +362,7 @@ st.markdown(f"<h1 style='text-align: center; font-size: 3.5em; text-shadow: 0 0 
 st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.2em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
 
 # ============================================================
-# 🔄 تحميل البيانات وعرض لوحة التحكم (مع تحسينات الأداء)
+# 🔄 تحميل البيانات وعرض لوحة التحكم
 # ============================================================
 def get_telemetry_data(orbit_map, num_satellites, t_func):
     data = []
@@ -376,8 +370,7 @@ def get_telemetry_data(orbit_map, num_satellites, t_func):
     if len(items) > num_satellites:
         items = items[:num_satellites]
     
-    progress_bar = st.progress(0, text="جاري تحميل بيانات الأقمار...")
-    for idx, (name, orbit) in enumerate(items):
+    for name, orbit in items:
         pos = orbit.position_at_time(0.0, apply_j2=True)
         if pos and len(pos) >= 3:
             x, y, z = pos
@@ -392,25 +385,19 @@ def get_telemetry_data(orbit_map, num_satellites, t_func):
                 t_func('longitude'): round(lon, 4),
                 t_func('altitude'): round(alt, 2)
             })
-        progress_bar.progress((idx + 1) / len(items), text=f"جاري التحميل... {idx+1}/{len(items)}")
-    progress_bar.empty()
     return pd.DataFrame(data)
 
-# تحميل خريطة المدارات (تخزين مؤقت للكائنات)
 with st.spinner("🔄 جاري تهيئة محرك المدارات..."):
     orbit_map = generate_orbit_map_optimized(num_satellites, group, use_celestrak)
 
-# تحميل بيانات التليمتري للعرض
 df = get_telemetry_data(orbit_map, num_satellites, t)
 
-# تطبيق السيناريو (فقدان أقمار)
 if st.session_state.get('run_scenario', False) and st.session_state.get('selected_scenario') == "🔴 فقدان 5 أقمار":
     if len(df) > 5:
         indices = random.sample(range(1, len(df)), min(5, len(df)-1))
         for idx in indices:
             df.loc[idx, t('status')] = "🔴 معطل"
 
-# الإحصائيات الرئيسية
 active_count = df[df[t('status')] == t('active')].shape[0]
 avg_latency = round(random.uniform(5, 25), 2)
 
@@ -421,7 +408,6 @@ col3.metric(t('calibration'), df[df[t('status')] == t('calibration')].shape[0])
 col4.metric(t('standby'), df[df[t('status')] == t('standby')].shape[0])
 st.markdown("---")
 
-# جدول ملون (مع عرض أول 20 صفاً فقط)
 def highlight_status(row):
     if row[t('status')] == t('active'): return ['background-color: #1a3a1a; color: #00FF00'] * len(row)
     elif row[t('status')] == t('calibration'): return ['background-color: #3a3a1a; color: #FFAA00'] * len(row)
@@ -430,16 +416,14 @@ def highlight_status(row):
 st.dataframe(df.head(20).style.apply(highlight_status, axis=1), use_container_width=True, height=350)
 
 # ============================================================
-# علامات التبويب المتقدمة (مع تحسين عرض الخريطة)
+# علامات التبويب المتقدمة
 # ============================================================
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([t('3d_globe'), t('coverage'), t('spectrum'), t('propulsion'), t('link_analysis'), t('cost_analysis'), t('space_weather'), t('debris'), t('ai_optimization')])
 
 with tab1:
     if not df.empty:
-        # عرض عينة من الأقمار على الخريطة (تحسين الأداء)
         sample_size = min(300, len(df))
         display_df = df.sample(n=sample_size) if len(df) > sample_size else df
-        
         fig = go.Figure()
         fig.add_trace(go.Scattergeo(
             lon=display_df[t('longitude')].tolist(),
@@ -473,12 +457,7 @@ with tab1:
         )
         st.plotly_chart(fig, use_container_width=True)
         st.caption(f"{t('j2_effect')} | عرض {len(display_df)} من {len(df)} قمر (تحسين الأداء)")
-    else:
-        st.warning("⚠️ لا توجد بيانات كافية لعرض الخريطة.")
 
-# ============================================================
-# تبويبات إضافية (مختصرة للوضوح، لكنها محفوظة)
-# ============================================================
 with tab2:
     import numpy as np
     lats = np.random.uniform(-90, 90, 300)
@@ -575,7 +554,7 @@ fig_lat.add_hline(y=alert_threshold, line_dash="dash", line_color="red", annotat
 st.plotly_chart(fig_lat, use_container_width=True)
 
 # ============================================================
-# 🗺️ Mission Pre-Planning و Collaboration
+# Mission Pre-Planning
 # ============================================================
 st.markdown("---")
 st.subheader("🗺️ Mission Pre-Planning")
@@ -600,8 +579,10 @@ with col2:
         st.success("✅ تم استيراد التكوين بنجاح!")
 
 # ============================================================
-# 📌 الحالة السفلية
+# 📌 الحالة السفلية (مع إشعار الترخيص)
 # ============================================================
 st.markdown("---")
-st.caption(f"🛰️ COSMIC-324 v6.0 Titan X | {len(df)} Satellites | 🌍 J2 Active | 📡 {group.upper()} | ⚡ {perf_mode}")
-st.caption(f"🔐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+col_f1, col_f2, col_f3 = st.columns(3)
+col_f1.caption(f"🛰️ COSMIC-324 v6.0 Titan X | {len(df)} Satellites | 🌍 J2 Active | 📡 {group.upper()} | ⚡ {perf_mode}")
+col_f2.caption(f"📄 Licensed under AGPL-3.0 & Apache 2.0 | حقوق النشر محفوظة © 2026 Yousif Arbarb")
+col_f3.caption(f"🔐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
