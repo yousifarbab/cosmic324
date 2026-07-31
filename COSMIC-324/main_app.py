@@ -283,7 +283,6 @@ st.markdown("""
     .alert-box { padding: 10px 15px; border-radius: 8px; margin: 10px 0; border: 1px solid #FF5555; background-color: rgba(255, 85, 85, 0.1); }
     .pricing-card { background: #1a1a2e; border-radius: 10px; padding: 15px; border: 1px solid #00CCFF33; text-align: center; }
     .stProgress > div { background-color: #00CCFF !important; }
-    /* تحسينات للجوال */
     @media (max-width: 640px) {
         .stMetric { padding: 10px; margin: 5px 0; }
         .stDataFrame { font-size: 12px; }
@@ -310,7 +309,6 @@ with st.sidebar:
     st.markdown("---")
     st.header(t("params"))
     
-    # وضع الجوال (تخفيض عدد الأقمار تلقائياً)
     mobile_mode = st.checkbox(t("mobile_mode"), value=st.session_state.get('mobile_mode', False))
     if mobile_mode != st.session_state.get('mobile_mode', False):
         st.session_state.mobile_mode = mobile_mode
@@ -383,7 +381,7 @@ st.markdown(f"<h1 style='text-align: center; font-size: 3em; text-shadow: 0 0 40
 st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
 
 # ============================================================
-# 🔄 تحميل البيانات وعرض لوحة التحكم (مع رسالة تحميل)
+# 🔄 تحميل البيانات وعرض لوحة التحكم
 # ============================================================
 @st.cache_data(ttl=60)
 def get_telemetry_data(orbit_map, num_satellites, t_func):
@@ -434,7 +432,6 @@ def highlight_status(row):
     elif row[t('status')] == t('calibration'): return ['background-color: #3a3a1a; color: #FFAA00'] * len(row)
     else: return ['background-color: #3a1a1a; color: #FF5555'] * len(row)
 
-# عرض الجدول مع عدد محدود من الصفوف للجوال
 display_rows = 10 if st.session_state.get('mobile_mode', False) else 20
 st.dataframe(df.head(display_rows).style.apply(highlight_status, axis=1), use_container_width=True, height=300 if st.session_state.get('mobile_mode', False) else 350)
 
@@ -445,7 +442,6 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([t('3d_globe'), t
 
 with tab1:
     if not df.empty:
-        # عرض عينة أصغر للجوال
         sample_size = min(100 if st.session_state.get('mobile_mode', False) else 300, len(df))
         display_df = df.sample(n=sample_size) if len(df) > sample_size else df
         fig = go.Figure()
@@ -553,4 +549,4 @@ with tab8:
         st.success("✅ لا توجد مخاطر تصادم مباشر مع أقمارك.")
 
 with tab9:
-    st.subheader(t('ai
+    st.sub
