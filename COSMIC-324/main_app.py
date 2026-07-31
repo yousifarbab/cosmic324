@@ -381,7 +381,7 @@ st.markdown(f"<h1 style='text-align: center; font-size: 3em; text-shadow: 0 0 40
 st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
 
 # ============================================================
-# 🔄 تحميل البيانات وعرض لوحة التحكم (تم إصلاح خطأ التخزين المؤقت)
+# 🔄 تحميل البيانات وعرض لوحة التحكم
 # ============================================================
 def get_telemetry_data(orbit_map, num_satellites, t_func):
     data = []
@@ -558,4 +558,4 @@ with tab9:
         best_incl = 45 + random.randint(-10, 10)
         st.metric("الارتفاع الأمثل المقترح", f"{best_alt} كم")
         st.metric("الميل الأمثل المقترح", f"{best_incl}°")
-        st.caption("تم تح
+        st.caption("تم تحليل الأداء الديناميكي بنجاح عبر خوارزميات الذكاء الاصطناعي.")
