@@ -427,9 +427,12 @@ col4.metric(t('standby'), df[df[t('status')] == t('standby')].shape[0])
 st.markdown("---")
 
 def highlight_status(row):
-    if row[t('status')] == t('active'): return ['background-color: #1a3a1a; color: #00FF00'] * len(row)
-    elif row[t('status')] == t('calibration'): return ['background-color: #3a3a1a; color: #FFAA00'] * len(row)
-    else: return ['background-color: #3a1a1a; color: #FF5555'] * len(row)
+    if row[t('status')] == t('active'):
+        return ['background-color: #1a3a1a; color: #00FF00'] * len(row)
+    elif row[t('status')] == t('calibration'):
+        return ['background-color: #3a3a1a; color: #FFAA00'] * len(row)
+    else:
+        return ['background-color: #3a1a1a; color: #FF5555'] * len(row)
 
 display_rows = 10 if st.session_state.get('mobile_mode', False) else 20
 st.dataframe(df.head(display_rows).style.apply(highlight_status, axis=1), use_container_width=True, height=300 if st.session_state.get('mobile_mode', False) else 350)
@@ -489,7 +492,8 @@ with tab3:
     freqs = ['S-Band', 'Ku-Band', 'Ka-Band', '6G-THz']
     power = [10, 25, 15, 5]
     jam = st.slider("محاكاة التشويش الطيفي", 0.0, 1.0, 0.0, key="spec_jam")
-    if jam > 0.3: power = [p * (1 - jam * 0.5) for p in power]
+    if jam > 0.3:
+        power = [p * (1 - jam * 0.5) for p in power]
     fig_spec = px.bar(x=freqs, y=power, title="6G Spectrum Allocation", color=freqs)
     st.plotly_chart(fig_spec, use_container_width=True)
 
@@ -554,11 +558,4 @@ with tab9:
         best_incl = 45 + random.randint(-10, 10)
         st.metric("الارتفاع الأمثل المقترح", f"{best_alt} كم")
         st.metric("الميل الأمثل المقترح", f"{best_incl}°")
-        st.caption("تم تحسين التغطية الأرضية بنسبة 15%.")
-
-# ============================================================
-# تحليلات متقدمة + Latency
-# ============================================================
-st.markdown("---")
-col_a1, col_a2, col_a3 = st.columns(3)
-col_a1.metric(t('avg_alt'), f"{df[t('altitude')].mean():.1f}
+        st.caption("تم تح
