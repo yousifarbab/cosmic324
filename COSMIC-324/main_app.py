@@ -19,6 +19,7 @@ LANGUAGES = {
         "name": "العربية",
         "title": "🚀 كوزميك-324: القيادة المدارية 6G Titan X",
         "subtitle": "منصة المحاكاة الفضائية السيادية - الأداء الفائق والتحميل الذكي",
+        "welcome": "🌟 مرحباً بك في منصة كوزميك-324، منصة المحاكاة الفضائية المتكاملة. استكشف بيانات الأقمار الصناعية، حلل المدارات، وخطط للمهمات المستقبلية.",
         "params": "⚙️ إعدادات المحاكاة",
         "sat_count": "عدد الأقمار (حتى 5000)",
         "update_btn": "🔄 تحديث البيانات",
@@ -70,6 +71,7 @@ LANGUAGES = {
         "name": "English",
         "title": "🚀 COSMIC-324: 6G Titan X Orbital Command",
         "subtitle": "Sovereign Space Simulation - High Performance & Smart Loading",
+        "welcome": "🌟 Welcome to COSMIC-324, an integrated space simulation platform. Explore satellite data, analyze orbits, and plan future missions.",
         "params": "⚙️ Simulation Parameters",
         "sat_count": "Number of Satellites (Up to 5000)",
         "update_btn": "🔄 Refresh Data",
@@ -281,13 +283,42 @@ st.markdown("""
     h1, h2, h3, h4, h5 { color: #00CCFF; font-family: 'Arial Black', sans-serif; }
     .stButton > button { background: linear-gradient(135deg, #00CCFF, #0066AA); color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: bold; }
     .alert-box { padding: 10px 15px; border-radius: 8px; margin: 10px 0; border: 1px solid #FF5555; background-color: rgba(255, 85, 85, 0.1); }
-    .pricing-card { background: #1a1a2e; border-radius: 10px; padding: 15px; border: 1px solid #00CCFF33; text-align: center; }
+    .pricing-card { 
+        background: #1a1a2e; 
+        border-radius: 10px; 
+        padding: 20px 15px; 
+        border: 1px solid #00CCFF33; 
+        text-align: center; 
+        transition: transform 0.3s ease;
+        height: 100%;
+    }
+    .pricing-card:hover {
+        transform: scale(1.02);
+        border-color: #00CCFF;
+    }
+    .pricing-card h4 { color: #00CCFF; margin-bottom: 10px; }
+    .pricing-card h2 { color: #FFFFFF; margin: 10px 0; }
+    .pricing-card p { color: #88AACC; font-size: 14px; }
+    .pricing-card .price-highlight { color: #00CCFF; font-size: 1.5em; font-weight: bold; }
     .stProgress > div { background-color: #00CCFF !important; }
+    .welcome-box {
+        background: linear-gradient(135deg, #1a1a2e, #0d0d1a);
+        border-radius: 12px;
+        padding: 20px 25px;
+        border: 1px solid #00CCFF33;
+        margin-bottom: 20px;
+    }
+    .welcome-box h2 { color: #00CCFF; margin: 0 0 10px 0; }
+    .welcome-box p { color: #88AACC; margin: 0; font-size: 1.05em; }
     @media (max-width: 640px) {
         .stMetric { padding: 10px; margin: 5px 0; }
         .stDataFrame { font-size: 12px; }
         .stTabs [data-baseweb="tab-list"] { gap: 4px; }
         .stTabs [data-baseweb="tab"] { padding: 6px 10px; font-size: 12px; }
+        .pricing-card { padding: 15px 10px; }
+        .pricing-card h2 { font-size: 1.5em; }
+        .welcome-box { padding: 15px; }
+        .welcome-box h2 { font-size: 1.2em; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -359,10 +390,33 @@ with st.sidebar:
     
     st.markdown("---")
     st.subheader(t("pricing"))
+    
+    # بطاقات اشتراك محسّنة وجذابة
     col1, col2, col3 = st.columns(3)
-    with col1: st.markdown("""<div class='pricing-card'><h4>🆓 Basic</h4><h2>$0</h2><p>5 Sats<br>2D Maps</p></div>""", unsafe_allow_html=True)
-    with col2: st.markdown("""<div class='pricing-card' style='border-color: #FFAA00;'><h4>🚀 Pro</h4><h2>$49/mo</h2><p>100 Sats<br>3D Globe<br>Latency Alerts</p></div>""", unsafe_allow_html=True)
-    with col3: st.markdown("""<div class='pricing-card' style='border-color: #FF3366;'><h4>🏆 6G Titan X</h4><h2>$499/mo</h2><p>5000 Sats<br>J2 + AI + Debris</p></div>""", unsafe_allow_html=True)
+    with col1:
+        st.markdown("""
+        <div class='pricing-card'>
+            <h4>🆓 Basic</h4>
+            <h2>$0</h2>
+            <p>5 Sats<br>2D Maps<br>محدود</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div class='pricing-card' style='border-color: #FFAA00;'>
+            <h4>🚀 Pro</h4>
+            <h2>$49/mo</h2>
+            <p>100 Sats<br>3D Globe<br>Latency Alerts</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+        <div class='pricing-card' style='border-color: #FF3366;'>
+            <h4>🏆 6G Titan X</h4>
+            <h2>$499/mo</h2>
+            <p>5000 Sats<br>J2 + AI + Debris</p>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader("🧪 Scenario Simulator")
@@ -375,10 +429,18 @@ with st.sidebar:
         st.rerun()
 
 # ============================================================
-# 🎯 العنوان الرئيسي
+# 🎯 العنوان الرئيسي ورسالة الترحيب
 # ============================================================
 st.markdown(f"<h1 style='text-align: center; font-size: 3em; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
 st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
+
+# رسالة الترحيب المحسّنة
+st.markdown(f"""
+<div class='welcome-box'>
+    <h2>🌟 {t('welcome')}</h2>
+    <p>{t('subtitle')}</p>
+</div>
+""", unsafe_allow_html=True)
 
 # ============================================================
 # 🔄 تحميل البيانات وعرض لوحة التحكم
@@ -426,6 +488,9 @@ col3.metric(t('calibration'), df[df[t('status')] == t('calibration')].shape[0])
 col4.metric(t('standby'), df[df[t('status')] == t('standby')].shape[0])
 st.markdown("---")
 
+# ============================================================
+# 🎨 جدول البيانات الملون والمرتب (مع أعمدة واضحة)
+# ============================================================
 def highlight_status(row):
     if row[t('status')] == t('active'):
         return ['background-color: #1a3a1a; color: #00FF00'] * len(row)
@@ -434,8 +499,23 @@ def highlight_status(row):
     else:
         return ['background-color: #3a1a1a; color: #FF5555'] * len(row)
 
+# إعادة ترتيب الأعمدة لتكون واضحة
+column_order = [t('satellite'), t('status'), t('latitude'), t('longitude'), t('altitude')]
+df_display = df[column_order]
+
 display_rows = 10 if st.session_state.get('mobile_mode', False) else 20
-st.dataframe(df.head(display_rows).style.apply(highlight_status, axis=1), use_container_width=True, height=300 if st.session_state.get('mobile_mode', False) else 350)
+st.dataframe(
+    df_display.head(display_rows).style.apply(highlight_status, axis=1),
+    use_container_width=True,
+    height=300 if st.session_state.get('mobile_mode', False) else 350,
+    column_config={
+        t('satellite'): "🛰️ " + t('satellite'),
+        t('status'): "📊 " + t('status'),
+        t('latitude'): st.column_config.NumberColumn(t('latitude'), format="%.4f°"),
+        t('longitude'): st.column_config.NumberColumn(t('longitude'), format="%.4f°"),
+        t('altitude'): st.column_config.NumberColumn(t('altitude'), format="%.2f km")
+    }
+)
 
 # ============================================================
 # علامات التبويب المتقدمة
@@ -509,53 +589,4 @@ with tab4:
                 if st.button("🚀 رفع المدار (Hohmann)"):
                     new_a = orb.a * 1.1
                     dv = math.sqrt(398600.4418/orb.a) * (math.sqrt(2*new_a/(orb.a+new_a)) - 1) + math.sqrt(398600.4418/new_a) * (1 - math.sqrt(2*orb.a/(orb.a+new_a)))
-                    st.success(f"ΔV المطلوب: {abs(dv):.2f} كم/ث. تم رفع المدار إلى {new_a:.1f} كم.")
-            with col2:
-                if st.button("🌀 تغيير الميل"):
-                    new_i = orb.i + 0.1
-                    dv = 2 * math.sqrt(398600.4418/orb.a) * math.sin(abs(new_i - orb.i)/2)
-                    st.info(f"ΔV المطلوب: {dv:.2f} كم/ث. الميل الجديد: {math.degrees(new_i):.1f}°")
-
-with tab5:
-    st.subheader(t('link_analysis'))
-    freq_ghz = st.selectbox("تردد الرابط", [2.4, 5.0, 12.0, 28.0], key="freq")
-    dist_km = st.number_input("المسافة (كم)", 100, 50000, 5000, key="dist")
-    if st.button("تحليل الرابط"):
-        fspl = 20 * math.log10(dist_km) + 20 * math.log10(freq_ghz) + 92.45
-        st.metric("فقدان المسار الحر (FSPL)", f"{fspl:.2f} dB")
-        st.caption("قيم SINR افتراضية: 15 dB (ممتاز), 10 dB (جيد), 5 dB (ضعيف)")
-
-with tab6:
-    st.subheader(t('cost_analysis'))
-    num_sats = st.number_input("عدد الأقمار", 10, 1000, 100, key="cost_sats")
-    alt_km = st.number_input("الارتفاع المتوسط (كم)", 300, 2000, 550, key="cost_alt")
-    if st.button("تقدير التكلفة"):
-        base_cost = num_sats * 5 + (alt_km / 100) * 2
-        launch_cost = num_sats * 0.5 + (alt_km / 500) * 10
-        total = base_cost + launch_cost
-        st.metric("التكلفة التقديرية (مليون $)", f"${total:.2f} M")
-        st.caption("نموذج تقديري: يشمل التصنيع والإطلاق")
-
-with tab7:
-    st.subheader(t('space_weather'))
-    f107 = st.slider("مؤشر F10.7 (النشاط الشمسي)", 70, 300, 150, key="f107")
-    st.metric("الكثافة الجوية المتوقعة (kg/m³)", f"{1e-12 * (f107/100):.2e}")
-    st.caption("ارتفاع الكثافة يزيد الاحتكاك على الأقمار في المدارات المنخفضة (LEO).")
-
-with tab8:
-    st.subheader(t('debris'))
-    if st.button("🔍 فحص التصادم"):
-        debris_pos = [(random.uniform(-10000, 10000), random.uniform(-10000, 10000), random.uniform(-10000, 10000)) for _ in range(10)]
-        st.warning(f"تم رصد {len(debris_pos)} قطعة حطام قريبة.")
-        for i, (x, y, z) in enumerate(debris_pos):
-            st.caption(f"قطعة {i+1}: ({x:.0f}, {y:.0f}, {z:.0f}) كم")
-        st.success("✅ لا توجد مخاطر تصادم مباشر مع أقمارك.")
-
-with tab9:
-    st.subheader(t('ai_optimization'))
-    if st.button("🧠 تشغيل خوارزمية التحسين"):
-        best_alt = 550 + random.randint(-50, 50)
-        best_incl = 45 + random.randint(-10, 10)
-        st.metric("الارتفاع الأمثل المقترح", f"{best_alt} كم")
-        st.metric("الميل الأمثل المقترح", f"{best_incl}°")
-        st.caption("تم تحليل الأداء الديناميكي بنجاح عبر خوارزميات الذكاء الاصطناعي.")
+                    st.success(f"ΔV المطلوب: {abs(dv):.2f} كم/ث. تم رفع المدار
