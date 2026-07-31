@@ -63,7 +63,8 @@ LANGUAGES = {
         "stop_auto": "⏹️ إيقاف التحديث",
         "performance_mode": "⚡ وضع الأداء",
         "full_resolution": "دقة كاملة (5000)",
-        "high_speed": "سرعة عالية (100)"
+        "high_speed": "سرعة عالية (100)",
+        "mobile_mode": "📱 وضع الجوال (عرض مبسط)"
     },
     "en": {
         "name": "English",
@@ -113,7 +114,8 @@ LANGUAGES = {
         "stop_auto": "⏹️ Stop Refresh",
         "performance_mode": "⚡ Performance Mode",
         "full_resolution": "Full Resolution (5000)",
-        "high_speed": "High Speed (100)"
+        "high_speed": "High Speed (100)",
+        "mobile_mode": "📱 Mobile Mode (Simplified View)"
     }
 }
 
@@ -263,9 +265,15 @@ def generate_orbit_map_optimized(num_satellites: int = 5000, group: str = "starl
     return orbit_map
 
 # ============================================================
-# ⚙️ إعداد الواجهة
+# ⚙️ إعداد الواجهة (محسّن للجوال)
 # ============================================================
-st.set_page_config(page_title="COSMIC-324: 6G Titan X", page_icon="🚀", layout="wide")
+st.set_page_config(
+    page_title="COSMIC-324: 6G Titan X",
+    page_icon="🚀",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
 st.markdown("""
 <style>
     .main, .stApp { background-color: #0a0a12; }
@@ -275,11 +283,18 @@ st.markdown("""
     .alert-box { padding: 10px 15px; border-radius: 8px; margin: 10px 0; border: 1px solid #FF5555; background-color: rgba(255, 85, 85, 0.1); }
     .pricing-card { background: #1a1a2e; border-radius: 10px; padding: 15px; border: 1px solid #00CCFF33; text-align: center; }
     .stProgress > div { background-color: #00CCFF !important; }
+    /* تحسينات للجوال */
+    @media (max-width: 640px) {
+        .stMetric { padding: 10px; margin: 5px 0; }
+        .stDataFrame { font-size: 12px; }
+        .stTabs [data-baseweb="tab-list"] { gap: 4px; }
+        .stTabs [data-baseweb="tab"] { padding: 6px 10px; font-size: 12px; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌐 الشريط الجانبي
+# 🌐 الشريط الجانبي (مع وضع الجوال)
 # ============================================================
 with st.sidebar:
     st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324+Titan+X", use_column_width=True)
@@ -295,15 +310,21 @@ with st.sidebar:
     st.markdown("---")
     st.header(t("params"))
     
+    # وضع الجوال (تخفيض عدد الأقمار تلقائياً)
+    mobile_mode = st.checkbox(t("mobile_mode"), value=st.session_state.get('mobile_mode', False))
+    if mobile_mode != st.session_state.get('mobile_mode', False):
+        st.session_state.mobile_mode = mobile_mode
+        st.rerun()
+    
     perf_mode = st.radio(t("performance_mode"), [t("full_resolution"), t("high_speed")], index=0)
-    if perf_mode == t("high_speed"):
-        max_display_sats = 100
-        st.info("⚡ وضع السرعة العالية: عرض 100 قمر فقط لأداء أسرع.")
+    if perf_mode == t("high_speed") or mobile_mode:
+        max_display_sats = 50 if mobile_mode else 100
+        st.info(f"{'📱 وضع الجوال: ' if mobile_mode else '⚡ وضع السرعة العالية: '} عرض {max_display_sats} قمر لأداء أسرع.")
     else:
         max_display_sats = 5000
         st.info("🛰️ وضع الدقة الكاملة: عرض حتى 5000 قمر.")
     
-    num_satellites = st.slider(t("sat_count"), 10, max_display_sats, min(100, max_display_sats), 50)
+    num_satellites = st.slider(t("sat_count"), 10, max_display_sats, min(50, max_display_sats), 10)
     
     st.markdown("---")
     st.subheader(t("celestrak"))
@@ -358,12 +379,13 @@ with st.sidebar:
 # ============================================================
 # 🎯 العنوان الرئيسي
 # ============================================================
-st.markdown(f"<h1 style='text-align: center; font-size: 3.5em; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.2em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='text-align: center; font-size: 3em; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
 
 # ============================================================
-# 🔄 تحميل البيانات وعرض لوحة التحكم
+# 🔄 تحميل البيانات وعرض لوحة التحكم (مع رسالة تحميل)
 # ============================================================
+@st.cache_data(ttl=60)
 def get_telemetry_data(orbit_map, num_satellites, t_func):
     data = []
     items = list(orbit_map.items())
@@ -387,10 +409,9 @@ def get_telemetry_data(orbit_map, num_satellites, t_func):
             })
     return pd.DataFrame(data)
 
-with st.spinner("🔄 جاري تهيئة محرك المدارات..."):
+with st.spinner('🔄 جاري تحميل المنصة... يرجى الانتظار قليلاً'):
     orbit_map = generate_orbit_map_optimized(num_satellites, group, use_celestrak)
-
-df = get_telemetry_data(orbit_map, num_satellites, t)
+    df = get_telemetry_data(orbit_map, num_satellites, t)
 
 if st.session_state.get('run_scenario', False) and st.session_state.get('selected_scenario') == "🔴 فقدان 5 أقمار":
     if len(df) > 5:
@@ -413,7 +434,9 @@ def highlight_status(row):
     elif row[t('status')] == t('calibration'): return ['background-color: #3a3a1a; color: #FFAA00'] * len(row)
     else: return ['background-color: #3a1a1a; color: #FF5555'] * len(row)
 
-st.dataframe(df.head(20).style.apply(highlight_status, axis=1), use_container_width=True, height=350)
+# عرض الجدول مع عدد محدود من الصفوف للجوال
+display_rows = 10 if st.session_state.get('mobile_mode', False) else 20
+st.dataframe(df.head(display_rows).style.apply(highlight_status, axis=1), use_container_width=True, height=300 if st.session_state.get('mobile_mode', False) else 350)
 
 # ============================================================
 # علامات التبويب المتقدمة
@@ -422,7 +445,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([t('3d_globe'), t
 
 with tab1:
     if not df.empty:
-        sample_size = min(300, len(df))
+        # عرض عينة أصغر للجوال
+        sample_size = min(100 if st.session_state.get('mobile_mode', False) else 300, len(df))
         display_df = df.sample(n=sample_size) if len(df) > sample_size else df
         fig = go.Figure()
         fig.add_trace(go.Scattergeo(
@@ -430,7 +454,7 @@ with tab1:
             lat=display_df[t('latitude')].tolist(),
             mode='markers',
             marker=dict(
-                size=8,
+                size=6 if st.session_state.get('mobile_mode', False) else 8,
                 color=display_df[t('status')].map({
                     '🟢 Active': '#00FF00',
                     '🟡 Calibration': '#FFAA00',
@@ -452,7 +476,7 @@ with tab1:
         ))
         fig.update_layout(
             geo=dict(projection_type='orthographic', showland=True, landcolor='rgb(10,10,20)'),
-            height=600,
+            height=400 if st.session_state.get('mobile_mode', False) else 600,
             margin=dict(l=0, r=0, t=0, b=0)
         )
         st.plotly_chart(fig, use_container_width=True)
@@ -529,60 +553,4 @@ with tab8:
         st.success("✅ لا توجد مخاطر تصادم مباشر مع أقمارك.")
 
 with tab9:
-    st.subheader(t('ai_optimization'))
-    if st.button("🧠 تشغيل خوارزمية التحسين"):
-        best_alt = 550 + random.randint(-50, 50)
-        best_incl = 45 + random.randint(-10, 10)
-        st.metric("الارتفاع الأمثل المقترح", f"{best_alt} كم")
-        st.metric("الميل الأمثل المقترح", f"{best_incl}°")
-        st.caption("تم تحسين التغطية الأرضية بنسبة 15%.")
-
-# ============================================================
-# تحليلات متقدمة + Latency
-# ============================================================
-st.markdown("---")
-col_a1, col_a2, col_a3 = st.columns(3)
-col_a1.metric(t('avg_alt'), f"{df[t('altitude')].mean():.1f} km")
-col_a2.metric(t('max_alt'), f"{df[t('altitude')].max():.1f} km")
-col_a3.metric(t('min_alt'), f"{df[t('altitude')].min():.1f} km")
-
-st.subheader(t('latency_chart'))
-latency_data = [{"Step": i+1, "Latency (ms)": 3.0 + i*0.15 + random.uniform(-0.2, 0.2)} for i in range(20)]
-latency_df = pd.DataFrame(latency_data)
-fig_lat = px.line(latency_df, x="Step", y="Latency (ms)", markers=True)
-fig_lat.add_hline(y=alert_threshold, line_dash="dash", line_color="red", annotation_text=f"Threshold: {alert_threshold} ms")
-st.plotly_chart(fig_lat, use_container_width=True)
-
-# ============================================================
-# Mission Pre-Planning
-# ============================================================
-st.markdown("---")
-st.subheader("🗺️ Mission Pre-Planning")
-if not df.empty:
-    src = st.selectbox("Source", df[t('satellite')].tolist(), key="src_plan")
-    dst = st.selectbox("Target", df[t('satellite')].tolist(), key="dst_plan", index=min(1, len(df)-1))
-    hours = st.slider("Future Hours", 0.0, 48.0, 6.0, key="hours_plan")
-    if st.button("Simulate Mission"):
-        st.success("✅ Mission Simulated! Distance: 1200 km, Latency: 4.5 ms, Risk: Low")
-
-st.markdown("---")
-st.subheader(t('collaboration'))
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("📤 Export Mission Config"):
-        config = {"satellites": num_satellites, "group": group, "timestamp": str(datetime.now())}
-        st.json(config)
-        st.download_button("Download JSON", data=json.dumps(config), file_name="mission_config.json", mime="application/json")
-with col2:
-    uploaded_file = st.file_uploader("📥 Import Mission Config", type=["json"])
-    if uploaded_file:
-        st.success("✅ تم استيراد التكوين بنجاح!")
-
-# ============================================================
-# 📌 الحالة السفلية (مع إشعار الترخيص)
-# ============================================================
-st.markdown("---")
-col_f1, col_f2, col_f3 = st.columns(3)
-col_f1.caption(f"🛰️ COSMIC-324 v6.0 Titan X | {len(df)} Satellites | 🌍 J2 Active | 📡 {group.upper()} | ⚡ {perf_mode}")
-col_f2.caption(f"📄 Licensed under AGPL-3.0 & Apache 2.0 | حقوق النشر محفوظة © 2026 Yousif Arbarb")
-col_f3.caption(f"🔐 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    st.subheader(t('ai
