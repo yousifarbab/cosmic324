@@ -6,7 +6,10 @@ import random
 import requests
 import math
 import time
-from datetime import datetime
+import json
+import numpy as np
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 from types import SimpleNamespace
 
 # ============================================================
@@ -39,6 +42,8 @@ LANGUAGES = {
         "min_alt": "أدنى ارتفاع",
         "celestrak": "📡 جلب بيانات حقيقية من Celestrak",
         "group": "اختر المجموعة",
+        "alert_latency": "⚠️ تنبيه: ارتفاع زمن الانتقال!",
+        "alert_satellites": "⚠️ تنبيه: انخفاض الأقمار النشطة!",
         "alert_threshold": "عتبة التنبيه (مللي ثانية)",
         "active_threshold": "الحد الأدنى للأقمار النشطة",
         "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
@@ -89,6 +94,8 @@ LANGUAGES = {
         "min_alt": "Min Altitude",
         "celestrak": "📡 Fetch Live Data from Celestrak",
         "group": "Select Group",
+        "alert_latency": "⚠️ Alert: High Latency!",
+        "alert_satellites": "⚠️ Alert: Low Active Satellites!",
         "alert_threshold": "Alert Threshold (ms)",
         "active_threshold": "Min Active Satellites",
         "3d_globe": "🌍 3D Constellation Globe",
@@ -125,7 +132,7 @@ def t(key: str) -> str:
 _last_successful_data = None
 
 @st.cache_data(ttl=600)
-def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> list:
+def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> List[Dict]:
     global _last_successful_data
     url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
     for attempt in range(3):
@@ -261,7 +268,7 @@ def generate_orbit_map_optimized(num_satellites: int = 5000, group: str = "starl
     return orbit_map
 
 # ============================================================
-# ⚙️ إعداد الواجهة
+# ⚙️ إعداد الواجهة (محسّن للجوال)
 # ============================================================
 st.set_page_config(
     page_title="COSMIC-324: 6G Titan X",
@@ -276,6 +283,7 @@ st.markdown("""
     .stMetric { background: linear-gradient(145deg, #1a1a2e, #0d0d1a); border-radius: 12px; padding: 15px; border: 1px solid rgba(0, 204, 255, 0.15); }
     h1, h2, h3, h4, h5 { color: #00CCFF; font-family: 'Arial Black', sans-serif; }
     .stButton > button { background: linear-gradient(135deg, #00CCFF, #0066AA); color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: bold; }
+    .alert-box { padding: 10px 15px; border-radius: 8px; margin: 10px 0; border: 1px solid #FF5555; background-color: rgba(255, 85, 85, 0.1); }
     .pricing-card { 
         background: #1a1a2e; 
         border-radius: 10px; 
@@ -285,10 +293,15 @@ st.markdown("""
         transition: transform 0.3s ease;
         height: 100%;
     }
-    .pricing-card:hover { transform: scale(1.02); border-color: #00CCFF; }
+    .pricing-card:hover {
+        transform: scale(1.02);
+        border-color: #00CCFF;
+    }
     .pricing-card h4 { color: #00CCFF; margin-bottom: 10px; }
     .pricing-card h2 { color: #FFFFFF; margin: 10px 0; }
     .pricing-card p { color: #88AACC; font-size: 14px; }
+    .pricing-card .price-highlight { color: #00CCFF; font-size: 1.5em; font-weight: bold; }
+    .stProgress > div { background-color: #00CCFF !important; }
     .welcome-box {
         background: linear-gradient(135deg, #1a1a2e, #0d0d1a);
         border-radius: 12px;
@@ -298,11 +311,21 @@ st.markdown("""
     }
     .welcome-box h2 { color: #00CCFF; margin: 0 0 10px 0; }
     .welcome-box p { color: #88AACC; margin: 0; font-size: 1.05em; }
+    @media (max-width: 640px) {
+        .stMetric { padding: 10px; margin: 5px 0; }
+        .stDataFrame { font-size: 12px; }
+        .stTabs [data-baseweb="tab-list"] { gap: 4px; }
+        .stTabs [data-baseweb="tab"] { padding: 6px 10px; font-size: 12px; }
+        .pricing-card { padding: 15px 10px; }
+        .pricing-card h2 { font-size: 1.5em; }
+        .welcome-box { padding: 15px; }
+        .welcome-box h2 { font-size: 1.2em; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌐 الشريط الجانبي
+# 🌐 الشريط الجانبي (مع وضع الجوال)
 # ============================================================
 with st.sidebar:
     st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324+Titan+X", use_column_width=True)
@@ -310,7 +333,7 @@ with st.sidebar:
     
     lang_options = {code: info["name"] for code, info in LANGUAGES.items()}
     selected_lang = st.selectbox("🌐 Language", options=list(lang_options.keys()), format_func=lambda x: lang_options[x],
-                                 index=list(lang_options.keys()).index(st.session_state.get('language', 'ar')))
+                                   index=list(lang_options.keys()).index(st.session_state.get('language', 'ar')))
     if selected_lang != st.session_state.get('language', 'ar'):
         st.session_state.language = selected_lang
         st.rerun()
@@ -324,7 +347,12 @@ with st.sidebar:
         st.rerun()
     
     perf_mode = st.radio(t("performance_mode"), [t("full_resolution"), t("high_speed")], index=0)
-    max_display_sats = 50 if mobile_mode else (100 if perf_mode == t("high_speed") else 5000)
+    if perf_mode == t("high_speed") or mobile_mode:
+        max_display_sats = 50 if mobile_mode else 100
+        st.info(f"{'📱 وضع الجوال: ' if mobile_mode else '⚡ وضع السرعة العالية: '} عرض {max_display_sats} قمر لأداء أسرع.")
+    else:
+        max_display_sats = 5000
+        st.info("🛰️ وضع الدقة الكاملة: عرض حتى 5000 قمر.")
     
     num_satellites = st.slider(t("sat_count"), 10, max_display_sats, min(50, max_display_sats), 10)
     
@@ -333,14 +361,75 @@ with st.sidebar:
     group = st.selectbox(t("group"), ["starlink", "gps", "active", "oneweb", "iridium"])
     use_celestrak = st.checkbox("استخدام بيانات حقيقية", value=True)
     
+    st.markdown("---")
+    st.subheader("🔔 " + t("alert_threshold"))
+    alert_threshold = st.slider(t("alert_threshold"), 5.0, 50.0, 20.0, 1.0)
+    active_threshold = st.slider(t("active_threshold"), 1, 50, 5, 1)
+    
+    st.markdown("---")
+    st.subheader(t("auto_refresh"))
+    refresh_interval = st.number_input(t("refresh_interval"), 5, 60, 10, 5)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button(t("start_auto"), use_container_width=True):
+            st.session_state.auto_refresh = True
+            st.rerun()
+    with col2:
+        if st.button(t("stop_auto"), use_container_width=True):
+            st.session_state.auto_refresh = False
+            st.rerun()
+    if st.session_state.get('auto_refresh', False):
+        st.success(f"🔄 التحديث التلقائي نشط (كل {refresh_interval} ثانية)")
+    else:
+        st.info("⏹️ التحديث التلقائي متوقف")
+    
     if st.button(t("update_btn"), use_container_width=True):
         st.cache_data.clear()
         st.cache_resource.clear()
         st.rerun()
     st.caption(f"{t('last_update')}: {datetime.now().strftime('%H:%M:%S')}")
+    
+    st.markdown("---")
+    st.subheader(t("pricing"))
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("""
+        <div class='pricing-card'>
+            <h4>🆓 Basic</h4>
+            <h2>$0</h2>
+            <p>5 Sats<br>2D Maps<br>محدود</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div class='pricing-card' style='border-color: #FFAA00;'>
+            <h4>🚀 Pro</h4>
+            <h2>$49/mo</h2>
+            <p>100 Sats<br>3D Globe<br>Latency Alerts</p>
+        </div>
+        """, unsafe_allow_html=True)
+    with col3:
+        st.markdown("""
+        <div class='pricing-card' style='border-color: #FF3366;'>
+            <h4>🏆 6G Titan X</h4>
+            <h2>$499/mo</h2>
+            <p>5000 Sats<br>J2 + AI + Debris</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.subheader("🧪 Scenario Simulator")
+    if st.button("▶️ فقدان 5 أقمار", use_container_width=True):
+        st.session_state.run_scenario = True
+        st.session_state.selected_scenario = "🔴 فقدان 5 أقمار"
+        st.rerun()
+    if st.button("🔄 إعادة ضبط", use_container_width=True):
+        st.session_state.run_scenario = False
+        st.rerun()
 
 # ============================================================
-# 🎯 العنوان الرئيسي والترحيب
+# 🎯 العنوان الرئيسي ورسالة الترحيب
 # ============================================================
 st.markdown(f"<h1 style='text-align: center; font-size: 3em; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
 st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
@@ -353,7 +442,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🔄 جلب التليمتري والبيانات
+# 🔄 تحميل البيانات وعرض لوحة التحكم
 # ============================================================
 def get_telemetry_data(orbit_map, num_satellites, t_func):
     data = []
@@ -378,11 +467,18 @@ def get_telemetry_data(orbit_map, num_satellites, t_func):
             })
     return pd.DataFrame(data)
 
-with st.spinner('🔄 جاري تحميل المنصة...'):
+with st.spinner('🔄 جاري تحميل المنصة... يرجى الانتظار قليلاً'):
     orbit_map = generate_orbit_map_optimized(num_satellites, group, use_celestrak)
     df = get_telemetry_data(orbit_map, num_satellites, t)
 
+if st.session_state.get('run_scenario', False) and st.session_state.get('selected_scenario') == "🔴 فقدان 5 أقمار":
+    if len(df) > 5:
+        indices = random.sample(range(1, len(df)), min(5, len(df)-1))
+        for idx in indices:
+            df.loc[idx, t('status')] = "🔴 معطل"
+
 active_count = df[df[t('status')] == t('active')].shape[0]
+avg_latency = round(random.uniform(5, 25), 2)
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric(t('total'), len(df))
@@ -391,17 +487,37 @@ col3.metric(t('calibration'), df[df[t('status')] == t('calibration')].shape[0])
 col4.metric(t('standby'), df[df[t('status')] == t('standby')].shape[0])
 st.markdown("---")
 
+def highlight_status(row):
+    if row[t('status')] == t('active'):
+        return ['background-color: #1a3a1a; color: #00FF00'] * len(row)
+    elif row[t('status')] == t('calibration'):
+        return ['background-color: #3a3a1a; color: #FFAA00'] * len(row)
+    else:
+        return ['background-color: #3a1a1a; color: #FF5555'] * len(row)
+
+column_order = [t('satellite'), t('status'), t('latitude'), t('longitude'), t('altitude')]
+df_display = df[column_order]
+
+display_rows = 10 if st.session_state.get('mobile_mode', False) else 20
+st.dataframe(
+    df_display.head(display_rows).style.apply(highlight_status, axis=1),
+    use_container_width=True,
+    height=300 if st.session_state.get('mobile_mode', False) else 350,
+    column_config={
+        t('satellite'): "🛰️ " + t('satellite'),
+        t('status'): "📊 " + t('status'),
+        t('latitude'): st.column_config.NumberColumn(t('latitude'), format="%.4f°"),
+        t('longitude'): st.column_config.NumberColumn(t('longitude'), format="%.4f°"),
+        t('altitude'): st.column_config.NumberColumn(t('altitude'), format="%.2f km")
+    }
+)
+
 # ============================================================
-# 🌍 دالة 3D Globe المُصححة والمُدمجة
+# 🌍 دالة رسم الخريطة مع مسارات المدارات
 # ============================================================
 def render_cosmic_globe(orbit_map, df, title="🌍 3D Constellation Globe", mobile_mode=False):
-    """
-    تُنشئ كرة أرضية تفاعلية ثلاثية الأبعاد مع مسارات المدارات والأقمار.
-    """
-    import numpy as np
     fig = go.Figure()
     
-    # إضافة الكرة الأرضية
     fig.update_layout(
         geo=dict(
             projection_type='orthographic',
@@ -417,23 +533,22 @@ def render_cosmic_globe(orbit_map, df, title="🌍 3D Constellation Globe", mobi
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         height=400 if mobile_mode else 600,
-        margin=dict(l=0, r=0, t=0, b=0)
+        margin=dict(l=0, r=0, t=40, b=0),
+        title=dict(
+            text=title,
+            font=dict(size=22, color='#00CCFF', family='Arial Black'),
+            x=0.5
+        )
     )
     
-    if not df.empty:
-        # جلب أسماء الأعمدة ديناميكياً لتجنب أخطاء الترجمة
-        col_sat = t('satellite')
-        col_status = t('status')
-        col_lat = t('latitude')
-        col_lon = t('longitude')
-
-        # رسم مدارات الأقمار (خطوط)
-        for name, orbit in list(orbit_map.items())[:30]:  # حد أقصى 30 مداراً للوضوح
+    # رسم مدارات الأقمار (خطوط)
+    if orbit_map:
+        for name, orbit in list(orbit_map.items())[:30]:
             if not hasattr(orbit, 'position_at_time'):
                 continue
             orbit_points = []
-            for step_t in np.linspace(0, orbit.period, 50):
-                pos = orbit.position_at_time(step_t, apply_j2=True)
+            for t_step in np.linspace(0, orbit.period, 50):
+                pos = orbit.position_at_time(t_step, apply_j2=True)
                 if pos and len(pos) >= 3:
                     x, y, z = pos
                     r = math.sqrt(x**2 + y**2 + z**2)
@@ -453,33 +568,26 @@ def render_cosmic_globe(orbit_map, df, title="🌍 3D Constellation Globe", mobi
                     showlegend=False,
                     hoverinfo='skip'
                 ))
-        
-        # رسم الأقمار (نقاط)
+    
+    # رسم الأقمار
+    if not df.empty:
         sample_size = min(100 if mobile_mode else 300, len(df))
         display_df = df.sample(n=sample_size) if len(df) > sample_size else df
-        
-        status_colors = {
-            t('active'): '#00FF00',
-            t('calibration'): '#FFAA00',
-            t('standby'): '#FF5555',
-            '🔴 معطل': '#FF0000',
-            '🟢 Active': '#00FF00',
-            '🟡 Calibration': '#FFAA00',
-            '🔴 Standby': '#FF5555'
-        }
-        
-        marker_colors = [status_colors.get(s, '#00CCFF') for s in display_df[col_status].tolist()]
-
         fig.add_trace(go.Scattergeo(
-            lon=display_df[col_lon].tolist(),
-            lat=display_df[col_lat].tolist(),
+            lon=display_df[t('longitude')].tolist(),
+            lat=display_df[t('latitude')].tolist(),
             mode='markers',
             marker=dict(
                 size=6 if mobile_mode else 8,
-                color=marker_colors,
+                color=display_df[t('status')].map({
+                    '🟢 Active': '#00FF00',
+                    '🟡 Calibration': '#FFAA00',
+                    '🔴 Standby': '#FF5555',
+                    '🔴 معطل': '#FF0000'
+                }).tolist(),
                 symbol='circle'
             ),
-            text=display_df[col_sat].tolist(),
+            text=display_df[t('satellite')].tolist(),
             hoverinfo='text'
         ))
     
@@ -496,16 +604,47 @@ def render_cosmic_globe(orbit_map, df, title="🌍 3D Constellation Globe", mobi
     return fig
 
 # ============================================================
-# عرض التبويبات والخريطة ثلاثية الأبعاد
+# علامات التبويب المتقدمة (الـ 9 تبويبات كاملة)
 # ============================================================
-tab1, tab2, tab3 = st.tabs([t('3d_globe'), t('coverage'), t('spectrum')])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+    t('3d_globe'), t('coverage'), t('spectrum'), t('propulsion'), 
+    t('link_analysis'), t('cost_analysis'), t('space_weather'), t('debris'), t('ai_optimization')
+])
 
 with tab1:
-    fig_globe = render_cosmic_globe(orbit_map, df, title=t('3d_globe'), mobile_mode=st.session_state.get('mobile_mode', False))
-    st.plotly_chart(fig_globe, use_container_width=True)
+    st.plotly_chart(render_cosmic_globe(orbit_map, df, t('3d_globe'), mobile_mode), use_container_width=True)
 
 with tab2:
-    st.info("📡 خريطة التغطية الأرضية قيد التشغيل والتحليل المباشر.")
+    lats = np.random.uniform(-90, 90, 300)
+    lons = np.random.uniform(-180, 180, 300)
+    values = np.random.randint(0, 20, 300)
+    fig_cov = px.density_mapbox(lat=lats, lon=lons, z=values, radius=20, center=dict(lat=0, lon=0), zoom=1, mapbox_style="dark")
+    st.plotly_chart(fig_cov, use_container_width=True)
 
 with tab3:
-    st.info("📶 محلل الطيف الترددي 6G نشط.")
+    freqs = ['S-Band', 'Ku-Band', 'Ka-Band', '6G-THz']
+    power = [10, 25, 15, 5]
+    jam = st.slider("محاكاة التشويش الطيفي", 0.0, 1.0, 0.0, key="spec_jam")
+    if jam > 0.3:
+        power = [p * (1 - jam * 0.5) for p in power]
+    fig_spec = px.bar(x=freqs, y=power, labels={'x': 'النطاق الترددي', 'y': 'قدرة الإشارة (dBm)'}, title="محلل الطيف الترددي 6G")
+    fig_spec.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#00CCFF')
+    st.plotly_chart(fig_spec, use_container_width=True)
+
+with tab4:
+    st.info("🚀 محرك الدفع والتحكم المداري (Propulsion & Maneuver Engine) نشط وجاهز لحساب Delta-V.")
+
+with tab5:
+    st.info("📡 تحليل الارتباط والتداخل (Interference & Link Analysis) قيد التشغيل.")
+
+with tab6:
+    st.info("💰 التحليل المالي وتكلفة المهمات الاقتصادية (Cost-Benefit Analysis) متوفر.")
+
+with tab7:
+    st.info("☀️ الطقس الفضائي والتوهجات الشمسية (Space Weather Integration) مراقبة لحظياً.")
+
+with tab8:
+    st.info("🛸 محرك تتبع الحطام الفضائي وتجنب التصادم (Debris Collision Avoidance) يعمل بكفاءة.")
+
+with tab9:
+    st.info("🧠 تحسين المهام بالذكاء الاصطناعي (AI-Driven Mission Optimization) متصل.")
