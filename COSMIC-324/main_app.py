@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 from types import SimpleNamespace
 
 # ============================================================
-# 🌍 نظام الترجمة (المختصر للعربية والإنجليزية)
+# 🌍 نظام الترجمة (العربية والإنجليزية)
 # ============================================================
 LANGUAGES = {
     "ar": {
@@ -133,7 +133,7 @@ def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) ->
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
-        if response.text.startswith('['):
+        if response.text.startswith('{'):
             return response.json()[:max_satellites]
     except:
         pass
@@ -343,9 +343,8 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 📊 تحميل البيانات وعرضها
+# 📊 تحميل البيانات وعرضها (بدون تخزين مؤقت)
 # ============================================================
-@st.cache_data(ttl=60)
 def get_telemetry_data(orbit_map, num_satellites, t_func):
     data = []
     items = list(orbit_map.items())
@@ -496,7 +495,7 @@ col_a3.metric(t('min_alt'), f"{df[t('altitude')].min():.1f} km")
 st.markdown("---")
 st.markdown(f"""
 <div class='copyright'>
-    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.0</p>
+    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v1.0</p>
     <p>© 2026 Yousif Zakaria Eissa Arbarb. جميع الحقوق محفوظة.</p>
     <p style='font-size: 0.8em; color: #334455;'>Licensed under AGPL-3.0 & Apache 2.0</p>
 </div>
