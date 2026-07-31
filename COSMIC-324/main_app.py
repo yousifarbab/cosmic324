@@ -8,12 +8,29 @@ import math
 import time
 import json
 import numpy as np
+import hashlib
+import base64
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from types import SimpleNamespace
 
 # ============================================================
-# 🌍 نظام الترجمة (7 لغات)
+# 🔐 طبقة الحماية المشفرة (Obfuscation & Security)
+# ============================================================
+# هذه الوظيفة تجعل الكود صعب الفهم لأي شخص يحاول سرقته
+def _obfuscate_code(code: str) -> str:
+    """تشفير الكود بشكل بسيط (لن يمنع الاختراق لكنه يثبط السارقين)."""
+    return base64.b64encode(code.encode()).decode()
+
+# دالة للتحقق من صحة الترخيص (محاكاة لنظام ترخيص)
+def _validate_license(license_key: str) -> bool:
+    """التحقق من صحة مفتاح الترخيص (محاكاة لنظام حماية)."""
+    # هذا نظام محاكاة بسيط، لكن يمكن تطويره ليكون أكثر تعقيداً
+    expected_hash = hashlib.sha256("COSMIC-324-MASTER-KEY-2026".encode()).hexdigest()
+    return hashlib.sha256(license_key.encode()).hexdigest() == expected_hash
+
+# ============================================================
+# 🌍 نظام الترجمة (7 لغات) متقدم
 # ============================================================
 LANGUAGES = {
     "ar": {
@@ -33,7 +50,7 @@ LANGUAGES = {
         "latitude": "خط العرض",
         "longitude": "خط الطول",
         "altitude": "الارتفاع (كم)",
-        "latency_chart": "📈 تطور زمن الانتقال",
+        "latency_chart": "📈 تطور زمن الانتقال (6G)",
         "step": "الخطوة",
         "latency_ms": "زمن الانتقال (مللي ثانية)",
         "last_update": "آخر تحديث",
@@ -46,9 +63,9 @@ LANGUAGES = {
         "alert_satellites": "⚠️ تنبيه: انخفاض الأقمار النشطة!",
         "alert_threshold": "عتبة التنبيه (مللي ثانية)",
         "active_threshold": "الحد الأدنى للأقمار النشطة",
-        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
+        "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد (6G)",
         "pricing": "💰 خطط الاشتراك التجاري",
-        "coverage": "📡 خريطة التغطية الأرضية",
+        "coverage": "📡 خريطة التغطية الأرضية (6G)",
         "spectrum": "📶 محلل الطيف الترددي (6G)",
         "j2_effect": "🌀 تأثير الاقتران J2 (التفلطح الأرضي)",
         "propulsion": "🚀 محرك الدفع والتحكم",
@@ -66,7 +83,13 @@ LANGUAGES = {
         "performance_mode": "⚡ وضع الأداء",
         "full_resolution": "دقة كاملة (5000)",
         "high_speed": "سرعة عالية (100)",
-        "mobile_mode": "📱 وضع الجوال (عرض مبسط)"
+        "mobile_mode": "📱 وضع الجوال (عرض مبسط)",
+        "license": "🔐 مفتاح الترخيص",
+        "license_placeholder": "أدخل مفتاح الترخيص للوصول الكامل",
+        "license_valid": "✅ تم التحقق من الترخيص - مرحباً بك!",
+        "license_invalid": "❌ مفتاح ترخيص غير صالح!",
+        "license_warning": "⚠️ يرجى إدخال مفتاح الترخيص للوصول إلى الميزات المتقدمة.",
+        "copyright": "جميع الحقوق محفوظة © 2026 Yousif Zakaria Eissa Arbarb | كوزميك-324: القيادة المدارية 6G Titan X"
     },
     "en": {
         "name": "English",
@@ -85,7 +108,7 @@ LANGUAGES = {
         "latitude": "Latitude",
         "longitude": "Longitude",
         "altitude": "Altitude (km)",
-        "latency_chart": "📈 Signal Latency Evolution",
+        "latency_chart": "📈 Signal Latency Evolution (6G)",
         "step": "Step",
         "latency_ms": "Latency (ms)",
         "last_update": "Last Update",
@@ -98,9 +121,9 @@ LANGUAGES = {
         "alert_satellites": "⚠️ Alert: Low Active Satellites!",
         "alert_threshold": "Alert Threshold (ms)",
         "active_threshold": "Min Active Satellites",
-        "3d_globe": "🌍 3D Constellation Globe",
+        "3d_globe": "🌍 3D Constellation Globe (6G)",
         "pricing": "💰 Commercial Pricing Plans",
-        "coverage": "📡 Ground Coverage Heatmap",
+        "coverage": "📡 Ground Coverage Heatmap (6G)",
         "spectrum": "📶 6G Spectrum Analyzer",
         "j2_effect": "🌀 J2 Perturbation Effect",
         "propulsion": "🚀 Propulsion & Maneuver Engine",
@@ -118,7 +141,13 @@ LANGUAGES = {
         "performance_mode": "⚡ Performance Mode",
         "full_resolution": "Full Resolution (5000)",
         "high_speed": "High Speed (100)",
-        "mobile_mode": "📱 Mobile Mode (Simplified View)"
+        "mobile_mode": "📱 Mobile Mode (Simplified View)",
+        "license": "🔐 License Key",
+        "license_placeholder": "Enter license key for full access",
+        "license_valid": "✅ License Verified - Welcome!",
+        "license_invalid": "❌ Invalid License Key!",
+        "license_warning": "⚠️ Please enter the license key to unlock advanced features.",
+        "copyright": "All Rights Reserved © 2026 Yousif Zakaria Eissa Arbarb | COSMIC-324: 6G Titan X Orbital Command"
     }
 }
 
@@ -268,7 +297,7 @@ def generate_orbit_map_optimized(num_satellites: int = 5000, group: str = "starl
     return orbit_map
 
 # ============================================================
-# ⚙️ إعداد الواجهة (محسّن للجوال)
+# ⚙️ إعداد الواجهة (مع نظام الترخيص)
 # ============================================================
 st.set_page_config(
     page_title="COSMIC-324: 6G Titan X",
@@ -277,6 +306,41 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# ============================================================
+# 🔐 نظام الترخيص (حماية متقدمة)
+# ============================================================
+def check_license():
+    """التحقق من صحة الترخيص وإظهار الواجهة المناسبة."""
+    if 'license_valid' not in st.session_state:
+        st.session_state.license_valid = False
+    
+    if not st.session_state.license_valid:
+        st.markdown(f"<h1 style='text-align: center; font-size: 2.5em; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.2em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
+        st.markdown("---")
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.subheader("🔐 " + t('license'))
+            license_key = st.text_input(t('license_placeholder'), type="password")
+            if st.button("✅ تحقق من الترخيص", use_container_width=True):
+                if _validate_license(license_key):
+                    st.session_state.license_valid = True
+                    st.rerun()
+                else:
+                    st.error(t('license_invalid'))
+            st.caption("💡 مفتاح الترخيص: COSMIC-324-MASTER-KEY-2026")
+            st.caption("🔒 هذا النظام محمي بقوانين الملكية الفكرية.")
+        st.stop()
+    else:
+        st.sidebar.success(t('license_valid'))
+
+# تشغيل نظام الترخيص
+check_license()
+
+# ============================================================
+# 🎨 تحسينات CSS للواجهة
+# ============================================================
 st.markdown("""
 <style>
     .main, .stApp { background-color: #0a0a12; }
@@ -300,7 +364,6 @@ st.markdown("""
     .pricing-card h4 { color: #00CCFF; margin-bottom: 10px; }
     .pricing-card h2 { color: #FFFFFF; margin: 10px 0; }
     .pricing-card p { color: #88AACC; font-size: 14px; }
-    .pricing-card .price-highlight { color: #00CCFF; font-size: 1.5em; font-weight: bold; }
     .stProgress > div { background-color: #00CCFF !important; }
     .welcome-box {
         background: linear-gradient(135deg, #1a1a2e, #0d0d1a);
@@ -314,10 +377,10 @@ st.markdown("""
     .copyright {
         text-align: center;
         color: #445566;
-        font-size: 0.8em;
-        padding: 10px 0;
+        font-size: 0.85em;
+        padding: 15px 0;
         border-top: 1px solid #1a1a2e;
-        margin-top: 20px;
+        margin-top: 30px;
     }
     @media (max-width: 640px) {
         .stMetric { padding: 10px; margin: 5px 0; }
@@ -333,7 +396,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌐 الشريط الجانبي (مع وضع الجوال)
+# 🌐 الشريط الجانبي (مع وضع الجوال وكل الميزات)
 # ============================================================
 with st.sidebar:
     st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324+Titan+X", use_column_width=True)
@@ -435,209 +498,3 @@ with st.sidebar:
     if st.button("🔄 إعادة ضبط", use_container_width=True):
         st.session_state.run_scenario = False
         st.rerun()
-
-# ============================================================
-# 🎯 العنوان الرئيسي ورسالة الترحيب
-# ============================================================
-st.markdown(f"<h1 style='text-align: center; font-size: 3em; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
-
-st.markdown(f"""
-<div class='welcome-box'>
-    <h2>🌟 {t('welcome')}</h2>
-    <p>{t('subtitle')}</p>
-</div>
-""", unsafe_allow_html=True)
-
-# ============================================================
-# 🔄 تحميل البيانات وعرض لوحة التحكم
-# ============================================================
-def get_telemetry_data(orbit_map, num_satellites, t_func):
-    data = []
-    items = list(orbit_map.items())
-    if len(items) > num_satellites:
-        items = items[:num_satellites]
-    
-    for name, orbit in items:
-        pos = orbit.position_at_time(0.0, apply_j2=True)
-        if pos and len(pos) >= 3:
-            x, y, z = pos
-            lat = math.degrees(math.asin(z / math.sqrt(x**2 + y**2 + z**2))) if (x**2 + y**2 + z**2) > 0 else 0
-            lon = math.degrees(math.atan2(y, x))
-            alt = orbit.altitude if hasattr(orbit, 'altitude') else 550
-            status = random.choice([t_func('active'), t_func('calibration'), t_func('standby')])
-            data.append({
-                t_func('satellite'): name[:15],
-                t_func('status'): status,
-                t_func('latitude'): round(lat, 4),
-                t_func('longitude'): round(lon, 4),
-                t_func('altitude'): round(alt, 2)
-            })
-    return pd.DataFrame(data)
-
-with st.spinner('🔄 جاري تحميل المنصة... يرجى الانتظار قليلاً'):
-    orbit_map = generate_orbit_map_optimized(num_satellites, group, use_celestrak)
-    df = get_telemetry_data(orbit_map, num_satellites, t)
-
-if st.session_state.get('run_scenario', False) and st.session_state.get('selected_scenario') == "🔴 فقدان 5 أقمار":
-    if len(df) > 5:
-        indices = random.sample(range(1, len(df)), min(5, len(df)-1))
-        for idx in indices:
-            df.loc[idx, t('status')] = "🔴 معطل"
-
-active_count = df[df[t('status')] == t('active')].shape[0]
-avg_latency = round(random.uniform(5, 25), 2)
-
-col1, col2, col3, col4 = st.columns(4)
-col1.metric(t('total'), len(df))
-col2.metric(t('active'), active_count)
-col3.metric(t('calibration'), df[df[t('status')] == t('calibration')].shape[0])
-col4.metric(t('standby'), df[df[t('status')] == t('standby')].shape[0])
-st.markdown("---")
-
-def highlight_status(row):
-    if row[t('status')] == t('active'):
-        return ['background-color: #1a3a1a; color: #00FF00'] * len(row)
-    elif row[t('status')] == t('calibration'):
-        return ['background-color: #3a3a1a; color: #FFAA00'] * len(row)
-    else:
-        return ['background-color: #3a1a1a; color: #FF5555'] * len(row)
-
-column_order = [t('satellite'), t('status'), t('latitude'), t('longitude'), t('altitude')]
-df_display = df[column_order]
-
-display_rows = 10 if st.session_state.get('mobile_mode', False) else 20
-st.dataframe(
-    df_display.head(display_rows).style.apply(highlight_status, axis=1),
-    use_container_width=True,
-    height=300 if st.session_state.get('mobile_mode', False) else 350,
-    column_config={
-        t('satellite'): "🛰️ " + t('satellite'),
-        t('status'): "📊 " + t('status'),
-        t('latitude'): st.column_config.NumberColumn(t('latitude'), format="%.4f°"),
-        t('longitude'): st.column_config.NumberColumn(t('longitude'), format="%.4f°"),
-        t('altitude'): st.column_config.NumberColumn(t('altitude'), format="%.2f km")
-    }
-)
-
-# ============================================================
-# 📈 منحنى Latency (تطور زمن الانتقال)
-# ============================================================
-st.markdown("---")
-st.subheader(t('latency_chart'))
-
-latency_data = []
-base_latency = 3.0
-jamming_effect = st.session_state.get('jamming_effect', 0.0)
-
-for i in range(20):
-    jamming_add = jamming_effect * random.uniform(1.0, 3.0) * (i / 10)
-    val = base_latency + i * 0.12 + random.uniform(-0.2, 0.2) + jamming_add
-    latency_data.append({
-        t('step'): i + 1,
-        t('latency_ms'): round(max(0.5, val), 2)
-    })
-
-latency_df = pd.DataFrame(latency_data)
-st.session_state['latency_df'] = latency_df
-
-fig_latency = px.line(
-    latency_df,
-    x=t('step'),
-    y=t('latency_ms'),
-    title=t('latency_chart'),
-    markers=True
-)
-fig_latency.update_traces(line_color='#00CCFF', line_width=3, marker_size=8)
-
-fig_latency.add_hline(
-    y=alert_threshold,
-    line_dash="dash",
-    line_color="red",
-    annotation_text=f"⚠️ {t('alert_threshold')}: {alert_threshold} ms"
-)
-
-fig_latency.update_layout(
-    xaxis_title=t('step'),
-    yaxis_title=t('latency_ms'),
-    plot_bgcolor='rgba(0,0,0,0)',
-    paper_bgcolor='rgba(0,0,0,0)',
-    xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
-    yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.05)')
-)
-st.plotly_chart(fig_latency, use_container_width=True)
-
-if jamming_effect > 0:
-    st.caption(f"📡 تأثير التشويش على زمن الانتقال: +{jamming_effect*100:.0f}% إضافي")
-
-# ============================================================
-# 🌍 دالة رسم الخريطة مع مسارات المدارات والأقمار
-# ============================================================
-def render_cosmic_globe(orbit_map, df, title="🌍 3D Constellation Globe", mobile_mode=False):
-    fig = go.Figure()
-    
-    fig.update_layout(
-        geo=dict(
-            projection_type='orthographic',
-            showland=True,
-            landcolor='rgb(10,10,20)',
-            coastlinecolor='rgb(60,60,80)',
-            showocean=True,
-            oceancolor='rgb(5,5,15)',
-            showcountries=True,
-            countrycolor='rgb(50,50,70)',
-            bgcolor='rgba(0,0,0,0)'
-        ),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        height=400 if mobile_mode else 600,
-        margin=dict(l=0, r=0, t=40, b=0),
-        title=dict(
-            text=title,
-            font=dict(size=22, color='#00CCFF', family='Arial Black'),
-            x=0.5
-        )
-    )
-    
-    # رسم مدارات الأقمار (خطوط)
-    if orbit_map:
-        count = 0
-        for name, orbit in list(orbit_map.items()):
-            if count >= 20:
-                break
-            if not hasattr(orbit, 'position_at_time'):
-                continue
-            orbit_points = []
-            try:
-                for t in np.linspace(0, orbit.period, 40):
-                    pos = orbit.position_at_time(t, apply_j2=True)
-                    if pos and len(pos) >= 3:
-                        x, y, z = pos
-                        r = math.sqrt(x**2 + y**2 + z**2)
-                        if r == 0:
-                            continue
-                        lat = math.degrees(math.asin(z / r))
-                        lon = math.degrees(math.atan2(y, x))
-                        orbit_points.append((lon, lat))
-                if len(orbit_points) > 1:
-                    lons, lats = zip(*orbit_points)
-                    fig.add_trace(go.Scattergeo(
-                        lon=lons,
-                        lat=lats,
-                        mode='lines',
-                        line=dict(width=1, color='rgba(0, 204, 255, 0.15)'),
-                        showlegend=False,
-                        hoverinfo='skip'
-                    ))
-                count += 1
-            except Exception:
-                continue
-    
-    # رسم الأقمار (نقاط ملونة)
-    if not df.empty:
-        if 'خط الطول' in df.columns:
-            lon_col = 'خط الطول'
-            lat_col = 'خط العرض'
-            status_col = 'الحالة'
-            name_col = 'القمر'
-           
