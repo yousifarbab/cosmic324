@@ -9,7 +9,6 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, List
 from types import SimpleNamespace
-import io
 
 # ============================================================
 # 🌍 نظام الترجمة واتجاه الصفحة (RTL/LTR)
@@ -58,7 +57,7 @@ LANGUAGES = {
         "export_csv": "📥 تحميل تقرير CSV",
         "export_txt": "📥 تحميل تقرير نصي رسمي",
         "ground_station": "🛰️ إدارة المحطات الأرضية",
-        "gs_select": "اختر المحطة السيادية",
+        "gs_select": "اختر المحطة أو الدولة السيادية",
         "gs_lat": "خط عرض المحطة",
         "gs_lon": "خط طول المحطة",
         "visible_sats": "الأقمار المرئية في نطاق المحطة",
@@ -121,7 +120,7 @@ LANGUAGES = {
         "export_csv": "📥 Download CSV Report",
         "export_txt": "📥 Download Official Text Report",
         "ground_station": "🛰️ Ground Station Management",
-        "gs_select": "Select Sovereign Station",
+        "gs_select": "Select Sovereign Station or Country",
         "gs_lat": "Station Latitude",
         "gs_lon": "Station Longitude",
         "visible_sats": "Satellites in Line of Sight",
@@ -152,7 +151,7 @@ def get_current_dir() -> str:
     return LANGUAGES.get(lang, LANGUAGES['ar']).get('dir', 'rtl')
 
 # ============================================================
-# ⚙️ إعداد الواجهة والتصميم المتجاوب مع الاتجاه الديناميكي
+# ⚙️ إعداد الواجهة والتصميم المتجاوب
 # ============================================================
 st.set_page_config(page_title="COSMIC-324: 6G Titan X", page_icon="🚀", layout="wide")
 
@@ -181,12 +180,6 @@ st.markdown(f"""
     .pricing-card .price {{ font-size: 1.8em; color: #FFFFFF; font-weight: bold; margin: 15px 0; }}
     .pricing-card ul {{ list-style: none; padding: 0; text-align: {'right' if current_direction == 'rtl' else 'left'}; color: #AABBCC; font-size: 0.9em; margin-bottom: 20px; }}
     .pricing-card ul li {{ margin: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }}
-
-    @media (max-width: 768px) {{
-        h1 {{ font-size: 2em !important; }}
-        .welcome-box {{ padding: 15px; }}
-        .stMetric {{ padding: 10px; }}
-    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -214,7 +207,6 @@ with st.sidebar:
     
     perf_mode = st.radio(t("performance_mode"), [t("full_resolution"), t("high_speed")], index=0)
     max_display_sats = 50 if (perf_mode == t("high_speed") or mobile_mode) else 5000
-    
     num_satellites = st.slider(t("sat_count"), 10, max_display_sats, min(50, max_display_sats), 10)
     
     st.markdown("---")
@@ -244,7 +236,6 @@ with st.sidebar:
         st.cache_data.clear()
         st.cache_resource.clear()
         st.rerun()
-    st.caption(f"آخر تحديث: {datetime.now().strftime('%H:%M:%S')}")
 
 # ============================================================
 # 🎯 المحتوى الرئيسي
@@ -260,7 +251,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 📡 جلب البيانات وتسريع الحسابات باستخدام NumPy (Vectorized)
+# 📡 جلب البيانات وتسريع الحسابات
 # ============================================================
 @st.cache_data(ttl=600)
 def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> List[Dict]:
@@ -419,18 +410,24 @@ col4.metric(t('standby'), standby_count)
 st.markdown("---")
 
 # ============================================================
-# 🛰️ إدارة المحطات الأرضية الحية (مع إصلاح عرض الاسم بوضوح)
+# 🛰️ إدارة المحطات الأرضية (محدثة لدعم البحث والإدخال الحر لأي دولة مثل اليابان)
 # ============================================================
 st.subheader(t('ground_station'))
 
+# قاعدة بيانات واسعة تشمل الدول الكبرى والمحطات العالمية مع إمكانية التخصيص الكامل
 stations = {
     "مسقط، سلطنة عمان (Muscat)": {"lat": 23.5880, "lon": 58.3829},
     "الخرطوم، السودان (Khartoum)": {"lat": 15.5007, "lon": 32.5599},
-    "محطة مخصصة (Custom)": {"lat": 24.7136, "lon": 46.6753}
+    "اليابان - طوكيو (Japan / Tokyo)": {"lat": 35.6762, "lon": 139.6503},
+    "الولايات المتحدة - واشنطن (USA / Washington DC)": {"lat": 38.9072, "lon": -77.0369},
+    "المملكة المتحدة - لندن (UK / London)": {"lat": 51.5074, "lon": -0.1278},
+    "ألمانيا - برلين (Germany / Berlin)": {"lat": 52.5200, "lon": 13.4050},
+    "محطة مخصصة (Custom Coordinates)": {"lat": 24.7136, "lon": 46.6753}
 }
 
 gs_choice = st.selectbox(t('gs_select'), list(stations.keys()))
-if gs_choice == "محطة مخصصة (Custom)":
+
+if gs_choice == "محطة مخصصة (Custom Coordinates)":
     col_g1, col_g2 = st.columns(2)
     with col_g1:
         gs_lat = st.number_input(t('gs_lat'), -90.0, 90.0, 24.7136)
@@ -439,7 +436,7 @@ if gs_choice == "محطة مخصصة (Custom)":
 else:
     gs_lat = stations[gs_choice]["lat"]
     gs_lon = stations[gs_choice]["lon"]
-    st.info(f"📍 المحطة النشطة حالياً: **{gs_choice}** (خط العرض: {gs_lat}° | خط الطول: {gs_lon}°)")
+    st.info(f"📍 المحطة السيادية النشطة: **{gs_choice}** (خط العرض: {gs_lat}° | خط الطول: {gs_lon}°)")
 
 def calculate_visible_satellites(df, g_lat, g_lon):
     visible = []
@@ -475,14 +472,7 @@ display_rows = 10 if st.session_state.get('mobile_mode', False) else 20
 st.dataframe(
     df.head(display_rows).style.apply(highlight_status, axis=1),
     use_container_width=True,
-    height=300 if st.session_state.get('mobile_mode', False) else 400,
-    column_config={
-        t('satellite'): "🛰️ " + t('satellite'),
-        t('status'): "📊 " + t('status'),
-        t('latitude'): st.column_config.NumberColumn(t('latitude'), format="%.4f°"),
-        t('longitude'): st.column_config.NumberColumn(t('longitude'), format="%.4f°"),
-        t('altitude'): st.column_config.NumberColumn(t('altitude'), format="%.2f km")
-    }
+    height=300 if st.session_state.get('mobile_mode', False) else 400
 )
 
 # ============================================================
@@ -492,53 +482,16 @@ st.markdown("---")
 st.subheader(t('export_section'))
 
 col_exp1, col_exp2 = st.columns(2)
-
 with col_exp1:
     csv_data = df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label=t('export_csv'),
-        data=csv_data,
-        file_name=f"cosmic_324_telemetry_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
+    st.download_button(label=t('export_csv'), data=csv_data, file_name="telemetry.csv", mime="text/csv", use_container_width=True)
 
 with col_exp2:
-    report_content = f"""==================================================
-COSMIC-324: 6G Titan X - OFFICIAL TELEMETRY REPORT
-==================================================
-Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-Ground Station: {gs_choice} (Lat: {gs_lat}, Lon: {gs_lon})
-Total Satellites Simulated: {len(df)}
-Active Satellites: {active_count}
-Visible Satellites from Station: {len(df_visible)}
-Average Altitude: {df[t('altitude')].mean():.2f} km
---------------------------------------------------
-"""
-    st.download_button(
-        label=t('export_txt'),
-        data=report_content,
-        file_name=f"cosmic_324_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-        mime="text/plain",
-        use_container_width=True
-    )
+    report_content = f"COSMIC-324 Report\nStation: {gs_choice}\nLat: {gs_lat}, Lon: {gs_lon}\nTotal Sats: {len(df)}"
+    st.download_button(label=t('export_txt'), data=report_content, file_name="report.txt", mime="text/plain", use_container_width=True)
 
 # ============================================================
-# 📈 منحنى Latency
-# ============================================================
-st.markdown("---")
-st.subheader(t('latency_chart'))
-
-latency_data = [{"Step": i+1, "Latency (ms)": round(3.0 + i * 0.12 + random.uniform(-0.2, 0.2), 2)} for i in range(20)]
-latency_df = pd.DataFrame(latency_data)
-fig_latency = px.line(latency_df, x="Step", y="Latency (ms)", markers=True)
-fig_latency.update_traces(line_color='#00CCFF', line_width=3, marker_size=8)
-fig_latency.add_hline(y=alert_threshold, line_dash="dash", line_color="red", annotation_text=f"⚠️ Threshold: {alert_threshold} ms")
-fig_latency.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-st.plotly_chart(fig_latency, use_container_width=True)
-
-# ============================================================
-# 🌍 الخريطة 3D (مع عرض اسم المحطة المختار بوضوح)
+# 🌍 الخريطة 3D
 # ============================================================
 def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constellation Globe"):
     fig = go.Figure()
@@ -569,8 +522,7 @@ def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constel
                     t('active'): '#00FF00',
                     t('calibration'): '#FFAA00',
                     t('standby'): '#FF5555'
-                }).tolist(),
-                symbol='circle'
+                }).tolist()
             ),
             text=df[t('satellite')].tolist(),
             textposition='top center',
@@ -578,7 +530,6 @@ def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constel
             hoverinfo='text'
         ))
     
-    # رسم المحطة مع اسم دقيق ومباشر مستمد من اختيار المستخدم
     short_station_label = f"🛰️ {station_name.split('(')[0].strip()}"
     fig.add_trace(go.Scattergeo(
         lon=[gs_lon], lat=[gs_lat],
@@ -596,79 +547,12 @@ st.subheader(t('3d_globe'))
 st.plotly_chart(render_cosmic_globe(df, gs_lat, gs_lon, gs_choice, t('3d_globe')), use_container_width=True)
 
 # ============================================================
-# 📊 تحليلات متقدمة
-# ============================================================
-st.markdown("---")
-st.subheader("📊 تحليلات متقدمة")
-col_a1, col_a2, col_a3 = st.columns(3)
-col_a1.metric(t('avg_alt'), f"{df[t('altitude')].mean():.1f} km")
-col_a2.metric(t('max_alt'), f"{df[t('altitude')].max():.1f} km")
-col_a3.metric(t('min_alt'), f"{df[t('altitude')].min():.1f} km")
-
-# ============================================================
-# 💰 خطط الأسعار والاشتراكات
-# ============================================================
-st.markdown("---")
-st.subheader(t('pricing'))
-
-p1, p2, p3 = st.columns(3)
-
-with p1:
-    st.markdown(f"""
-    <div class="pricing-card">
-        <h3>{t('p1_title')}</h3>
-        <div class="price">{t('p1_price')} <span style="font-size: 0.5em; color: #88AACC;">{t('p1_period')}</span></div>
-        <ul>
-            <li>{t('p1_desc')[0]}</li>
-            <li>{t('p1_desc')[1]}</li>
-            <li>{t('p1_desc')[2]}</li>
-            <li>{t('p1_desc')[3]}</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button(t('p1_btn'), use_container_width=True, key="btn_p1"):
-        st.success("تم اختيار الباقة بنجاح!")
-
-with p2:
-    st.markdown(f"""
-    <div class="pricing-card" style="border: 2px solid #00CCFF;">
-        <h3>{t('p2_title')}</h3>
-        <div class="price">{t('p2_price')} <span style="font-size: 0.5em; color: #88AACC;">{t('p2_period')}</span></div>
-        <ul>
-            <li>{t('p2_desc')[0]}</li>
-            <li>{t('p2_desc')[1]}</li>
-            <li>{t('p2_desc')[2]}</li>
-            <li>{t('p2_desc')[3]}</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button(t('p2_btn'), use_container_width=True, key="btn_p2"):
-        st.success("تم اختيار الباقة بنجاح!")
-
-with p3:
-    st.markdown(f"""
-    <div class="pricing-card">
-        <h3>{t('p3_title')}</h3>
-        <div class="price">{t('p3_price')} <span style="font-size: 0.5em; color: #88AACC;">{t('p3_period')}</span></div>
-        <ul>
-            <li>{t('p3_desc')[0]}</li>
-            <li>{t('p3_desc')[1]}</li>
-            <li>{t('p3_desc')[2]}</li>
-            <li>{t('p3_desc')[3]}</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button(t('p3_btn'), use_container_width=True, key="btn_p3"):
-        st.success("تم استلام الطلب بنجاح!")
-
-# ============================================================
-# 📌 حقوق الملكية الفكرية
+# 📌 حقوق الملكية
 # ============================================================
 st.markdown("---")
 st.markdown(f"""
 <div class='copyright'>
     <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.6</p>
     <p>© 2026 Yousif Zakaria Eissa Arbarb. جميع الحقوق محفوظة.</p>
-    <p style='font-size: 0.8em; color: #334455;'>Licensed under AGPL-3.0 & Apache 2.0</p>
 </div>
 """, unsafe_allow_html=True)
