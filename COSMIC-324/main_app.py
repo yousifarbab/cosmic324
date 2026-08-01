@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 from types import SimpleNamespace
 
 # ============================================================
-# 🌍 نظام الترجمة (المختصر للعربية والإنجليزية)
+# 🌍 نظام الترجمة (عربي وإنجليزي مع الأسعار)
 # ============================================================
 LANGUAGES = {
     "ar": {
@@ -47,7 +47,7 @@ LANGUAGES = {
         "alert_threshold": "عتبة التنبيه (م.ث)",
         "active_threshold": "الحد الأدنى للأقمار النشطة",
         "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
-        "pricing": "💰 خطط الاشتراك",
+        "pricing": "💰 خطط الاشتراك التجاري",
         "coverage": "📡 خريطة التغطية",
         "spectrum": "📶 محلل الطيف 6G",
         "j2_effect": "🌀 تأثير J2",
@@ -98,7 +98,7 @@ LANGUAGES = {
         "alert_threshold": "Alert Threshold (ms)",
         "active_threshold": "Min Active Satellites",
         "3d_globe": "🌍 3D Constellation Globe",
-        "pricing": "💰 Pricing Plans",
+        "pricing": "💰 Commercial Pricing Plans",
         "coverage": "📡 Coverage Map",
         "spectrum": "📶 6G Spectrum Analyzer",
         "j2_effect": "🌀 J2 Effect",
@@ -258,7 +258,7 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
     return orbit_map
 
 # ============================================================
-# ⚙️ إعداد الواجهة
+# ⚙️ إعداد الواجهة والتصميم المتجاوب مع الهواتف المحمولة
 # ============================================================
 st.set_page_config(page_title="COSMIC-324: 6G Titan X", page_icon="🚀", layout="wide")
 st.markdown("""
@@ -266,11 +266,33 @@ st.markdown("""
     .main, .stApp { background-color: #0a0a12; }
     .stMetric { background: linear-gradient(145deg, #1a1a2e, #0d0d1a); border-radius: 12px; padding: 15px; border: 1px solid rgba(0, 204, 255, 0.15); }
     h1, h2, h3, h4, h5 { color: #00CCFF; font-family: 'Arial Black', sans-serif; }
-    .stButton > button { background: linear-gradient(135deg, #00CCFF, #0066AA); color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: bold; }
+    .stButton > button { background: linear-gradient(135deg, #00CCFF, #0066AA); color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: bold; width: 100%; }
     .copyright { text-align: center; color: #445566; font-size: 0.8em; padding: 20px 0; border-top: 1px solid #1a1a2e; margin-top: 20px; }
     .welcome-box { background: linear-gradient(135deg, #1a1a2e, #0d0d1a); border-radius: 12px; padding: 20px 25px; border: 1px solid #00CCFF33; margin-bottom: 20px; }
-    .welcome-box h2 { color: #00CCFF; margin: 0 0 10px 0; }
-    .welcome-box p { color: #88AACC; margin: 0; font-size: 1.05em; }
+    .welcome-box h2 { color: #00CCFF; margin: 0 0 10px 0; font-size: 1.5em; }
+    .welcome-box p { color: #88AACC; margin: 0; font-size: 1em; }
+    
+    /* تصميم بطاقات الأسعار المتجاوبة */
+    .pricing-card {
+        background: linear-gradient(145deg, #1a1a2e, #0d0d1a);
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid rgba(0, 204, 255, 0.2);
+        text-align: center;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .pricing-card h3 { color: #00CCFF; margin-bottom: 10px; font-size: 1.3em; }
+    .pricing-card .price { font-size: 1.8em; color: #FFFFFF; font-weight: bold; margin: 15px 0; }
+    .pricing-card ul { list-style: none; padding: 0; text-align: right; color: #AABBCC; font-size: 0.9em; margin-bottom: 20px; }
+    .pricing-card ul li { margin: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
+
+    /* تحسين العرض على شاشات الجوال */
+    @media (max-width: 768px) {
+        h1 { font-size: 2em !important; }
+        .welcome-box { padding: 15px; }
+        .stMetric { padding: 10px; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -332,8 +354,8 @@ with st.sidebar:
 # ============================================================
 # 🎯 المحتوى الرئيسي
 # ============================================================
-st.markdown(f"<h1 style='text-align: center; font-size: 3.5em; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.2em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='text-align: center; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
 
 st.markdown(f"""
 <div class='welcome-box'>
@@ -440,8 +462,9 @@ def render_cosmic_globe(df, title="🌍 3D Constellation Globe"):
         ),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        height=600, margin=dict(l=0, r=0, t=40, b=0),
-        title=dict(text=title, font=dict(size=22, color='#00CCFF'), x=0.5)
+        height=500 if st.session_state.get('mobile_mode', False) else 600,
+        margin=dict(l=0, r=0, t=40, b=0),
+        title=dict(text=title, font=dict(size=18, color='#00CCFF'), x=0.5)
     )
     
     if not df.empty:
@@ -488,6 +511,62 @@ col_a1, col_a2, col_a3 = st.columns(3)
 col_a1.metric(t('avg_alt'), f"{df[t('altitude')].mean():.1f} km")
 col_a2.metric(t('max_alt'), f"{df[t('altitude')].max():.1f} km")
 col_a3.metric(t('min_alt'), f"{df[t('altitude')].min():.1f} km")
+
+# ============================================================
+# 💰 قسم خطط الأسعار والاشتراكات التجارية (الجديد)
+# ============================================================
+st.markdown("---")
+st.subheader(t('pricing'))
+
+p1, p2, p3 = st.columns(3)
+
+with p1:
+    st.markdown("""
+    <div class="pricing-card">
+        <h3>🚀 الباقة الأساسية</h3>
+        <div class="price">$499 <span style="font-size: 0.5em; color: #88AACC;">/ شهرياً</span></div>
+        <ul>
+            <li>✨ محاكاة حتى 500 قمر صناعي</li>
+            <li>📡 تحديث بيانات Celestrak</li>
+            <li>📊 تقارير زمن الانتقال الأساسية</li>
+            <li>💬 دعم فني عبر البريد</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("اختر الأساسية", use_container_width=True, key="btn_p1"):
+        st.success("تم اختيار الباقة الأساسية بنجاح!")
+
+with p2:
+    st.markdown("""
+    <div class="pricing-card" style="border: 2px solid #00CCFF;">
+        <h3>⚡ الباقة المتقدمة (Titan)</h3>
+        <div class="price">$1,499 <span style="font-size: 0.5em; color: #88AACC;">/ شهرياً</span></div>
+        <ul>
+            <li>🚀 محاكاة كاملة حتى 5,000 قمر</li>
+            <li>🌍 الخريطة الكونية ثلاثية الأبعاد</li>
+            <li>🌀 حساب تأثير J2 والتفلطح الأرضي</li>
+            <li>🧠 تحسين المهام بالذكاء الاصطناعي</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("اختر المتقدمة", use_container_width=True, key="btn_p2"):
+        st.success("تم اختيار الباقة المتقدمة بنجاح!")
+
+with p3:
+    st.markdown("""
+    <div class="pricing-card">
+        <h3>🛡️ الباقة السيادية (Enterprise)</h3>
+        <div class="price">مخصص</div>
+        <ul>
+            <li>🔒 خوادم محاكاة سيادية ومخصصة</li>
+            <li>🛰️ ربط مباشر مع محطات التحكم الأرضي</li>
+            <li>🤝 دعم فني مخصص على مدار 24/7</li>
+            <li>🛠️ تعديلات برمجية مخصصة للعميل</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    if st.button("تواصل معنا", use_container_width=True, key="btn_p3"):
+        st.success("تم استلام طلب التواصل وسيتم الرد قريباً!")
 
 # ============================================================
 # 📌 حقوق الملكية الفكرية
