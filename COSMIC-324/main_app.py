@@ -57,6 +57,11 @@ LANGUAGES = {
         "export_section": "📊 تصدير التقارير الرسمية",
         "export_csv": "📥 تحميل تقرير CSV",
         "export_txt": "📥 تحميل تقرير نصي رسمي",
+        "ground_station": "🛰️ إدارة المحطات الأرضية",
+        "gs_select": "اختر المحطة السيادية",
+        "gs_lat": "خط عرض المحطة",
+        "gs_lon": "خط طول المحطة",
+        "visible_sats": "الأقمار المرئية في نطاق المحطة",
         "p1_title": "🚀 الباقة الأساسية",
         "p1_price": "$499",
         "p1_period": "/ شهرياً",
@@ -115,6 +120,11 @@ LANGUAGES = {
         "export_section": "📊 Official Report Export",
         "export_csv": "📥 Download CSV Report",
         "export_txt": "📥 Download Official Text Report",
+        "ground_station": "🛰️ Ground Station Management",
+        "gs_select": "Select Sovereign Station",
+        "gs_lat": "Station Latitude",
+        "gs_lon": "Station Longitude",
+        "visible_sats": "Satellites in Line of Sight",
         "p1_title": "🚀 Basic Tier",
         "p1_price": "$499",
         "p1_period": "/ month",
@@ -409,8 +419,52 @@ col4.metric(t('standby'), standby_count)
 st.markdown("---")
 
 # ============================================================
+# 🛰️ إدارة المحطات الأرضية الحية (New Feature)
+# ============================================================
+st.subheader(t('ground_station'))
+
+stations = {
+    "مسقط، سلطنة عمان (Muscat)": {"lat": 23.5880, "lon": 58.3829},
+    "الخرطوم، السودان (Khartoum)": {"lat": 15.5007, "lon": 32.5599},
+    "محطة مخصصة (Custom)": {"lat": 24.7136, "lon": 46.6753}
+}
+
+gs_choice = st.selectbox(t('gs_select'), list(stations.keys()))
+if gs_choice == "محطة مخصصة (Custom)":
+    col_g1, col_g2 = st.columns(2)
+    with col_g1:
+        gs_lat = st.number_input(t('gs_lat'), -90.0, 90.0, 24.7136)
+    with col_g2:
+        gs_lon = st.number_input(t('gs_lon'), -180.0, 180.0, 46.6753)
+else:
+    gs_lat = stations[gs_choice]["lat"]
+    gs_lon = stations[gs_choice]["lon"]
+    st.info(f"إحداثيات المحطة المختارة -> خط العرض: {gs_lat}° | خط الطول: {gs_lon}°")
+
+# حساب الأقمار القريبة نسبياً للمحطة الأرضية (بناءً على التقارب الجغرافي)
+def calculate_visible_satellites(df, g_lat, g_lon):
+    visible = []
+    for _, row in df.iterrows():
+        s_lat = row[t('latitude')]
+        s_lon = row[t('longitude')]
+        # حساب المسافة التقريبية بالدرجات
+        dist = math.sqrt((s_lat - g_lat)**2 + (s_lon - g_lon)**2)
+        if dist <= 45.0:  # نطاق رؤية تقريبي
+            visible.append(row)
+    return pd.DataFrame(visible)
+
+df_visible = calculate_visible_satellites(df, gs_lat, gs_lon)
+st.metric(t('visible_sats'), len(df_visible))
+
+if not df_visible.empty:
+    st.dataframe(df_visible, use_container_width=True, height=200)
+else:
+    st.warning("لا توجد أقمار صناعية حالياً ضمن نطاق الرؤية المباشرة لهذه المحطة.")
+
+# ============================================================
 # 🎨 جدول البيانات
 # ============================================================
+st.markdown("---")
 def highlight_status(row):
     if row[t('status')] == t('active'):
         return ['background-color: #1a3a1a; color: #00FF00'] * len(row)
@@ -434,7 +488,7 @@ st.dataframe(
 )
 
 # ============================================================
-# 📊 تصدير التقارير الرسمية (New Feature)
+# 📊 تصدير التقارير الرسمية
 # ============================================================
 st.markdown("---")
 st.subheader(t('export_section'))
@@ -456,17 +510,12 @@ with col_exp2:
 COSMIC-324: 6G Titan X - OFFICIAL TELEMETRY REPORT
 ==================================================
 Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Ground Station: {gs_choice} (Lat: {gs_lat}, Lon: {gs_lon})
 Total Satellites Simulated: {len(df)}
 Active Satellites: {active_count}
-Calibration Satellites: {calibration_count}
-Standby Satellites: {standby_count}
+Visible Satellites from Station: {len(df_visible)}
 Average Altitude: {df[t('altitude')].mean():.2f} km
 --------------------------------------------------
-DATA SAMPLE (First 20 Satellites):
---------------------------------------------------
-{df.head(20).to_string(index=False)}
-==================================================
-© 2026 Yousif Zakaria Eissa Arbarb. All Rights Reserved.
 """
     st.download_button(
         label=t('export_txt'),
@@ -491,9 +540,9 @@ fig_latency.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,
 st.plotly_chart(fig_latency, use_container_width=True)
 
 # ============================================================
-# 🌍 الخريطة 3D
+# 🌍 الخريطة 3D (مع توجيه المحطة الأرضية)
 # ============================================================
-def render_cosmic_globe(df, title="🌍 3D Constellation Globe"):
+def render_cosmic_globe(df, gs_lat, gs_lon, title="🌍 3D Constellation Globe"):
     fig = go.Figure()
     fig.update_layout(
         geo=dict(
@@ -532,10 +581,10 @@ def render_cosmic_globe(df, title="🌍 3D Constellation Globe"):
         ))
     
     fig.add_trace(go.Scattergeo(
-        lon=[0], lat=[0],
+        lon=[gs_lon], lat=[gs_lat],
         mode='markers+text',
         marker=dict(size=16, color='#FF3366', symbol='star'),
-        text=['🛰️ Ground'],
+        text=['🛰️ Ground Station'],
         textposition='bottom center',
         textfont=dict(size=12, color='#FF6699'),
         name='Ground Station'
@@ -544,7 +593,7 @@ def render_cosmic_globe(df, title="🌍 3D Constellation Globe"):
 
 st.markdown("---")
 st.subheader(t('3d_globe'))
-st.plotly_chart(render_cosmic_globe(df, t('3d_globe')), use_container_width=True)
+st.plotly_chart(render_cosmic_globe(df, gs_lat, gs_lon, t('3d_globe')), use_container_width=True)
 
 # ============================================================
 # 📊 تحليلات متقدمة
@@ -618,7 +667,7 @@ with p3:
 st.markdown("---")
 st.markdown(f"""
 <div class='copyright'>
-    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.4</p>
+    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.5</p>
     <p>© 2026 Yousif Zakaria Eissa Arbarb. جميع الحقوق محفوظة.</p>
     <p style='font-size: 0.8em; color: #334455;'>Licensed under AGPL-3.0 & Apache 2.0</p>
 </div>
