@@ -419,7 +419,7 @@ col4.metric(t('standby'), standby_count)
 st.markdown("---")
 
 # ============================================================
-# 🛰️ إدارة المحطات الأرضية الحية (New Feature)
+# 🛰️ إدارة المحطات الأرضية الحية (مع إصلاح عرض الاسم بوضوح)
 # ============================================================
 st.subheader(t('ground_station'))
 
@@ -439,17 +439,15 @@ if gs_choice == "محطة مخصصة (Custom)":
 else:
     gs_lat = stations[gs_choice]["lat"]
     gs_lon = stations[gs_choice]["lon"]
-    st.info(f"إحداثيات المحطة المختارة -> خط العرض: {gs_lat}° | خط الطول: {gs_lon}°")
+    st.info(f"📍 المحطة النشطة حالياً: **{gs_choice}** (خط العرض: {gs_lat}° | خط الطول: {gs_lon}°)")
 
-# حساب الأقمار القريبة نسبياً للمحطة الأرضية (بناءً على التقارب الجغرافي)
 def calculate_visible_satellites(df, g_lat, g_lon):
     visible = []
     for _, row in df.iterrows():
         s_lat = row[t('latitude')]
         s_lon = row[t('longitude')]
-        # حساب المسافة التقريبية بالدرجات
         dist = math.sqrt((s_lat - g_lat)**2 + (s_lon - g_lon)**2)
-        if dist <= 45.0:  # نطاق رؤية تقريبي
+        if dist <= 45.0:
             visible.append(row)
     return pd.DataFrame(visible)
 
@@ -540,9 +538,9 @@ fig_latency.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,
 st.plotly_chart(fig_latency, use_container_width=True)
 
 # ============================================================
-# 🌍 الخريطة 3D (مع توجيه المحطة الأرضية)
+# 🌍 الخريطة 3D (مع عرض اسم المحطة المختار بوضوح)
 # ============================================================
-def render_cosmic_globe(df, gs_lat, gs_lon, title="🌍 3D Constellation Globe"):
+def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constellation Globe"):
     fig = go.Figure()
     fig.update_layout(
         geo=dict(
@@ -580,20 +578,22 @@ def render_cosmic_globe(df, gs_lat, gs_lon, title="🌍 3D Constellation Globe")
             hoverinfo='text'
         ))
     
+    # رسم المحطة مع اسم دقيق ومباشر مستمد من اختيار المستخدم
+    short_station_label = f"🛰️ {station_name.split('(')[0].strip()}"
     fig.add_trace(go.Scattergeo(
         lon=[gs_lon], lat=[gs_lat],
         mode='markers+text',
         marker=dict(size=16, color='#FF3366', symbol='star'),
-        text=['🛰️ Ground Station'],
+        text=[short_station_label],
         textposition='bottom center',
-        textfont=dict(size=12, color='#FF6699'),
+        textfont=dict(size=12, color='#FF6699', family='Arial Black'),
         name='Ground Station'
     ))
     return fig
 
 st.markdown("---")
 st.subheader(t('3d_globe'))
-st.plotly_chart(render_cosmic_globe(df, gs_lat, gs_lon, t('3d_globe')), use_container_width=True)
+st.plotly_chart(render_cosmic_globe(df, gs_lat, gs_lon, gs_choice, t('3d_globe')), use_container_width=True)
 
 # ============================================================
 # 📊 تحليلات متقدمة
@@ -667,7 +667,7 @@ with p3:
 st.markdown("---")
 st.markdown(f"""
 <div class='copyright'>
-    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.5</p>
+    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.6</p>
     <p>© 2026 Yousif Zakaria Eissa Arbarb. جميع الحقوق محفوظة.</p>
     <p style='font-size: 0.8em; color: #334455;'>Licensed under AGPL-3.0 & Apache 2.0</p>
 </div>
