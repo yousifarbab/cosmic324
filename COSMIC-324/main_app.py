@@ -450,7 +450,7 @@ fig_lat.update_layout(
 st.plotly_chart(fig_lat, use_container_width=True)
 
 # ============================================================
-# 🌍 الخريطة 3D (محدثة لتتبع مركز المحطة الأرضية بدقة)
+# 🌍 الخريطة 3D (مصححة لترتبط إحداثيات النجمة بدقة مع المحطة المختارة)
 # ============================================================
 def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constellation Globe"):
     fig = go.Figure()
@@ -492,7 +492,8 @@ def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constel
     
     short_station_label = f"🛰️ {station_name.split('(')[0].strip()}"
     fig.add_trace(go.Scattergeo(
-        lon=[gs_lon], lat=[gs_lat],
+        lon=[gs_lon], 
+        lat=[gs_lat],
         mode='markers+text',
         marker=dict(size=16, color='#FF3366', symbol='star'),
         text=[short_station_label],
@@ -589,7 +590,7 @@ Authorized by: Yousif Zakaria Eissa Arbarb © 2026
 st.markdown("---")
 st.markdown("""
 <div class='copyright'>
-    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.7</p>
+    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.8</p>
     <p>© 2026 Yousif Zakaria Eissa Arbarb. جميع الحقوق محفوظة.</p>
 </div>
 """, unsafe_allow_html=True)
