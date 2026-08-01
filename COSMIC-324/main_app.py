@@ -128,7 +128,6 @@ LANGUAGES = {
 
 def t(key: str) -> str:
     lang = st.session_state.get('language', 'ar')
- حقن الاتجاه الديناميكي
     return LANGUAGES.get(lang, LANGUAGES['ar']).get(key, key)
 
 def get_current_dir() -> str:
@@ -281,7 +280,7 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
                     def position_at_time(t: float, a=a, e=eccentricity, incl=inclination, omega=arg_perigee, Omega=raan, M0=mean_anomaly, period=period, apply_j2=True):
                         M = M0 + 2 * math.pi * t / period
                         E = M
-                        for _ in range(4): # تحسين الأداء بتقليص التكرار الحسابي
+                        for _ in range(4):
                             E = E - (E - e * np.sin(E) - M) / (1 - e * np.cos(E))
                         x_orbit = a * (np.cos(E) - e)
                         y_orbit = a * np.sqrt(1 - e**2) * np.sin(E)
@@ -316,7 +315,6 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
             if orbit_map:
                 return orbit_map
 
-    # توليد عشوائي محسن باستخدام NumPy Arrays
     count = min(num_satellites, 5000)
     a_arr = 7000 + np.random.uniform(-500, 500, count)
     e_arr = np.random.uniform(0.01, 0.08, count)
@@ -570,7 +568,7 @@ with p3:
 st.markdown("---")
 st.markdown(f"""
 <div class='copyright'>
-    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.2</p>
+    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.3</p>
     <p>© 2026 Yousif Zakaria Eissa Arbarb. جميع الحقوق محفوظة.</p>
     <p style='font-size: 0.8em; color: #334455;'>Licensed under AGPL-3.0 & Apache 2.0</p>
 </div>
