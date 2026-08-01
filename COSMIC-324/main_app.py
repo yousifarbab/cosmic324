@@ -283,7 +283,7 @@ with st.sidebar:
     
     lang_options = {code: info["name"] for code, info in LANGUAGES.items()}
     selected_lang = st.selectbox("🌐 Language", options=list(lang_options.keys()), format_func=lambda x: lang_options[x],
-                                 index=list(lang_options.keys()).index(st.session_state.get('language', 'ar')))
+                               index=list(lang_options.keys()).index(st.session_state.get('language', 'ar')))
     if selected_lang != st.session_state.get('language', 'ar'):
         st.session_state.language = selected_lang
         st.rerun()
