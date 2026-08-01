@@ -66,7 +66,7 @@ LANGUAGES = {
         "performance_mode": "⚡ وضع الأداء",
         "full_resolution": "دقة كاملة (5000)",
         "high_speed": "سرعة عالية (100)",
-        "mobile_mode": "📱 وضع الجوال (عرض مبسط)",
+        "mobile_mode": "📱 وضع الجوال (عرض مبسط)"
     },
     "en": {
         "name": "English",
@@ -118,7 +118,7 @@ LANGUAGES = {
         "performance_mode": "⚡ Performance Mode",
         "full_resolution": "Full Resolution (5000)",
         "high_speed": "High Speed (100)",
-        "mobile_mode": "📱 Mobile Mode (Simplified View)",
+        "mobile_mode": "📱 Mobile Mode (Simplified View)"
     },
     "fr": {
         "name": "Français",
@@ -170,7 +170,7 @@ LANGUAGES = {
         "performance_mode": "⚡ Mode performance",
         "full_resolution": "Résolution complète (5000)",
         "high_speed": "Haute vitesse (100)",
-        "mobile_mode": "📱 Mode mobile (Vue simplifiée)",
+        "mobile_mode": "📱 Mode mobile (Vue simplifiée)"
     },
     "de": {
         "name": "Deutsch",
@@ -222,7 +222,7 @@ LANGUAGES = {
         "performance_mode": "⚡ Leistungsmodus",
         "full_resolution": "Volle Auflösung (5000)",
         "high_speed": "Hohe Geschwindigkeit (100)",
-        "mobile_mode": "📱 Mobilmodus (Vereinfachte Ansicht)",
+        "mobile_mode": "📱 Mobilmodus (Vereinfachte Ansicht)"
     },
     "es": {
         "name": "Español",
@@ -274,7 +274,7 @@ LANGUAGES = {
         "performance_mode": "⚡ Modo rendimiento",
         "full_resolution": "Resolución completa (5000)",
         "high_speed": "Alta velocidad (100)",
-        "mobile_mode": "📱 Modo móvil (Vista simplificada)",
+        "mobile_mode": "📱 Modo móvil (Vista simplificada)"
     },
     "zh": {
         "name": "中文",
@@ -326,7 +326,7 @@ LANGUAGES = {
         "performance_mode": "⚡ 性能模式",
         "full_resolution": "全分辨率（5000）",
         "high_speed": "高速（100）",
-        "mobile_mode": "📱 移动模式（简化视图）",
+        "mobile_mode": "📱 移动模式（简化视图）"
     },
     "ru": {
         "name": "Русский",
@@ -378,98 +378,125 @@ LANGUAGES = {
         "performance_mode": "⚡ Режим производительности",
         "full_resolution": "Полное разрешение (5000)",
         "high_speed": "Высокая скорость (100)",
-        "mobile_mode": "📱 Мобильный режим (Упрощенный вид)",
-    },
+        "mobile_mode": "📱 Мобильный режим (Упрощенный вид)"
+    }
 }
 
-
 def t(key: str) -> str:
-  lang = st.session_state.get("language", "ar")
-  return LANGUAGES.get(lang, LANGUAGES["en"]).get(key, key)
-
+    lang = st.session_state.get('language', 'ar')
+    return LANGUAGES.get(lang, LANGUAGES['en']).get(key, key)
 
 # ============================================================
 # 📡 جلب بيانات Celestrak
 # ============================================================
 @st.cache_data(ttl=600)
-def fetch_celestrak_data(
-    group: str = "starlink", max_satellites: int = 5000
-) -> List[Dict]:
-  url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
-  try:
-    response = requests.get(url, timeout=10)
-    response.raise_for_status()
-    if response.text.startswith("{"):
-      return response.json()[:max_satellites]
-  except:
-    pass
-  return []
-
+def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> List[Dict]:
+    url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        if response.text.startswith('{'):
+            return response.json()[:max_satellites]
+    except:
+        pass
+    return []
 
 @st.cache_resource
-def generate_orbit_map(
-    num_satellites: int = 5000,
-    group: str = "starlink",
-    use_celestrak: bool = True,
-):
-  orbit_map = {}
-  if use_celestrak:
-    raw_data = fetch_celestrak_data(group, num_satellites)
-    if raw_data:
-      for entry in raw_data:
-        try:
-          mean_motion = float(entry.get("MEAN_MOTION", 0))
-          eccentricity = float(entry.get("ECCENTRICITY", 0))
-          inclination = math.radians(float(entry.get("INCLINATION", 0)))
-          raan = math.radians(float(entry.get("RA_OF_ASC_NODE", 0)))
-          arg_perigee = math.radians(float(entry.get("ARG_OF_PERICENTER", 0)))
-          mean_anomaly = math.radians(float(entry.get("MEAN_ANOMALY", 0)))
-          if mean_motion <= 0:
-            continue
-          GM = 398600.4418
-          n = mean_motion * 2 * math.pi / 86400.0
-          a = (GM / (n**2)) ** (1.0 / 3.0)
-          period = 86400.0 / mean_motion
+def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_celestrak: bool = True):
+    orbit_map = {}
+    if use_celestrak:
+        raw_data = fetch_celestrak_data(group, num_satellites)
+        if raw_data:
+            for entry in raw_data:
+                try:
+                    mean_motion = float(entry.get('MEAN_MOTION', 0))
+                    eccentricity = float(entry.get('ECCENTRICITY', 0))
+                    inclination = math.radians(float(entry.get('INCLINATION', 0)))
+                    raan = math.radians(float(entry.get('RA_OF_ASC_NODE', 0)))
+                    arg_perigee = math.radians(float(entry.get('ARG_OF_PERICENTER', 0)))
+                    mean_anomaly = math.radians(float(entry.get('MEAN_ANOMALY', 0)))
+                    if mean_motion <= 0: continue
+                    GM = 398600.4418
+                    n = mean_motion * 2 * math.pi / 86400.0
+                    a = (GM / (n ** 2)) ** (1.0/3.0)
+                    period = 86400.0 / mean_motion
 
-          def position_at_time(
-              t: float,
-              a=a,
-              e=eccentricity,
-              incl=inclination,
-              omega=arg_perigee,
-              Omega=raan,
-              M0=mean_anomaly,
-              period=period,
-              apply_j2=True,
-          ):
+                    def position_at_time(t: float, a=a, e=eccentricity, incl=inclination, omega=arg_perigee, Omega=raan, M0=mean_anomaly, period=period, apply_j2=True):
+                        M = M0 + 2 * math.pi * t / period
+                        E = M
+                        for _ in range(6):
+                            E = E - (E - e * math.sin(E) - M) / (1 - e * math.cos(E))
+                        x_orbit = a * (math.cos(E) - e)
+                        y_orbit = a * math.sqrt(1 - e**2) * math.sin(E)
+                        z_orbit = 0.0
+                        if apply_j2:
+                            J2 = 1.08262668e-3
+                            p = a * (1 - e**2)
+                            n_rad = 2 * math.pi / period
+                            omega_dot = -1.5 * J2 * (6378.137 / p) ** 2 * n_rad * math.cos(incl)
+                            raan_dot = -1.5 * J2 * (6378.137 / p) ** 2 * n_rad * math.cos(incl)
+                            current_raan = Omega + raan_dot * t
+                            current_omega = omega + omega_dot * t
+                        else:
+                            current_raan = Omega
+                            current_omega = omega
+                        x1 = x_orbit * math.cos(current_omega) - y_orbit * math.sin(current_omega)
+                        y1 = x_orbit * math.sin(current_omega) + y_orbit * math.cos(current_omega)
+                        z1 = z_orbit
+                        x2 = x1
+                        y2 = y1 * math.cos(incl) - z1 * math.sin(incl)
+                        z2 = y1 * math.sin(incl) + z1 * math.cos(incl)
+                        x_final = x2 * math.cos(current_raan) - y2 * math.sin(current_raan)
+                        y_final = x2 * math.sin(current_raan) + y2 * math.cos(current_raan)
+                        z_final = z2
+                        return (x_final, y_final, z_final)
+
+                    orbit = SimpleNamespace()
+                    orbit.position_at_time = position_at_time
+                    orbit.name = entry.get('OBJECT_NAME', 'SAT')
+                    orbit.altitude = a - 6371
+                    orbit.a = a
+                    orbit.e = eccentricity
+                    orbit.i = inclination
+                    orbit.raan = raan
+                    orbit.arg_perigee = arg_perigee
+                    orbit.mean_anomaly = mean_anomaly
+                    orbit.period = period
+                    orbit_map[orbit.name] = orbit
+                except:
+                    continue
+            if orbit_map:
+                return orbit_map
+
+    for i in range(min(num_satellites, 5000)):
+        a = 7000 + random.randint(-500, 500)
+        e = random.uniform(0.01, 0.08)
+        incl = math.radians(random.uniform(30, 70))
+        Omega = random.uniform(0, 2*math.pi)
+        omega = random.uniform(0, 2*math.pi)
+        M0 = random.uniform(0, 2*math.pi)
+        period = 2 * math.pi * math.sqrt((a ** 3) / 398600.4418)
+        def position_at_time(t: float, a=a, e=e, incl=incl, omega=omega, Omega=Omega, M0=M0, period=period, apply_j2=True):
+            if apply_j2:
+                J2 = 1.08262668e-3
+                p = a * (1 - e**2)
+                n_rad = 2 * math.pi / period
+                omega_dot = -1.5 * J2 * (6378.137 / p) ** 2 * n_rad * math.cos(incl)
+                raan_dot = -1.5 * J2 * (6378.137 / p) ** 2 * n_rad * math.cos(incl)
+                current_raan = Omega + raan_dot * t
+                current_omega = omega + omega_dot * t
+            else:
+                current_raan = Omega
+                current_omega = omega
             M = M0 + 2 * math.pi * t / period
             E = M
             for _ in range(6):
-              E = E - (E - e * math.sin(E) - M) / (1 - e * math.cos(E))
+                E = E - (E - e * math.sin(E) - M) / (1 - e * math.cos(E))
             x_orbit = a * (math.cos(E) - e)
             y_orbit = a * math.sqrt(1 - e**2) * math.sin(E)
             z_orbit = 0.0
-            if apply_j2:
-              J2 = 1.08262668e-3
-              p = a * (1 - e**2)
-              n_rad = 2 * math.pi / period
-              omega_dot = (
-                  -1.5 * J2 * (6378.137 / p) ** 2 * n_rad * math.cos(incl)
-              )
-              raan_dot = (
-                  -1.5 * J2 * (6378.137 / p) ** 2 * n_rad * math.cos(incl)
-              )
-              current_raan = Omega + raan_dot * t
-              current_omega = omega + omega_dot * t
-            else:
-              current_raan = Omega
-              current_omega = omega
-            x1 = x_orbit * math.cos(current_omega) - y_orbit * math.sin(
-                current_omega
-            )
-            y1 = x_orbit * math.sin(current_omega) + y_orbit * math.cos(
-                current_omega
-            )
+            x1 = x_orbit * math.cos(current_omega) - y_orbit * math.sin(current_omega)
+            y1 = x_orbit * math.sin(current_omega) + y_orbit * math.cos(current_omega)
             z1 = z_orbit
             x2 = x1
             y2 = y1 * math.cos(incl) - z1 * math.sin(incl)
@@ -478,87 +505,19 @@ def generate_orbit_map(
             y_final = x2 * math.sin(current_raan) + y2 * math.cos(current_raan)
             z_final = z2
             return (x_final, y_final, z_final)
-
-          orbit = SimpleNamespace()
-          orbit.position_at_time = position_at_time
-          orbit.name = entry.get("OBJECT_NAME", "SAT")
-          orbit.altitude = a - 6371
-          orbit.a = a
-          orbit.e = eccentricity
-          orbit.i = inclination
-          orbit.raan = raan
-          orbit.arg_perigee = arg_perigee
-          orbit.mean_anomaly = mean_anomaly
-          orbit.period = period
-          orbit_map[orbit.name] = orbit
-        except:
-          continue
-      if orbit_map:
-        return orbit_map
-
-  for i in range(min(num_satellites, 5000)):
-    a = 7000 + random.randint(-500, 500)
-    e = random.uniform(0.01, 0.08)
-    incl = math.radians(random.uniform(30, 70))
-    Omega = random.uniform(0, 2 * math.pi)
-    omega = random.uniform(0, 2 * math.pi)
-    M0 = random.uniform(0, 2 * math.pi)
-    period = 2 * math.pi * math.sqrt((a**3) / 398600.4418)
-
-    def position_at_time(
-        t: float,
-        a=a,
-        e=e,
-        incl=incl,
-        omega=omega,
-        Omega=Omega,
-        M0=M0,
-        period=period,
-        apply_j2=True,
-    ):
-      if apply_j2:
-        J2 = 1.08262668e-3
-        p = a * (1 - e**2)
-        n_rad = 2 * math.pi / period
-        omega_dot = -1.5 * J2 * (6378.137 / p) ** 2 * n_rad * math.cos(incl)
-        raan_dot = -1.5 * J2 * (6378.137 / p) ** 2 * n_rad * math.cos(incl)
-        current_raan = Omega + raan_dot * t
-        current_omega = omega + omega_dot * t
-      else:
-        current_raan = Omega
-        current_omega = omega
-      M = M0 + 2 * math.pi * t / period
-      E = M
-      for _ in range(6):
-        E = E - (E - e * math.sin(E) - M) / (1 - e * math.cos(E))
-      x_orbit = a * (math.cos(E) - e)
-      y_orbit = a * math.sqrt(1 - e**2) * math.sin(E)
-      z_orbit = 0.0
-      x1 = x_orbit * math.cos(current_omega) - y_orbit * math.sin(current_omega)
-      y1 = x_orbit * math.sin(current_omega) + y_orbit * math.cos(current_omega)
-      z1 = z_orbit
-      x2 = x1
-      y2 = y1 * math.cos(incl) - z1 * math.sin(incl)
-      z2 = y1 * math.sin(incl) + z1 * math.cos(incl)
-      x_final = x2 * math.cos(current_raan) - y2 * math.sin(current_raan)
-      y_final = x2 * math.sin(current_raan) + y2 * math.cos(current_raan)
-      z_final = z2
-      return (x_final, y_final, z_final)
-
-    orbit = SimpleNamespace()
-    orbit.position_at_time = position_at_time
-    orbit.name = f"SAT-{i+1}"
-    orbit.altitude = a - 6371
-    orbit.a = a
-    orbit.e = e
-    orbit.i = incl
-    orbit.raan = Omega
-    orbit.arg_perigee = omega
-    orbit.mean_anomaly = M0
-    orbit.period = period
-    orbit_map[orbit.name] = orbit
-  return orbit_map
-
+        orbit = SimpleNamespace()
+        orbit.position_at_time = position_at_time
+        orbit.name = f"SAT-{i+1}"
+        orbit.altitude = a - 6371
+        orbit.a = a
+        orbit.e = e
+        orbit.i = incl
+        orbit.raan = Omega
+        orbit.arg_perigee = omega
+        orbit.mean_anomaly = M0
+        orbit.period = period
+        orbit_map[orbit.name] = orbit
+    return orbit_map
 
 # ============================================================
 # ⚙️ إعداد الواجهة (محسّن للجوال)
@@ -567,11 +526,10 @@ st.set_page_config(
     page_title="COSMIC-324: 6G Titan X",
     page_icon="🚀",
     layout="centered",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="collapsed"
 )
 
-st.markdown(
-    """
+st.markdown("""
 <style>
     .main, .stApp { background-color: #0a0a12; }
     .stMetric { background: linear-gradient(145deg, #1a1a2e, #0d0d1a); border-radius: 12px; padding: 15px; border: 1px solid rgba(0, 204, 255, 0.15); }
@@ -624,186 +582,23 @@ st.markdown(
         .welcome-box h2 { font-size: 1.2em; }
     }
 </style>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
 # ============================================================
-# 🌐 الشريط الجانبي (مع وضع الجوال وتصحيح الخطأ)
+# 🌐 الشريط الجانبي (مع وضع الجوال)
 # ============================================================
 with st.sidebar:
-  st.image(
-      "https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324+Titan+X",
-      use_column_width=True,
-  )
-  st.markdown("---")
-
-  lang_options = {code: info["name"] for code, info in LANGUAGES.items()}
-  selected_lang = st.selectbox(
-      "🌐 Language / اللغة",
-      options=list(lang_options.keys()),
-      format_func=lambda x: lang_options[x],
-      index=list(lang_options.keys()).index(
-          st.session_state.get("language", "ar")
-      ),
-  )
-  if selected_lang != st.session_state.get("language", "ar"):
-    st.session_state.language = selected_lang
-    st.rerun()
-
-  st.markdown("---")
-  st.header(t("params"))
-
-  mobile_mode = st.checkbox(
-      t("mobile_mode"), value=st.session_state.get("mobile_mode", False)
-  )
-  if mobile_mode != st.session_state.get("mobile_mode", False):
-    st.session_state.mobile_mode = mobile_mode
-    st.rerun()
-
-  num_sats = st.slider(t("sat_count"), 10, 5000, 100, step=50)
-
-  st.markdown("---")
-  if st.button(t("update_btn")):
-    st.rerun()
-
-# ============================================================
-# 🚀 المحتوى الرئيسي
-# ============================================================
-st.title(t("title"))
-st.markdown(f"### {t('subtitle')}")
-
-st.markdown(
-    f"""
-<div class="welcome-box">
-    <h2>{t("welcome")}</h2>
-    <p>{t("subtitle")}</p>
-</div>
-""",
-    unsafe_allow_html=True,
-)
-
-# توليد بيانات المحاكاة السريعة
-orbit_data = generate_orbit_map(num_satellites=num_sats, use_celestrak=False)
-
-active_count = int(num_sats * 0.7)
-calib_count = int(num_sats * 0.2)
-standby_count = num_sats - active_count - calib_count
-
-col1, col2, col3, col4 = st.columns(4)
-col1.metric(t("total"), str(num_sats))
-col2.metric(t("active"), str(active_count))
-col3.metric(t("calibration"), str(calib_count))
-col4.metric(t("standby"), str(standby_count))
-
-st.markdown("---")
-
-# عرض الأقسام والتبويبات
-tab_names = [
-    t("3d_globe"),
-    t("pricing"),
-    t("coverage"),
-    t("spectrum"),
-    t("j2_effect"),
-]
-tabs = st.tabs(tab_names)
-
-with tabs[0]:
-  st.subheader(t("3d_globe"))
-  # محاكاة خريطة تفاعلية بسيطة وسريعة
-  lat_lons = []
-  for name, obj in list(orbit_data.items())[:200]:
-    x, y, z = obj.position_at_time(time.time() % obj.period)
-    r = math.sqrt(x**2 + y**2 + z**2)
-    lat = math.asin(z / r) * (180 / math.pi)
-    lon = math.atan2(y, x) * (180 / math.pi)
-    lat_lons.append(
-        {"Satellite": name, "Latitude": lat, "Longitude": lon, "Status": "Active"}
-    )
-
-  df_vis = pd.DataFrame(lat_lons)
-  fig = px.scatter_geo(
-      df_vis,
-      lat="Latitude",
-      lon="Longitude",
-      hover_name="Satellite",
-      projection="orthographic",
-  )
-  fig.update_geos(bgcolor="#0d0d1a", landcolor="#1a1a2e", oceancolor="#0a0a12")
-  fig.update_layout(
-      paper_bgcolor="#0a0a12", plot_bgcolor="#0a0a12", font_color="white"
-  )
-  st.plotly_chart(fig, use_container_width=True)
-
-with tabs[1]:
-  st.subheader(t("pricing"))
-  c1, c2, c3 = st.columns(3)
-  with c1:
-    st.markdown(
-        """
-        <div class="pricing-card">
-            <h4>Starter</h4>
-            <h2>$99</h2>
-            <p>للمشاريع الصغيرة والأبحاث الأولية</p>
-            <div class="price-highlight">500 سواتل</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-  with c2:
-    st.markdown(
-        """
-        <div class="pricing-card">
-            <h4>Professional</h4>
-            <h2>$499</h2>
-            <p>للكيانات والمؤسسات المتقدمة</p>
-            <div class="price-highlight">2500 سواتل</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-  with c3:
-    st.markdown(
-        """
-        <div class="pricing-card">
-            <h4>Enterprise Sovereign</h4>
-            <h2>$1499</h2>
-            <p>التحكم والسيادة الكاملة</p>
-            <div class="price-highlight">5000+ سواتل</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-with tabs[2]:
-  st.subheader(t("coverage"))
-  st.info("خريطة التغطية الأرضية لنطاق 6G Titan X مفعلة.")
-
-with tabs[3]:
-  st.subheader(t("spectrum"))
-  # رسم بياني للطيف الترددي
-  freqs = np.linspace(10, 60, 50)
-  power = np.sin(freqs / 5) * 10 + np.random.normal(0, 1, 50)
-  fig_spec = px.line(
-      x=freqs, y=power, labels={"x": "Frequency (GHz)", "y": "Power (dBm)"}
-  )
-  fig_spec.update_layout(
-      paper_bgcolor="#0a0a12", plot_bgcolor="#0a0a12", font_color="white"
-  )
-  st.plotly_chart(fig_spec, use_container_width=True)
-
-with tabs[4]:
-  st.subheader(t("j2_effect"))
-  st.write(
-      "تأثير التفلطح الأرضي (J2 Perturbation) مطبق بالمعادلات المدارية الدقيقة."
-  )
-
-# تذييل الصفحة وحقوق الملكية
-st.markdown(
-    """
-<div class="copyright">
-    COSMIC-324 6G Titan X Orbital Command Platform &copy; 2026 | جميع الحقوق محفوظة للمالك والمطور الأساسي.
-</div>
-""",
-    unsafe_allow_html=True,
-)
+    st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324+Titan+X", use_column_width=True)
+    st.markdown("---")
+    
+    lang_options = {code: info["name"] for code, info in LANGUAGES.items()}
+    selected_lang = st.selectbox("🌐 Language / اللغة", options=list(lang_options.keys()), format_func=lambda x: lang_options[x],
+                                 index=list(lang_options.keys()).index(st.session_state.get('language', 'ar')))
+    if selected_lang != st.session_state.get('language', 'ar'):
+        st.session_state.language = selected_lang
+        st.rerun()
+    
+    st.markdown("---")
+    st.header(t("params"))
+    
+    mobile_mode = st.checkbox
