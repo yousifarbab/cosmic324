@@ -37,9 +37,6 @@ LANGUAGES = {
         "step": "الخطوة",
         "latency_ms": "زمن الانتقال (م.ث)",
         "last_update": "آخر تحديث",
-        "avg_alt": "متوسط الارتفاع",
-        "max_alt": "أقصى ارتفاع",
-        "min_alt": "أدنى ارتفاع",
         "celestrak": "📡 جلب بيانات Celestrak",
         "group": "المجموعة",
         "alert_threshold": "عتبة التنبيه (م.ث)",
@@ -85,9 +82,6 @@ LANGUAGES = {
         "step": "Step",
         "latency_ms": "Latency (ms)",
         "last_update": "Last Update",
-        "avg_alt": "Avg Altitude",
-        "max_alt": "Max Altitude",
-        "min_alt": "Min Altitude",
         "celestrak": "📡 Fetch Celestrak Data",
         "group": "Group",
         "alert_threshold": "Alert Threshold (ms)",
@@ -157,6 +151,10 @@ with st.sidebar:
         st.rerun()
     
     st.markdown("---")
+    if st.button(t('update_btn')):
+        st.rerun()
+    st.markdown("---")
+    
     st.header(t("params"))
     
     mobile_mode = st.checkbox(t("mobile_mode"), value=st.session_state.get('mobile_mode', False))
@@ -189,9 +187,6 @@ st.markdown(f"""
     <p>{t('subtitle')}</p>
 </div>
 """, unsafe_allow_html=True)
-
-if st.button(t('update_btn')):
-    st.rerun()
 
 # ============================================================
 # 📡 جلب البيانات وتسريع الحسابات
@@ -334,7 +329,7 @@ def get_telemetry_data(orbit_map, num_satellites, t_func):
             })
     return pd.DataFrame(data)
 
-with st.spinner('🔄 جاري تحميل المنصة وحساب المسارات مدارياً...'):
+with st.spinner('🔄 جاري تحميل المنصة والحساب المسارات مدارياً...'):
     orbit_map = generate_orbit_map(num_satellites, group, use_celestrak)
     df = get_telemetry_data(orbit_map, num_satellites, t)
 
@@ -382,6 +377,7 @@ st.subheader(t('ground_station'))
 
 predefined_stations = {
     "مسقط، سلطنة عمان (Muscat)": {"lat": 23.5880, "lon": 58.3829},
+    "لواندا، أنغولا (Luanda, Angola)": {"lat": -8.8390, "lon": 13.2894},
     "الخرطوم، السودان (Khartoum)": {"lat": 15.5007, "lon": 32.5599},
     "اليابان - طوكيو (Japan)": {"lat": 35.6762, "lon": 139.6503},
     "الهند - نيودلهي (India)": {"lat": 28.6139, "lon": 77.2090},
@@ -454,13 +450,14 @@ fig_lat.update_layout(
 st.plotly_chart(fig_lat, use_container_width=True)
 
 # ============================================================
-# 🌍 الخريطة 3D
+# 🌍 الخريطة 3D (محدثة لتتبع مركز المحطة الأرضية بدقة)
 # ============================================================
 def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constellation Globe"):
     fig = go.Figure()
     fig.update_layout(
         geo=dict(
             projection_type='orthographic',
+            projection=dict(rotation=dict(lat=gs_lat, lon=gs_lon)),
             showland=True, landcolor='rgb(10,10,20)',
             coastlinecolor='rgb(60,60,80)',
             showocean=True, oceancolor='rgb(5,5,15)',
@@ -592,7 +589,7 @@ Authorized by: Yousif Zakaria Eissa Arbarb © 2026
 st.markdown("---")
 st.markdown("""
 <div class='copyright'>
-    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.6</p>
+    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.7</p>
     <p>© 2026 Yousif Zakaria Eissa Arbarb. جميع الحقوق محفوظة.</p>
 </div>
 """, unsafe_allow_html=True)
