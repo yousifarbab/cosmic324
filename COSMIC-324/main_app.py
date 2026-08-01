@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 from types import SimpleNamespace
 
 # ============================================================
-# 🌍 نظام الترجمة (عربي وإنجليزي مع الأسعار)
+# 🌍 نظام الترجمة (اللغتان: العربية والإنجليزية مع تحديث الأسعار)
 # ============================================================
 LANGUAGES = {
     "ar": {
@@ -42,22 +42,10 @@ LANGUAGES = {
         "min_alt": "أدنى ارتفاع",
         "celestrak": "📡 جلب بيانات Celestrak",
         "group": "المجموعة",
-        "alert_latency": "⚠️ ارتفاع زمن الانتقال!",
-        "alert_satellites": "⚠️ انخفاض الأقمار النشطة!",
         "alert_threshold": "عتبة التنبيه (م.ث)",
         "active_threshold": "الحد الأدنى للأقمار النشطة",
         "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
         "pricing": "💰 خطط الاشتراك التجاري",
-        "coverage": "📡 خريطة التغطية",
-        "spectrum": "📶 محلل الطيف 6G",
-        "j2_effect": "🌀 تأثير J2",
-        "propulsion": "🚀 محرك الدفع",
-        "link_analysis": "📡 تحليل الارتباط",
-        "cost_analysis": "💰 التحليل المالي",
-        "space_weather": "☀️ الطقس الفضائي",
-        "debris": "🛸 الحطام والتصادم",
-        "ai_optimization": "🧠 تحسين الذكاء الاصطناعي",
-        "collaboration": "🤝 مشاركة المهمة",
         "auto_refresh": "⏱️ تحديث تلقائي",
         "refresh_interval": "الفاصل (ثانية)",
         "start_auto": "▶️ تشغيل",
@@ -65,7 +53,25 @@ LANGUAGES = {
         "performance_mode": "⚡ وضع الأداء",
         "full_resolution": "دقة كاملة (5000)",
         "high_speed": "سرعة عالية (100)",
-        "mobile_mode": "📱 وضع الجوال"
+        "mobile_mode": "📱 وضع الجوال",
+        # أسعار وتفاصيل الباقات باللغة العربية
+        "p1_title": "🚀 الباقة الأساسية",
+        "p1_price": "$499",
+        "p1_period": "/ شهرياً",
+        "p1_desc": ["✨ محاكاة حتى 500 قمر صناعي", "📡 تحديث بيانات Celestrak", "📊 تقارير زمن الانتقال الأساسية", "💬 دعم فني عبر البريد"],
+        "p1_btn": "اختر الأساسية",
+        
+        "p2_title": "⚡ الباقة المتقدمة (Titan)",
+        "p2_price": "$1,499",
+        "p2_period": "/ شهرياً",
+        "p2_desc": ["🚀 محاكاة كاملة حتى 5,000 قمر", "🌍 الخريطة الكونية ثلاثية الأبعاد", "🌀 حساب تأثير J2 والتفلطح الأرضي", "🧠 تحسين المهام بالذكاء الاصطناعي"],
+        "p2_btn": "اختر المتقدمة",
+        
+        "p3_title": "🛡️ الباقة السيادية (Enterprise)",
+        "p3_price": "مخصص",
+        "p3_period": "",
+        "p3_desc": ["🔒 خوادم محاكاة سيادية ومخصصة", "🛰️ ربط مباشر مع محطات التحكم الأرضي", "🤝 دعم فني مخصص على مدار 24/7", "🛠️ تعديلات برمجية مخصصة للعميل"],
+        "p3_btn": "تواصل معنا"
     },
     "en": {
         "name": "English",
@@ -93,22 +99,10 @@ LANGUAGES = {
         "min_alt": "Min Altitude",
         "celestrak": "📡 Fetch Celestrak Data",
         "group": "Group",
-        "alert_latency": "⚠️ High Latency!",
-        "alert_satellites": "⚠️ Low Active Satellites!",
         "alert_threshold": "Alert Threshold (ms)",
         "active_threshold": "Min Active Satellites",
         "3d_globe": "🌍 3D Constellation Globe",
         "pricing": "💰 Commercial Pricing Plans",
-        "coverage": "📡 Coverage Map",
-        "spectrum": "📶 6G Spectrum Analyzer",
-        "j2_effect": "🌀 J2 Effect",
-        "propulsion": "🚀 Propulsion Engine",
-        "link_analysis": "📡 Link Analysis",
-        "cost_analysis": "💰 Cost Analysis",
-        "space_weather": "☀️ Space Weather",
-        "debris": "🛸 Debris & Collision",
-        "ai_optimization": "🧠 AI Optimization",
-        "collaboration": "🤝 Mission Sharing",
         "auto_refresh": "⏱️ Auto Refresh",
         "refresh_interval": "Interval (sec)",
         "start_auto": "▶️ Start",
@@ -116,13 +110,31 @@ LANGUAGES = {
         "performance_mode": "⚡ Performance Mode",
         "full_resolution": "Full Resolution (5000)",
         "high_speed": "High Speed (100)",
-        "mobile_mode": "📱 Mobile Mode"
+        "mobile_mode": "📱 Mobile Mode",
+        # أسعار وتفاصيل الباقات باللغة الإنجليزية
+        "p1_title": "🚀 Basic Tier",
+        "p1_price": "$499",
+        "p1_period": "/ month",
+        "p1_desc": ["✨ Simulate up to 500 satellites", "📡 Celestrak data integration", "📊 Basic latency reports", "💬 Email technical support"],
+        "p1_btn": "Select Basic",
+        
+        "p2_title": "⚡ Advanced Tier (Titan)",
+        "p2_price": "$1,499",
+        "p2_period": "/ month",
+        "p2_desc": ["🚀 Full simulation up to 5,000 sats", "🌍 3D Constellation Globe", "🌀 J2 effect & Earth oblateness", "🧠 AI-powered mission optimization"],
+        "p2_btn": "Select Advanced",
+        
+        "p3_title": "🛡️ Enterprise Sovereign Tier",
+        "p3_price": "Custom",
+        "p3_period": "",
+        "p3_desc": ["🔒 Dedicated sovereign servers", "🛰️ Direct ground station connection", "🤝 24/7 Dedicated technical support", "🛠️ Custom software modifications"],
+        "p3_btn": "Contact Us"
     }
 }
 
 def t(key: str) -> str:
     lang = st.session_state.get('language', 'ar')
-    return LANGUAGES.get(lang, LANGUAGES['en']).get(key, key)
+    return LANGUAGES.get(lang, LANGUAGES['ar']).get(key, key)
 
 # ============================================================
 # 📡 جلب بيانات Celestrak
@@ -297,16 +309,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌐 الشريط الجانبي
+# 🌐 الشريط الجانبي (محدد باللغتين فقط)
 # ============================================================
 with st.sidebar:
     st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324", use_column_width=True)
     st.markdown("---")
     
-    lang_options = {code: info["name"] for code, info in LANGUAGES.items()}
+    # القصر على لغتين فقط كما طلب المستخدم
+    lang_options = {"ar": "العربية", "en": "English"}
+    current_lang = st.session_state.get('language', 'ar')
     selected_lang = st.selectbox("🌐 Language", options=list(lang_options.keys()), format_func=lambda x: lang_options[x],
-                               index=list(lang_options.keys()).index(st.session_state.get('language', 'ar')))
-    if selected_lang != st.session_state.get('language', 'ar'):
+                               index=list(lang_options.keys()).index(current_lang))
+    if selected_lang != current_lang:
         st.session_state.language = selected_lang
         st.rerun()
     
@@ -349,7 +363,7 @@ with st.sidebar:
         st.cache_data.clear()
         st.cache_resource.clear()
         st.rerun()
-    st.caption(f"{t('last_update')}: {datetime.now().strftime('%H:%M:%S')}")
+    st.caption(f"آخر تحديث: {datetime.now().strftime('%H:%M:%S')}")
 
 # ============================================================
 # 🎯 المحتوى الرئيسي
@@ -513,7 +527,7 @@ col_a2.metric(t('max_alt'), f"{df[t('altitude')].max():.1f} km")
 col_a3.metric(t('min_alt'), f"{df[t('altitude')].min():.1f} km")
 
 # ============================================================
-# 💰 قسم خطط الأسعار والاشتراكات التجارية (الجديد)
+# 💰 قسم خطط الأسعار والاشتراكات (مترجم بالكامل ويتغير تلقائياً)
 # ============================================================
 st.markdown("---")
 st.subheader(t('pricing'))
@@ -521,52 +535,52 @@ st.subheader(t('pricing'))
 p1, p2, p3 = st.columns(3)
 
 with p1:
-    st.markdown("""
+    st.markdown(f"""
     <div class="pricing-card">
-        <h3>🚀 الباقة الأساسية</h3>
-        <div class="price">$499 <span style="font-size: 0.5em; color: #88AACC;">/ شهرياً</span></div>
+        <h3>{t('p1_title')}</h3>
+        <div class="price">{t('p1_price')} <span style="font-size: 0.5em; color: #88AACC;">{t('p1_period')}</span></div>
         <ul>
-            <li>✨ محاكاة حتى 500 قمر صناعي</li>
-            <li>📡 تحديث بيانات Celestrak</li>
-            <li>📊 تقارير زمن الانتقال الأساسية</li>
-            <li>💬 دعم فني عبر البريد</li>
+            <li>{t('p1_desc')[0]}</li>
+            <li>{t('p1_desc')[1]}</li>
+            <li>{t('p1_desc')[2]}</li>
+            <li>{t('p1_desc')[3]}</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("اختر الأساسية", use_container_width=True, key="btn_p1"):
-        st.success("تم اختيار الباقة الأساسية بنجاح!")
+    if st.button(t('p1_btn'), use_container_width=True, key="btn_p1"):
+        st.success("تم اختيار الباقة بنجاح!")
 
 with p2:
-    st.markdown("""
+    st.markdown(f"""
     <div class="pricing-card" style="border: 2px solid #00CCFF;">
-        <h3>⚡ الباقة المتقدمة (Titan)</h3>
-        <div class="price">$1,499 <span style="font-size: 0.5em; color: #88AACC;">/ شهرياً</span></div>
+        <h3>{t('p2_title')}</h3>
+        <div class="price">{t('p2_price')} <span style="font-size: 0.5em; color: #88AACC;">{t('p2_period')}</span></div>
         <ul>
-            <li>🚀 محاكاة كاملة حتى 5,000 قمر</li>
-            <li>🌍 الخريطة الكونية ثلاثية الأبعاد</li>
-            <li>🌀 حساب تأثير J2 والتفلطح الأرضي</li>
-            <li>🧠 تحسين المهام بالذكاء الاصطناعي</li>
+            <li>{t('p2_desc')[0]}</li>
+            <li>{t('p2_desc')[1]}</li>
+            <li>{t('p2_desc')[2]}</li>
+            <li>{t('p2_desc')[3]}</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("اختر المتقدمة", use_container_width=True, key="btn_p2"):
-        st.success("تم اختيار الباقة المتقدمة بنجاح!")
+    if st.button(t('p2_btn'), use_container_width=True, key="btn_p2"):
+        st.success("تم اختيار الباقة بنجاح!")
 
 with p3:
-    st.markdown("""
+    st.markdown(f"""
     <div class="pricing-card">
-        <h3>🛡️ الباقة السيادية (Enterprise)</h3>
-        <div class="price">مخصص</div>
+        <h3>{t('p3_title')}</h3>
+        <div class="price">{t('p3_price')} <span style="font-size: 0.5em; color: #88AACC;">{t('p3_period')}</span></div>
         <ul>
-            <li>🔒 خوادم محاكاة سيادية ومخصصة</li>
-            <li>🛰️ ربط مباشر مع محطات التحكم الأرضي</li>
-            <li>🤝 دعم فني مخصص على مدار 24/7</li>
-            <li>🛠️ تعديلات برمجية مخصصة للعميل</li>
+            <li>{t('p3_desc')[0]}</li>
+            <li>{t('p3_desc')[1]}</li>
+            <li>{t('p3_desc')[2]}</li>
+            <li>{t('p3_desc')[3]}</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
-    if st.button("تواصل معنا", use_container_width=True, key="btn_p3"):
-        st.success("تم استلام طلب التواصل وسيتم الرد قريباً!")
+    if st.button(t('p3_btn'), use_container_width=True, key="btn_p3"):
+        st.success("تم استلام الطلب بنجاح!")
 
 # ============================================================
 # 📌 حقوق الملكية الفكرية
