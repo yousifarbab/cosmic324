@@ -601,4 +601,4 @@ with st.sidebar:
     st.markdown("---")
     st.header(t("params"))
     
-    mobile_mode = st.checkbox
+    mobile_mode = st.checkbox(t("mobile_mode"), value=False)
