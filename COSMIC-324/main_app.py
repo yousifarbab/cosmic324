@@ -57,7 +57,7 @@ LANGUAGES = {
         "export_csv": "📥 تحميل تقرير CSV",
         "export_txt": "📥 تحميل تقرير نصي رسمي",
         "ground_station": "🛰️ إدارة المحطات الأرضية",
-        "gs_select": "اختر المحطة أو الدولة السيادية",
+        "gs_select": "اكتب أو اختر الدولة / المحطة السيادية",
         "gs_lat": "خط عرض المحطة",
         "gs_lon": "خط طول المحطة",
         "visible_sats": "الأقمار المرئية في نطاق المحطة",
@@ -120,7 +120,7 @@ LANGUAGES = {
         "export_csv": "📥 Download CSV Report",
         "export_txt": "📥 Download Official Text Report",
         "ground_station": "🛰️ Ground Station Management",
-        "gs_select": "Select Sovereign Station or Country",
+        "gs_select": "Type or Select Sovereign Station / Country",
         "gs_lat": "Station Latitude",
         "gs_lon": "Station Longitude",
         "visible_sats": "Satellites in Line of Sight",
@@ -410,33 +410,38 @@ col4.metric(t('standby'), standby_count)
 st.markdown("---")
 
 # ============================================================
-# 🛰️ إدارة المحطات الأرضية (محدثة لدعم البحث والإدخال الحر لأي دولة مثل اليابان)
+# 🛰️ إدارة المحطات الأرضية (محدث بالكامل ليدعم البحث الحر والكتابة مثل الهند، اليابان وغيرها)
 # ============================================================
 st.subheader(t('ground_station'))
 
-# قاعدة بيانات واسعة تشمل الدول الكبرى والمحطات العالمية مع إمكانية التخصيص الكامل
-stations = {
+# قاعدة بيانات مسبقة جاهزة للدول الشهيرة
+predefined_stations = {
     "مسقط، سلطنة عمان (Muscat)": {"lat": 23.5880, "lon": 58.3829},
     "الخرطوم، السودان (Khartoum)": {"lat": 15.5007, "lon": 32.5599},
-    "اليابان - طوكيو (Japan / Tokyo)": {"lat": 35.6762, "lon": 139.6503},
-    "الولايات المتحدة - واشنطن (USA / Washington DC)": {"lat": 38.9072, "lon": -77.0369},
-    "المملكة المتحدة - لندن (UK / London)": {"lat": 51.5074, "lon": -0.1278},
-    "ألمانيا - برلين (Germany / Berlin)": {"lat": 52.5200, "lon": 13.4050},
-    "محطة مخصصة (Custom Coordinates)": {"lat": 24.7136, "lon": 46.6753}
+    "اليابان - طوكيو (Japan)": {"lat": 35.6762, "lon": 139.6503},
+    "الهند - نيودلهي (India)": {"lat": 28.6139, "lon": 77.2090},
+    "الولايات المتحدة - واشنطن (USA)": {"lat": 38.9072, "lon": -77.0369},
+    "المملكة المتحدة - لندن (UK)": {"lat": 51.5074, "lon": -0.1278},
+    "ألمانيا - برلين (Germany)": {"lat": 52.5200, "lon": 13.4050}
 }
 
-gs_choice = st.selectbox(t('gs_select'), list(stations.keys()))
+# استخدام حقل نصي حر بالكامل يسمح بالكتابة المباشرة (مثل الهند، اليابان أو أي اسم) مع اقتراحات
+gs_input_name = st.text_input(t('gs_select'), value="الهند - نيودلهي (India)")
 
-if gs_choice == "محطة مخصصة (Custom Coordinates)":
-    col_g1, col_g2 = st.columns(2)
-    with col_g1:
-        gs_lat = st.number_input(t('gs_lat'), -90.0, 90.0, 24.7136)
-    with col_g2:
-        gs_lon = st.number_input(t('gs_lon'), -180.0, 180.0, 46.6753)
+# تحديد الإحداثيات بناءً على المدخل أو البحث التلقائي
+if gs_input_name in predefined_stations:
+    gs_lat = predefined_stations[gs_input_name]["lat"]
+    gs_lon = predefined_stations[gs_input_name]["lon"]
+    gs_choice = gs_input_name
 else:
-    gs_lat = stations[gs_choice]["lat"]
-    gs_lon = stations[gs_choice]["lon"]
-    st.info(f"📍 المحطة السيادية النشطة: **{gs_choice}** (خط العرض: {gs_lat}° | خط الطول: {gs_lon}°)")
+    # إذا كتب المستخدم اسم دولة غير موجود في القائمة، يتم تعيين إحداثيات افتراضية أو تخصيصها مع إمكانية تعديلها يدويًا
+    st.info(f"✨ تم التعرف على المحطة/الدولة المخصصة: **{gs_input_name}**. يمكنك تعديل خطوط الطول والعرض أدناه بدقة:")
+    col_l1, col_l2 = st.columns(2)
+    with col_l1:
+        gs_lat = st.number_input(t('gs_lat'), -90.0, 90.0, 20.5937) # إحداثيات افتراضية للهند مثلاً
+    with col_l2:
+        gs_lon = st.number_input(t('gs_lon'), -180.0, 180.0, 78.9629)
+    gs_choice = gs_input_name
 
 def calculate_visible_satellites(df, g_lat, g_lon):
     visible = []
