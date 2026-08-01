@@ -602,3 +602,59 @@ with st.sidebar:
     st.header(t("params"))
     
     mobile_mode = st.checkbox(t("mobile_mode"), value=False)
+
+# ============================================================
+# 🖥️ المحتوى الرئيسي للتطبيق
+# ============================================================
+st.markdown(f'<div class="welcome-box"><h2>{t("title")}</h2><p>{t("welcome")}</p></div>', unsafe_allow_html=True)
+
+# إعدادات عامة
+col1, col2 = st.columns(2)
+with col1:
+    num_sats = st.slider(t("sat_count"), min_value=100, max_value=5000, value=500, step=100)
+with col2:
+    group_choice = st.selectbox(t("group"), options=["starlink", "oneweb", "gps", "glo-operational"], index=0)
+
+if st.button(t("update_btn")):
+    st.cache_data.clear()
+    st.success("تم تحديث البيانات بنجاح!")
+
+# توليد البيانات أو جلبها
+orbit_data = generate_orbit_map(num_satellites=num_sats, group=group_choice, use_celestrak=True)
+
+# محاكاة إحصائيات سريعة
+active_count = int(len(orbit_data) * 0.95)
+calib_count = len(orbit_data) - active_count
+
+m1, m2, m3 = st.columns(3)
+m1.metric(t("total"), len(orbit_data))
+m2.metric(t("active"), active_count)
+m3.metric(t("calibration"), calib_count)
+
+# جدول عينة من الأقمار
+st.subheader("📡 حالة الأقمار المدارية الحية")
+df_data = []
+for name, sat in list(orbit_data.items())[:15]:
+    lat = random.uniform(-60, 60)
+    lon = random.uniform(-180, 180)
+    alt = round(getattr(sat, 'altitude', 550), 2)
+    df_data.append({
+        t("satellite"): name,
+        t("status"): t("active"),
+        t("latitude"): round(lat, 2),
+        t("longitude"): round(lon, 2),
+        t("altitude"): alt
+    })
+
+df_satellites = pd.DataFrame(df_data)
+st.dataframe(df_satellites, use_container_width=True)
+
+# رسم بياني لزمن الانتقال
+st.subheader(t("latency_chart"))
+chart_data = pd.DataFrame({
+    t("step"): range(1, 11),
+    t("latency_ms"): [random.randint(12, 25) for _ in range(10)]
+})
+st.line_chart(chart_data, x=t("step"), y=t("latency_ms"), use_container_width=True)
+
+st.markdown(f'<div class="copyright">COSMIC-324 6G Titan X - Sovereign Orbital Simulation Platform © 2026</div>', unsafe_allow_html=True)
