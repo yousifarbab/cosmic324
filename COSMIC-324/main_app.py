@@ -175,6 +175,30 @@ with st.sidebar:
     alert_threshold = st.slider(t("alert_threshold"), 5.0, 50.0, 20.0, 1.0)
     active_threshold = st.slider(t("active_threshold"), 1, 50, 5, 1)
 
+    # ============================================================
+    # 🛰️ إدارة المحطات الأرضية (دول سيادية)
+    # ============================================================
+    st.markdown("---")
+    st.subheader(t('ground_station'))
+
+    predefined_stations = {
+        "الكاميرون (Cameroon)": {"lat": 3.8480, "lon": 11.5021},
+        "السودان (Sudan)": {"lat": 15.5007, "lon": 32.5599},
+        "الدانمارك (Denmark)": {"lat": 55.6761, "lon": 12.5683},
+        "مسقط، سلطنة عمان (Muscat)": {"lat": 23.5880, "lon": 58.3829},
+        "لواندا، أنغولا (Luanda, Angola)": {"lat": -8.8390, "lon": 13.2894},
+        "اليابان - طوكيو (Japan)": {"lat": 35.6762, "lon": 139.6503},
+        "الهند - نيودلهي (India)": {"lat": 28.6139, "lon": 77.2090},
+        "الولايات المتحدة - واشنطن (USA)": {"lat": 38.9072, "lon": -77.0369},
+        "المملكة المتحدة - لندن (UK)": {"lat": 51.5074, "lon": -0.1278},
+        "ألمانيا - برلين (Germany)": {"lat": 52.5200, "lon": 13.4050}
+    }
+
+    gs_input_name = st.selectbox(t('gs_select'), options=list(predefined_stations.keys()))
+    gs_lat = predefined_stations[gs_input_name]["lat"]
+    gs_lon = predefined_stations[gs_input_name]["lon"]
+    gs_choice = gs_input_name
+
 # ============================================================
 # 🎯 المحتوى الرئيسي
 # ============================================================
@@ -371,29 +395,10 @@ if st.session_state.auto_refresh_active:
 st.markdown("---")
 
 # ============================================================
-# 🛰️ إدارة المحطات الأرضية ودعم البحث الحر المباشر
+# 🛰️ عرض المحطة الأرضية والأقمار المرئية
 # ============================================================
 st.subheader(t('ground_station'))
-
-predefined_stations = {
-    "الكاميرون (Cameroon)": {"lat": 3.8480, "lon": 11.5021},
-    "السودان (Sudan)": {"lat": 15.5007, "lon": 32.5599},
-    "الدانمارك (Denmark)": {"lat": 55.6761, "lon": 12.5683},
-    "مسقط، سلطنة عمان (Muscat)": {"lat": 23.5880, "lon": 58.3829},
-    "لواندا، أنغولا (Luanda, Angola)": {"lat": -8.8390, "lon": 13.2894},
-    "اليابان - طوكيو (Japan)": {"lat": 35.6762, "lon": 139.6503},
-    "الهند - نيودلهي (India)": {"lat": 28.6139, "lon": 77.2090},
-    "الولايات المتحدة - واشنطن (USA)": {"lat": 38.9072, "lon": -77.0369},
-    "المملكة المتحدة - لندن (UK)": {"lat": 51.5074, "lon": -0.1278},
-    "ألمانيا - برلين (Germany)": {"lat": 52.5200, "lon": 13.4050}
-}
-
-gs_input_name = st.selectbox(t('gs_select'), options=list(predefined_stations.keys()))
-
-# ربط الإحداثيات تلقائياً ودون أي خطأ بناءً على الاختيار الفعلي
-gs_lat = predefined_stations[gs_input_name]["lat"]
-gs_lon = predefined_stations[gs_input_name]["lon"]
-gs_choice = gs_input_name
+st.metric(f"📍 {gs_choice}", f"Lat: {gs_lat}, Lon: {gs_lon}")
 
 def calculate_visible_satellites(df, g_lat, g_lon):
     visible = []
@@ -411,7 +416,7 @@ st.metric(t('visible_sats'), len(df_visible))
 if not df_visible.empty:
     st.dataframe(df_visible, use_container_width=True, height=200)
 else:
-    st.warning("لا توجد أقمار صناعية حالياً ضمن نطاق الرؤية المباشرة لهذه المحطة.")
+    st.warning("⚠️ لا توجد أقمار صناعية حالياً ضمن نطاق الرؤية المباشرة لهذه المحطة.")
 
 # ============================================================
 # 📈 الرسم البياني الزمني (Latency Chart)
@@ -444,12 +449,12 @@ fig_lat.update_layout(
 st.plotly_chart(fig_lat, use_container_width=True)
 
 # ============================================================
-# 🌍 الخريطة 3D (مصححة جذرياً لتدوير الكاميرا وإسقاط النجمة معاً)
+# 🌍 الخريطة 3D (تم تصحيحها لتعكس الدولة المختارة)
 # ============================================================
 def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constellation Globe"):
     fig = go.Figure()
     
-    # تصحيح تدوير الخريطة وإجبار الكاميرا والمنظور على التمركز فوراً فوق إحداثيات الدولة المختارة
+    # تصحيح تدوير الخريطة وإجبار الكاميرا على التمركز فوق إحداثيات الدولة المختارة
     fig.update_layout(
         geo=dict(
             projection_type='orthographic',
@@ -469,7 +474,7 @@ def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constel
         title=dict(text=title, font=dict(size=18, color='#00CCFF'), x=0.5)
     )
     
-    # رسومات الأقمار الصناعية
+    # الأقمار
     if not df.empty:
         fig.add_trace(go.Scattergeo(
             lon=df[t('longitude')].tolist(),
@@ -489,7 +494,7 @@ def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constel
             hoverinfo='text'
         ))
     
-    # النجمة الحمراء للمحطة الأرضية مرتبطة تماماً بإحداثيات الدولة المختارة (`gs_lon` و `gs_lat`)
+    # ✅ النجمة الحمراء تنتقل الآن إلى إحداثيات الدولة المختارة
     short_station_label = f"🛰️ {station_name.split('(')[0].strip()}"
     fig.add_trace(go.Scattergeo(
         lon=[gs_lon], 
