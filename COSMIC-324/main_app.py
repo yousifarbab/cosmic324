@@ -9,6 +9,7 @@ import numpy as np
 from datetime import datetime
 from typing import Dict, List
 from types import SimpleNamespace
+import io
 
 # ============================================================
 # 🌍 نظام الترجمة واتجاه الصفحة (RTL/LTR)
@@ -53,6 +54,9 @@ LANGUAGES = {
         "full_resolution": "دقة كاملة (5000)",
         "high_speed": "سرعة عالية (100)",
         "mobile_mode": "📱 وضع الجوال",
+        "export_section": "📊 تصدير التقارير الرسمية",
+        "export_csv": "📥 تحميل تقرير CSV",
+        "export_txt": "📥 تحميل تقرير نصي رسمي",
         "p1_title": "🚀 الباقة الأساسية",
         "p1_price": "$499",
         "p1_period": "/ شهرياً",
@@ -108,6 +112,9 @@ LANGUAGES = {
         "full_resolution": "Full Resolution (5000)",
         "high_speed": "High Speed (100)",
         "mobile_mode": "📱 Mobile Mode",
+        "export_section": "📊 Official Report Export",
+        "export_csv": "📥 Download CSV Report",
+        "export_txt": "📥 Download Official Text Report",
         "p1_title": "🚀 Basic Tier",
         "p1_price": "$499",
         "p1_period": "/ month",
@@ -427,6 +434,49 @@ st.dataframe(
 )
 
 # ============================================================
+# 📊 تصدير التقارير الرسمية (New Feature)
+# ============================================================
+st.markdown("---")
+st.subheader(t('export_section'))
+
+col_exp1, col_exp2 = st.columns(2)
+
+with col_exp1:
+    csv_data = df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label=t('export_csv'),
+        data=csv_data,
+        file_name=f"cosmic_324_telemetry_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
+
+with col_exp2:
+    report_content = f"""==================================================
+COSMIC-324: 6G Titan X - OFFICIAL TELEMETRY REPORT
+==================================================
+Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Total Satellites Simulated: {len(df)}
+Active Satellites: {active_count}
+Calibration Satellites: {calibration_count}
+Standby Satellites: {standby_count}
+Average Altitude: {df[t('altitude')].mean():.2f} km
+--------------------------------------------------
+DATA SAMPLE (First 20 Satellites):
+--------------------------------------------------
+{df.head(20).to_string(index=False)}
+==================================================
+© 2026 Yousif Zakaria Eissa Arbarb. All Rights Reserved.
+"""
+    st.download_button(
+        label=t('export_txt'),
+        data=report_content,
+        file_name=f"cosmic_324_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+        mime="text/plain",
+        use_container_width=True
+    )
+
+# ============================================================
 # 📈 منحنى Latency
 # ============================================================
 st.markdown("---")
@@ -568,7 +618,7 @@ with p3:
 st.markdown("---")
 st.markdown(f"""
 <div class='copyright'>
-    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.3</p>
+    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.4</p>
     <p>© 2026 Yousif Zakaria Eissa Arbarb. جميع الحقوق محفوظة.</p>
     <p style='font-size: 0.8em; color: #334455;'>Licensed under AGPL-3.0 & Apache 2.0</p>
 </div>
