@@ -578,4 +578,7 @@ st.markdown("""
         background: linear-gradient(135deg, #1a1a2e, #0d0d1a);
         border-radius: 12px;
         padding: 20px 25px;
-        border:
+        border: 1px solid rgba(0, 204, 255, 0.2);
+    }
+</style>
+""", unsafe_allow_html=True)
