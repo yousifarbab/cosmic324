@@ -393,7 +393,6 @@ try:
     import pycountry
     countries = sorted([country.name for country in pycountry.countries])
 except:
-    # إذا لم يتم تثبيت pycountry، استخدم قائمة افتراضية واسعة
     countries = [
         "السودان", "الكاميرون", "مصر", "السعودية", "الإمارات", "اليمن", "سوريا",
         "العراق", "الأردن", "لبنان", "فلسطين", "الكويت", "البحرين", "قطر",
@@ -576,4 +575,7 @@ st.markdown("""
     .pricing-card .price-highlight { color: #00CCFF; font-size: 1.5em; font-weight: bold; }
     .stProgress > div { background-color: #00CCFF !important; }
     .welcome-box {
-        background: linear-gradient(135deg, #1a1a2e, #
+        background: linear-gradient(135deg, #1a1a2e, #0d0d1a);
+        border-radius: 12px;
+        padding: 20px 25px;
+        border:
