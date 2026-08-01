@@ -371,14 +371,16 @@ if st.session_state.auto_refresh_active:
 st.markdown("---")
 
 # ============================================================
-# 🛰️ إدارة المحطات الأرضية بدقة جغرافية
+# 🛰️ إدارة المحطات الأرضية ودعم البحث الحر المباشر
 # ============================================================
 st.subheader(t('ground_station'))
 
 predefined_stations = {
+    "الكاميرون (Cameroon)": {"lat": 3.8480, "lon": 11.5021},
+    "السودان (Sudan)": {"lat": 15.5007, "lon": 32.5599},
+    "الدانمارك (Denmark)": {"lat": 55.6761, "lon": 12.5683},
     "مسقط، سلطنة عمان (Muscat)": {"lat": 23.5880, "lon": 58.3829},
     "لواندا، أنغولا (Luanda, Angola)": {"lat": -8.8390, "lon": 13.2894},
-    "الخرطوم، السودان (Khartoum)": {"lat": 15.5007, "lon": 32.5599},
     "اليابان - طوكيو (Japan)": {"lat": 35.6762, "lon": 139.6503},
     "الهند - نيودلهي (India)": {"lat": 28.6139, "lon": 77.2090},
     "الولايات المتحدة - واشنطن (USA)": {"lat": 38.9072, "lon": -77.0369},
@@ -386,20 +388,12 @@ predefined_stations = {
     "ألمانيا - برلين (Germany)": {"lat": 52.5200, "lon": 13.4050}
 }
 
-gs_input_name = st.text_input(t('gs_select'), value="مسقط، سلطنة عمان (Muscat)")
+gs_input_name = st.selectbox(t('gs_select'), options=list(predefined_stations.keys()))
 
-if gs_input_name in predefined_stations:
-    gs_lat = predefined_stations[gs_input_name]["lat"]
-    gs_lon = predefined_stations[gs_input_name]["lon"]
-    gs_choice = gs_input_name
-else:
-    st.info(f"✨ المحطة المخصصة: **{gs_input_name}**. يرجى ضبط الإحداثيات المطابقة بدقة:")
-    col_l1, col_l2 = st.columns(2)
-    with col_l1:
-        gs_lat = st.number_input(t('gs_lat'), -90.0, 90.0, 23.5880)
-    with col_l2:
-        gs_lon = st.number_input(t('gs_lon'), -180.0, 180.0, 58.3829)
-    gs_choice = gs_input_name
+# ربط الإحداثيات تلقائياً ودون أي خطأ بناءً على الاختيار الفعلي
+gs_lat = predefined_stations[gs_input_name]["lat"]
+gs_lon = predefined_stations[gs_input_name]["lon"]
+gs_choice = gs_input_name
 
 def calculate_visible_satellites(df, g_lat, g_lon):
     visible = []
@@ -450,14 +444,18 @@ fig_lat.update_layout(
 st.plotly_chart(fig_lat, use_container_width=True)
 
 # ============================================================
-# 🌍 الخريطة 3D (مصححة لترتبط إحداثيات النجمة بدقة مع المحطة المختارة)
+# 🌍 الخريطة 3D (مصححة جذرياً لتدوير الكاميرا وإسقاط النجمة معاً)
 # ============================================================
 def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constellation Globe"):
     fig = go.Figure()
+    
+    # تصحيح تدوير الخريطة وإجبار الكاميرا والمنظور على التمركز فوراً فوق إحداثيات الدولة المختارة
     fig.update_layout(
         geo=dict(
             projection_type='orthographic',
-            projection=dict(rotation=dict(lat=gs_lat, lon=gs_lon)),
+            projection=dict(
+                rotation=dict(lat=gs_lat, lon=gs_lon)
+            ),
             showland=True, landcolor='rgb(10,10,20)',
             coastlinecolor='rgb(60,60,80)',
             showocean=True, oceancolor='rgb(5,5,15)',
@@ -471,6 +469,7 @@ def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constel
         title=dict(text=title, font=dict(size=18, color='#00CCFF'), x=0.5)
     )
     
+    # رسومات الأقمار الصناعية
     if not df.empty:
         fig.add_trace(go.Scattergeo(
             lon=df[t('longitude')].tolist(),
@@ -490,6 +489,7 @@ def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constel
             hoverinfo='text'
         ))
     
+    # النجمة الحمراء للمحطة الأرضية مرتبطة تماماً بإحداثيات الدولة المختارة (`gs_lon` و `gs_lat`)
     short_station_label = f"🛰️ {station_name.split('(')[0].strip()}"
     fig.add_trace(go.Scattergeo(
         lon=[gs_lon], 
@@ -590,7 +590,7 @@ Authorized by: Yousif Zakaria Eissa Arbarb © 2026
 st.markdown("---")
 st.markdown("""
 <div class='copyright'>
-    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.8</p>
+    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v6.9</p>
     <p>© 2026 Yousif Zakaria Eissa Arbarb. جميع الحقوق محفوظة.</p>
 </div>
 """, unsafe_allow_html=True)
