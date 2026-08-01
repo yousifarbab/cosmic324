@@ -608,7 +608,6 @@ with st.sidebar:
 # ============================================================
 st.markdown(f'<div class="welcome-box"><h2>{t("title")}</h2><p>{t("welcome")}</p></div>', unsafe_allow_html=True)
 
-# إعدادات عامة
 col1, col2 = st.columns(2)
 with col1:
     num_sats = st.slider(t("sat_count"), min_value=100, max_value=5000, value=500, step=100)
@@ -619,10 +618,8 @@ if st.button(t("update_btn")):
     st.cache_data.clear()
     st.success("تم تحديث البيانات بنجاح!")
 
-# توليد البيانات أو جلبها
 orbit_data = generate_orbit_map(num_satellites=num_sats, group=group_choice, use_celestrak=True)
 
-# محاكاة إحصائيات سريعة
 active_count = int(len(orbit_data) * 0.95)
 calib_count = len(orbit_data) - active_count
 
@@ -631,7 +628,6 @@ m1.metric(t("total"), len(orbit_data))
 m2.metric(t("active"), active_count)
 m3.metric(t("calibration"), calib_count)
 
-# جدول عينة من الأقمار
 st.subheader("📡 حالة الأقمار المدارية الحية")
 df_data = []
 for name, sat in list(orbit_data.items())[:15]:
@@ -649,7 +645,6 @@ for name, sat in list(orbit_data.items())[:15]:
 df_satellites = pd.DataFrame(df_data)
 st.dataframe(df_satellites, use_container_width=True)
 
-# رسم بياني لزمن الانتقال
 st.subheader(t("latency_chart"))
 chart_data = pd.DataFrame({
     t("step"): range(1, 11),
