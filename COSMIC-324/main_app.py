@@ -386,7 +386,7 @@ col4.metric(t('standby'), standby_count)
 st.markdown("---")
 
 # ============================================================
-# 🎨 جدول البيانات (مرتب ومنظم)
+# 🎨 جدول البيانات
 # ============================================================
 def highlight_status(row):
     if row[t('status')] == t('active'):
@@ -425,11 +425,10 @@ fig_latency.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,
 st.plotly_chart(fig_latency, use_container_width=True)
 
 # ============================================================
-# 🌍 الخريطة 3D (مع مسارات المدارات)
+# 🌍 الخريطة 3D
 # ============================================================
-def render_cosmic_globe(orbit_map, df, title="🌍 3D Constellation Globe", mobile_mode=False):
+def render_cosmic_globe(df, title="🌍 3D Constellation Globe"):
     fig = go.Figure()
-    
     fig.update_layout(
         geo=dict(
             projection_type='orthographic',
@@ -445,41 +444,6 @@ def render_cosmic_globe(orbit_map, df, title="🌍 3D Constellation Globe", mobi
         title=dict(text=title, font=dict(size=22, color='#00CCFF'), x=0.5)
     )
     
-    # رسم مسارات المدارات
-    if orbit_map:
-        count = 0
-        for name, orbit in list(orbit_map.items()):
-            if count >= 15:
-                break
-            if not hasattr(orbit, 'position_at_time'):
-                continue
-            orbit_points = []
-            try:
-                for t in np.linspace(0, orbit.period, 30):
-                    pos = orbit.position_at_time(t, apply_j2=True)
-                    if pos and len(pos) >= 3:
-                        x, y, z = pos
-                        r = math.sqrt(x**2 + y**2 + z**2)
-                        if r == 0:
-                            continue
-                        lat = math.degrees(math.asin(z / r))
-                        lon = math.degrees(math.atan2(y, x))
-                        orbit_points.append((lon, lat))
-                if len(orbit_points) > 1:
-                    lons, lats = zip(*orbit_points)
-                    fig.add_trace(go.Scattergeo(
-                        lon=lons,
-                        lat=lats,
-                        mode='lines',
-                        line=dict(width=1, color='rgba(0, 204, 255, 0.2)'),
-                        showlegend=False,
-                        hoverinfo='skip'
-                    ))
-                count += 1
-            except:
-                continue
-    
-    # رسم الأقمار
     if not df.empty:
         fig.add_trace(go.Scattergeo(
             lon=df[t('longitude')].tolist(),
@@ -500,7 +464,6 @@ def render_cosmic_globe(orbit_map, df, title="🌍 3D Constellation Globe", mobi
             hoverinfo='text'
         ))
     
-    # المحطة الأرضية
     fig.add_trace(go.Scattergeo(
         lon=[0], lat=[0],
         mode='markers+text',
@@ -514,7 +477,7 @@ def render_cosmic_globe(orbit_map, df, title="🌍 3D Constellation Globe", mobi
 
 st.markdown("---")
 st.subheader(t('3d_globe'))
-st.plotly_chart(render_cosmic_globe(orbit_map, df, t('3d_globe'), mobile_mode), use_container_width=True)
+st.plotly_chart(render_cosmic_globe(df, t('3d_globe')), use_container_width=True)
 
 # ============================================================
 # 📊 تحليلات متقدمة
