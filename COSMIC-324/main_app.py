@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import random
 import requests
 import math
 import numpy as np
@@ -10,6 +9,16 @@ from datetime import datetime
 from typing import Dict, List
 from types import SimpleNamespace
 import time
+import json
+from pathlib import Path
+
+DATA_CONTRACT_PATH = Path(__file__).with_name("cosmic324_data.json")
+with DATA_CONTRACT_PATH.open("r", encoding="utf-8") as contract_file:
+    DATA_CONTRACT = json.load(contract_file)
+
+CELESTRAK_CONFIG = DATA_CONTRACT["celestrak"]
+MODEL_CONFIG = DATA_CONTRACT["model"]
+SOURCE_CONFIG = DATA_CONTRACT["source"]
 
 # ============================================================
 # 🌍 نظام الترجمة واتجاه الصفحة (RTL/LTR)
@@ -55,7 +64,13 @@ LANGUAGES = {
         "export_txt": "📥 تحميل التقرير الفني الرسمي (TXT)",
         "ground_station": "🛰️ إدارة المحطات الأرضية العالمية",
         "gs_select": "اكتب اسم أي دولة أو محطة سيادية بحرية:",
-        "visible_sats": "الأقمار المرئية في نطاق المحطة"
+        "visible_sats": "الأقمار المرئية في نطاق المحطة",
+        "cataloged": "مفهرس",
+        "catalog_source": "مصدر الفهرس",
+        "configured_stations": "المحطات المعرفة",
+        "propagation_chart": "تقدير الحد الأدنى لزمن الانتشار",
+        "sample": "العينة",
+        "propagation_ms": "زمن الانتشار التقديري أحادي الاتجاه (م.ث)"
     },
     "en": {
         "name": "English",
@@ -97,7 +112,13 @@ LANGUAGES = {
         "export_txt": "📥 Download Official Technical Report (TXT)",
         "ground_station": "🛰️ Global Ground Station Management",
         "gs_select": "Type any country or sovereign station name:",
-        "visible_sats": "Satellites in Line of Sight"
+        "visible_sats": "Satellites in Line of Sight",
+        "cataloged": "Cataloged",
+        "catalog_source": "Catalog Source",
+        "configured_stations": "Configured Stations",
+        "propagation_chart": "Estimated Minimum Propagation Delay",
+        "sample": "Sample",
+        "propagation_ms": "Estimated One-Way Propagation (ms)"
     }
 }
 
@@ -161,7 +182,11 @@ with st.sidebar:
     
     st.markdown("---")
     st.subheader(t("celestrak"))
-    group = st.selectbox(t("group"), ["starlink", "gps", "active", "oneweb", "iridium"])
+    group = st.selectbox(
+        t("group"),
+        CELESTRAK_CONFIG["groups"],
+        index=CELESTRAK_CONFIG["groups"].index(CELESTRAK_CONFIG["defaultGroup"]),
+    )
     use_celestrak = st.checkbox("استخدام بيانات حقيقية", value=True)
     
     st.markdown("---")
@@ -185,9 +210,9 @@ st.markdown(f"""
 # ============================================================
 # 📡 جلب البيانات وتسريع الحسابات
 # ============================================================
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=CELESTRAK_CONFIG["cacheTtlSeconds"])
 def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> List[Dict]:
-    url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=json"
+    url = f"{SOURCE_CONFIG['baseUrl']}?GROUP={group}&FORMAT=json"
     try:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
@@ -212,7 +237,7 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
                     arg_perigee = math.radians(float(entry.get('ARG_OF_PERICENTER', 0)))
                     mean_anomaly = math.radians(float(entry.get('MEAN_ANOMALY', 0)))
                     if mean_motion <= 0: continue
-                    GM = 398600.4418
+                    GM = MODEL_CONFIG["earthMuKm3S2"]
                     n = mean_motion * 2 * math.pi / 86400.0
                     a = (GM / (n ** 2)) ** (1.0/3.0)
                     period = 86400.0 / mean_motion
@@ -226,12 +251,12 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
                         y_orbit = a * np.sqrt(1 - e**2) * np.sin(E)
                         z_orbit = 0.0
                         if apply_j2:
-                            J2 = 1.08262668e-3
+                            J2 = MODEL_CONFIG["j2"]
                             p = a * (1 - e**2)
                             n_rad = 2 * math.pi / period
-                            raan_dot = -1.5 * J2 * (6378.137 / p) ** 2 * n_rad * np.cos(incl)
+                            raan_dot = -1.5 * J2 * (MODEL_CONFIG["earthRadiusKm"] / p) ** 2 * n_rad * np.cos(incl)
                             current_raan = Omega + raan_dot * t
-                            current_omega = omega + (-1.5 * J2 * (6378.137 / p) ** 2 * n_rad * np.cos(incl)) * t
+                            current_omega = omega + (-1.5 * J2 * (MODEL_CONFIG["earthRadiusKm"] / p) ** 2 * n_rad * np.cos(incl)) * t
                         else:
                             current_raan = Omega
                             current_omega = omega
@@ -248,57 +273,14 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
                     orbit = SimpleNamespace()
                     orbit.position_at_time = position_at_time
                     orbit.name = entry.get('OBJECT_NAME', 'SAT')
-                    orbit.altitude = a - 6371
+                    orbit.altitude = a - MODEL_CONFIG["earthRadiusKm"]
                     orbit_map[orbit.name] = orbit
                 except:
                     continue
             if orbit_map:
                 return orbit_map
 
-    count = min(num_satellites, 5000)
-    a_arr = 7000 + np.random.uniform(-500, 500, count)
-    e_arr = np.random.uniform(0.01, 0.08, count)
-    incl_arr = np.radians(np.random.uniform(30, 70, count))
-    omega_arr = np.random.uniform(0, 2*math.pi, count)
-    Omega_arr = np.random.uniform(0, 2*math.pi, count)
-    M0_arr = np.random.uniform(0, 2*math.pi, count)
-    periods = 2 * math.pi * np.sqrt((a_arr ** 3) / 398600.4418)
-
-    for i in range(count):
-        a, e, incl, Omega, omega, M0, period = a_arr[i], e_arr[i], incl_arr[i], Omega_arr[i], omega_arr[i], M0_arr[i], periods[i]
-        def position_at_time(t: float, a=a, e=e, incl=incl, omega=omega, Omega=Omega, M0=M0, period=period, apply_j2=True):
-            if apply_j2:
-                J2 = 1.08262668e-3
-                p = a * (1 - e**2)
-                n_rad = 2 * math.pi / period
-                dot = -1.5 * J2 * (6378.137 / p) ** 2 * n_rad * np.cos(incl)
-                current_raan = Omega + dot * t
-                current_omega = omega + dot * t
-            else:
-                current_raan = Omega
-                current_omega = omega
-            M = M0 + 2 * math.pi * t / period
-            E = M
-            for _ in range(4):
-                E = E - (E - e * np.sin(E) - M) / (1 - e * np.cos(E))
-            x_orbit = a * (np.cos(E) - e)
-            y_orbit = a * np.sqrt(1 - e**2) * np.sin(E)
-            x1 = x_orbit * np.cos(current_omega) - y_orbit * np.sin(current_omega)
-            y1 = x_orbit * np.sin(current_omega) + y_orbit * np.cos(current_omega)
-            y2 = y1 * np.cos(incl)
-            z2 = y1 * np.sin(incl)
-            x_final = x1 * np.cos(current_raan) - y2 * np.sin(current_raan)
-            y_final = x1 * np.sin(current_raan) + y2 * np.cos(current_raan)
-            z_final = z2
-            return (float(x_final), float(y_final), float(z_final))
-        
-        orbit = SimpleNamespace()
-        orbit.position_at_time = position_at_time
-        orbit.name = f"SAT-{i+1}"
-        orbit.altitude = float(a - 6371)
-        orbit_map[orbit.name] = orbit
-        
-    return orbit_map
+    return {}
 
 def get_telemetry_data(orbit_map, num_satellites, t_func):
     data = []
@@ -313,7 +295,7 @@ def get_telemetry_data(orbit_map, num_satellites, t_func):
             lat = math.degrees(math.asin(z / r)) if r > 0 else 0
             lon = math.degrees(math.atan2(y, x))
             alt = orbit.altitude if hasattr(orbit, 'altitude') else 550
-            status = random.choice([t_func('active'), t_func('calibration'), t_func('standby')])
+            status = t_func('cataloged')
             data.append({
                 t_func('satellite'): name[:15],
                 t_func('status'): status,
@@ -330,15 +312,11 @@ with st.spinner('🔄 جاري تحميل المنصة والحساب المسا
 # ============================================================
 # 📈 الإحصائيات
 # ============================================================
-active_count = df[df[t('status')] == t('active')].shape[0]
-calibration_count = df[df[t('status')] == t('calibration')].shape[0]
-standby_count = df[df[t('status')] == t('standby')].shape[0]
-
 col1, col2, col3, col4 = st.columns(4)
 col1.metric(t('total'), len(df))
-col2.metric(t('active'), active_count)
-col3.metric(t('calibration'), calibration_count)
-col4.metric(t('standby'), standby_count)
+col2.metric(t('catalog_source'), SOURCE_CONFIG['provider'])
+col3.metric(t('configured_stations'), len(DATA_CONTRACT['groundStations']))
+col4.metric(t('group'), group.upper())
 st.markdown("---")
 
 # ============================================================
@@ -369,25 +347,16 @@ st.markdown("---")
 # ============================================================
 st.subheader(t('ground_station'))
 
+station_language = st.session_state.get('language', 'ar')
 global_stations = {
-    "الكاميرون (Cameroon)": {"lat": 3.8480, "lon": 11.5021},
-    "البرازيل (Brazil)": {"lat": -14.2350, "lon": -51.9253},
-    "السودان (Sudan)": {"lat": 15.5007, "lon": 32.5599},
-    "سلطنة عمان - مسقط (Oman)": {"lat": 23.5880, "lon": 58.3829},
-    "الدانمارك (Denmark)": {"lat": 55.6761, "lon": 12.5683},
-    "أنغولا - لواندا (Angola)": {"lat": -8.8390, "lon": 13.2894},
-    "اليابان - طوكيو (Japan)": {"lat": 35.6762, "lon": 139.6503},
-    "الهند - نيودلهي (India)": {"lat": 28.6139, "lon": 77.2090},
-    "الولايات المتحدة - واشنطن (USA)": {"lat": 38.9072, "lon": -77.0369},
-    "المملكة المتحدة - لندن (UK)": {"lat": 51.5074, "lon": -0.1278},
-    "ألمانيا - برلين (Germany)": {"lat": 52.5200, "lon": 13.4050},
-    "فرنسا - باريس (France)": {"lat": 48.8566, "lon": 2.3522},
-    "مصر - القاهرة (Egypt)": {"lat": 30.0444, "lon": 31.2357},
-    "الإمارات - أبوظبي (UAE)": {"lat": 24.4539, "lon": 54.3773},
-    "السعودية - الرياض (Saudi Arabia)": {"lat": 24.7136, "lon": 46.6753}
+    station["name"][station_language]: {
+        "lat": station["latitudeDeg"],
+        "lon": station["longitudeDeg"],
+    }
+    for station in DATA_CONTRACT["groundStations"]
 }
 
-user_station_query = st.text_input(t('gs_select'), value="الكاميرون (Cameroon)")
+user_station_query = st.text_input(t('gs_select'), value=next(iter(global_stations)))
 
 matched_lat, matched_lon = 3.8480, 11.5021 
 found_key = user_station_query
@@ -416,7 +385,7 @@ def calculate_visible_satellites(df, g_lat, g_lon):
         s_lat = row[t('latitude')]
         s_lon = row[t('longitude')]
         dist = math.sqrt((s_lat - g_lat)**2 + (s_lon - g_lon)**2)
-        if dist <= 45.0:
+        if dist <= MODEL_CONFIG["lineOfSightAngularRadiusDeg"]:
             visible.append(row)
     return pd.DataFrame(visible)
 
@@ -432,17 +401,21 @@ else:
 # 📈 الرسم البياني الزمني (Latency Chart)
 # ============================================================
 st.markdown("---")
-st.subheader(t('latency_chart'))
+st.subheader(t('propagation_chart'))
 
-chart_steps = list(range(1, 21))
-simulated_latency = [round(random.uniform(8.5, 35.2), 2) for _ in chart_steps]
+sample_altitudes = df[t('altitude')].head(20).tolist() if not df.empty else []
+chart_steps = list(range(1, len(sample_altitudes) + 1))
+estimated_propagation = [
+    round((float(altitude_km) / MODEL_CONFIG["speedOfLightKmPerSecond"]) * 1000, 4)
+    for altitude_km in sample_altitudes
+]
 df_latency = pd.DataFrame({
-    t('step'): chart_steps,
-    t('latency_ms'): simulated_latency
+    t('sample'): chart_steps,
+    t('propagation_ms'): estimated_propagation
 })
 
 fig_lat = px.line(
-    df_latency, x=t('step'), y=t('latency_ms'),
+    df_latency, x=t('sample'), y=t('propagation_ms'),
     markers=True,
     line_shape='spline',
     color_discrete_sequence=['#00CCFF']
@@ -491,9 +464,7 @@ def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constel
             marker=dict(
                 size=8,
                 color=df[t('status')].map({
-                    t('active'): '#00FF00',
-                    t('calibration'): '#FFAA00',
-                    t('standby'): '#FF5555'
+                    t('cataloged'): '#00CCFF'
                 }).tolist()
             ),
             text=df[t('satellite')].tolist(),
@@ -579,9 +550,9 @@ COSMIC-324: 6G Titan X - OFFICIAL SOVEREIGN REPORT
 ==================================================
 Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
 Total Satellites Monitored: {len(df)}
-Active Satellites: {active_count}
-Calibration Satellites: {calibration_count}
-Standby Satellites: {standby_count}
+Catalog Source: {SOURCE_CONFIG['provider']} / {SOURCE_CONFIG['dataset']}
+CelesTrak Group: {group}
+Configured Ground Stations: {len(DATA_CONTRACT['groundStations'])}
 Selected Ground Station: {gs_choice} (Lat: {gs_lat}, Lon: {gs_lon})
 Visible Satellites Count: {len(df_visible)}
 --------------------------------------------------
