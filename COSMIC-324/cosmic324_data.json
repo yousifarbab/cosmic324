@@ -8,7 +8,7 @@
   "celestrak": {
     "defaultGroup": "starlink",
     "groups": ["starlink", "gps", "active", "oneweb", "iridium"],
-    "cacheTtlSeconds": 600,
+    "cacheTtlSeconds": 7200,
     "maxObjects": 5000
   },
   "model": {
