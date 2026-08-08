@@ -130,16 +130,16 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌐 الشريط الجانبي
+# 🌐 الشريط الجانبي (تم تصحيح استدعاء الصورة هنا)
 # ============================================================
 with st.sidebar:
-    st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324", use_column_width=True)
+    st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324", use_container_width=True)
     st.markdown("---")
     
     lang_options = {"ar": "العربية", "en": "English"}
     current_lang = st.session_state.get('language', 'ar')
     selected_lang = st.selectbox("🌐 Language", options=list(lang_options.keys()), format_func=lambda x: lang_options[x],
-                               index=list(lang_options.keys()).index(current_lang))
+                                index=list(lang_options.keys()).index(current_lang))
     if selected_lang != current_lang:
         st.session_state.language = selected_lang
         st.rerun()
@@ -365,11 +365,10 @@ if st.session_state.auto_refresh_active:
 st.markdown("---")
 
 # ============================================================
-# 🛰️ نظام البحث الحر المباشر للمحطات الأرضية والدول (يدعم أي اسم بحرية تامة)
+# 🛰️ نظام البحث الحر المباشر للمحطات الأرضية والدول
 # ============================================================
 st.subheader(t('ground_station'))
 
-# موسوعة جغرافية عالمية موسعة تدعم البحث التلقائي
 global_stations = {
     "الكاميرون (Cameroon)": {"lat": 3.8480, "lon": 11.5021},
     "البرازيل (Brazil)": {"lat": -14.2350, "lon": -51.9253},
@@ -388,11 +387,9 @@ global_stations = {
     "السعودية - الرياض (Saudi Arabia)": {"lat": 24.7136, "lon": 46.6753}
 }
 
-# استخدام حقل نصي حر مع اقتراحات لضمان عدم حدوث خطأ مطلقاً مهما كتب المستخدم
 user_station_query = st.text_input(t('gs_select'), value="الكاميرون (Cameroon)")
 
-# خوارزمية مطابقة ذكية لاستخراج الإحداثيات بناءً على النص المدخل أو القريب منه
-matched_lat, matched_lon = 3.8480, 11.5021 # افتراضي آمن
+matched_lat, matched_lon = 3.8480, 11.5021 
 found_key = user_station_query
 
 for name, coords in global_stations.items():
@@ -402,11 +399,10 @@ for name, coords in global_stations.items():
         found_key = name
         break
 else:
-    # إذا كانت دولة مخصصة تماماً غير موجودة في القائمة، يتم توليد إحداثيات تعتمد على هاش النص بانتظام لتجنب الأعطال
     import hashlib
     h = int(hashlib.md5(user_station_query.encode('utf-8')).hexdigest(), 16)
-    matched_lat = float((h % 160) - 80) # بين -80 و 80
-    matched_lon = float(((h // 160) % 360) - 180) # بين -180 و 180
+    matched_lat = float((h % 160) - 80)
+    matched_lon = float(((h // 160) % 360) - 180)
 
 gs_lat = matched_lat
 gs_lon = matched_lon
@@ -463,7 +459,7 @@ fig_lat.update_layout(
 st.plotly_chart(fig_lat, use_container_width=True)
 
 # ============================================================
-# 🌍 الخريطة 3D (مصححة جذرياً لتدوير الكاميرا وإسقاط النجمة معاً)
+# 🌍 الخريطة 3D
 # ============================================================
 def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constellation Globe"):
     fig = go.Figure()
