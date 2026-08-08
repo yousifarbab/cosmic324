@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "provider": "CelesTrak",
+    "dataset": "GP OMM JSON",
+    "baseUrl": "https://celestrak.org/NORAD/elements/gp.php"
+  },
+  "celestrak": {
+    "defaultGroup": "starlink",
+    "groups": ["starlink", "gps", "active", "oneweb", "iridium"],
+    "cacheTtlSeconds": 600,
+    "maxObjects": 5000
+  },
+  "model": {
+    "earthRadiusKm": 6378.137,
+    "earthMuKm3S2": 398600.4418,
+    "j2": 0.00108262668,
+    "speedOfLightKmPerSecond": 299792.458,
+    "lineOfSightAngularRadiusDeg": 45
+  },
+  "dataQuality": {
+    "operationalStatus": "unavailable",
+    "networkLatency": "unavailable",
+    "orbitalPosition": "model-derived",
+    "propagationDelay": "model-derived-minimum"
+  },
+  "groundStations": [
+    {"id":"cameroon-yaounde","name":{"ar":"الكاميرون - ياوندي","en":"Cameroon — Yaounde"},"countryCode":"CM","latitudeDeg":3.848,"longitudeDeg":11.5021},
+    {"id":"brazil-centroid","name":{"ar":"البرازيل","en":"Brazil"},"countryCode":"BR","latitudeDeg":-14.235,"longitudeDeg":-51.9253},
+    {"id":"sudan-khartoum","name":{"ar":"السودان - الخرطوم","en":"Sudan — Khartoum"},"countryCode":"SD","latitudeDeg":15.5007,"longitudeDeg":32.5599},
+    {"id":"oman-muscat","name":{"ar":"سلطنة عمان - مسقط","en":"Oman — Muscat"},"countryCode":"OM","latitudeDeg":23.588,"longitudeDeg":58.3829},
+    {"id":"denmark-copenhagen","name":{"ar":"الدانمارك - كوبنهاغن","en":"Denmark — Copenhagen"},"countryCode":"DK","latitudeDeg":55.6761,"longitudeDeg":12.5683},
+    {"id":"angola-luanda","name":{"ar":"أنغولا - لواندا","en":"Angola — Luanda"},"countryCode":"AO","latitudeDeg":-8.839,"longitudeDeg":13.2894},
+    {"id":"japan-tokyo","name":{"ar":"اليابان - طوكيو","en":"Japan — Tokyo"},"countryCode":"JP","latitudeDeg":35.6762,"longitudeDeg":139.6503},
+    {"id":"india-new-delhi","name":{"ar":"الهند - نيودلهي","en":"India — New Delhi"},"countryCode":"IN","latitudeDeg":28.6139,"longitudeDeg":77.209},
+    {"id":"usa-washington-dc","name":{"ar":"الولايات المتحدة - واشنطن","en":"United States — Washington, DC"},"countryCode":"US","latitudeDeg":38.9072,"longitudeDeg":-77.0369},
+    {"id":"uk-london","name":{"ar":"المملكة المتحدة - لندن","en":"United Kingdom — London"},"countryCode":"GB","latitudeDeg":51.5074,"longitudeDeg":-0.1278},
+    {"id":"germany-berlin","name":{"ar":"ألمانيا - برلين","en":"Germany — Berlin"},"countryCode":"DE","latitudeDeg":52.52,"longitudeDeg":13.405},
+    {"id":"france-paris","name":{"ar":"فرنسا - باريس","en":"France — Paris"},"countryCode":"FR","latitudeDeg":48.8566,"longitudeDeg":2.3522},
+    {"id":"egypt-cairo","name":{"ar":"مصر - القاهرة","en":"Egypt — Cairo"},"countryCode":"EG","latitudeDeg":30.0444,"longitudeDeg":31.2357},
+    {"id":"uae-abu-dhabi","name":{"ar":"الإمارات - أبوظبي","en":"United Arab Emirates — Abu Dhabi"},"countryCode":"AE","latitudeDeg":24.4539,"longitudeDeg":54.3773},
+    {"id":"saudi-arabia-riyadh","name":{"ar":"السعودية - الرياض","en":"Saudi Arabia — Riyadh"},"countryCode":"SA","latitudeDeg":24.7136,"longitudeDeg":46.6753}
+  ]
+}
