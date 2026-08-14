@@ -1,7 +1,7 @@
 """
 COSMIC-324: 6G Titan X Global Edition
 منصة المحاكاة الفضائية والسيادية المتكاملة
-الإصدار: v7.7 - Line of Sight (LoS) Filtering & Country Targeting Integrated
+الإصدار: v7.8 - النسخة النهائية المحدثة والشاملة للمرجع
 """
 
 import streamlit as st
@@ -443,7 +443,6 @@ ALL_COUNTRIES = get_all_countries()
 # 📡 حساب الزاوية الكروية وخط الرؤية (Haversine & Line-of-Sight)
 # ============================================================
 def calculate_great_circle_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """حساب المسافة الزاوية والسطحية بالأميال/الكيلومترات بين نقطتين على الكرة الأرضية"""
     R = MODEL_CONFIG["earthRadiusKm"]
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     dphi = math.radians(lat2 - lat1)
@@ -455,9 +454,7 @@ def calculate_great_circle_distance(lat1: float, lon1: float, lat2: float, lon2:
 
 def is_in_line_of_sight(sat_lat: float, sat_lon: float, sat_alt: float, 
                         station_lat: float, station_lon: float, max_ground_distance_km: float = 2500.0) -> bool:
-    """التحقق مما إذا كان القمر الصناعي في نطاق خط الرؤية (Line-of-Sight) للمحطة/الدولة"""
     dist_km = calculate_great_circle_distance(station_lat, station_lon, sat_lat, sat_lon)
-    # نطاق رؤية هندسي مبسط يعتمد على الأفق والارتفاع وزاوية الانحناء
     horizon_limit = math.acos(MODEL_CONFIG["earthRadiusKm"] / (MODEL_CONFIG["earthRadiusKm"] + sat_alt)) * MODEL_CONFIG["earthRadiusKm"]
     total_effective_range = min(horizon_limit + 1000.0, max_ground_distance_km * 1.5)
     return dist_km <= total_effective_range
@@ -596,9 +593,8 @@ def get_telemetry_data(orbit_map: Dict, num_satellites: int, t_func, filter_coun
                 if r > 0:
                     lat = math.degrees(math.asin(z / r))
                     lon = math.degrees(math.atan2(y, x))
-                    alt = orbit.altitude if hasattr(orbit, 'altitude'] else 550
+                    alt = orbit.altitude if hasattr(orbit, 'altitude') else 550
                     
-                    # إذا تم تفعيل الفلترة الجغرافية حسب الدولة المختارة
                     if strict_los and filter_country:
                         if not is_in_line_of_sight(lat, lon, alt, filter_country['lat'], filter_country['lon']):
                             return None
@@ -637,18 +633,16 @@ def main():
         st.session_state.language = selected_lang
         st.rerun()
 
-    # قائمة الدول المنسدلة في الشريط الجانبي
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"### {t('ground_station')}")
     country_names = [c["name"] for c in ALL_COUNTRIES]
     selected_country_name = st.sidebar.selectbox(t('gs_select'), country_names)
     selected_country_obj = next((c for c in ALL_COUNTRIES if c["name"] == selected_country_name), ALL_COUNTRIES[0])
 
-    # خيار لتحديد نطاق الرؤية (هل تريد كل الأقمار عالمياً أم الأقمار المرئية فوق الدولة فقط؟)
     view_mode = st.sidebar.radio(
         "👁️ وضع العرض الجغرافي",
         options=[t('all_sats_mode'), t('filtered_sats_mode')],
-        index=1 # الافتراضي هو الأقمار المرئية فوق الدولة لتلبية الطلب بدقة
+        index=1
     )
     strict_los_active = (view_mode == t('filtered_sats_mode'))
 
@@ -696,7 +690,6 @@ def main():
             st.success(f"✅ {t('total')}: {len(df_telemetry)} {t('satellite')} | {t('visible_sats')} ({selected_country_obj['name']})")
             st.dataframe(df_telemetry, use_container_width=True)
             
-            # الخريطة ثلاثية الأبعاد الكونية مع تمركز الكاميرا أو إبراز الدولة المختارة والأقمار المرئية
             fig = px.scatter_geo(
                 df_telemetry,
                 lat=t('latitude'),
@@ -706,7 +699,6 @@ def main():
                 title=f"{t('3d_globe')} - نطاق الرؤية الجغرافي: {selected_country_obj['name']}"
             )
             
-            # إضافة علامة بارزة للدولة / المحطة الأرضية
             fig.add_trace(go.Scattergeo(
                 lat=[selected_country_obj['lat']],
                 lon=[selected_country_obj['lon']],
@@ -724,11 +716,7 @@ def main():
                 countrycolor="#0066AA",
                 center=dict(lat=selected_country_obj['lat'], lon=selected_country_obj['lon']) if strict_los_active else dict(lat=0, lon=0)
             )
-            fig.update_layout(
-                paper_bgcolor="#0a0a12",
-                plot_bgcolor="#0a0a12",
-                font_color="#00CCFF"
-            )
+            fig.update_layout(height=600, margin={"r":0,"t":40,"l":0,"b":0})
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning(t('no_visible_sats'))
@@ -736,108 +724,80 @@ def main():
     # 2️⃣ إدارة التراخيص (Licenses Management)
     elif nav_option == t('nav_licenses'):
         st.subheader(t('license_title'))
-        
         with st.form("license_form"):
-            client_input = st.text_input(t('client_name'), "الجهة السيادية")
-            tier_input = st.selectbox(t('license_tier'), [
-                t('tier_1_name'), 
-                t('tier_2_name'), 
-                t('tier_3_name')
-            ])
-            validity_input = st.slider("فترة الصلاحية (أيام)", 30, 365, 365)
+            client_input = st.text_input(t('client_name'))
+            tier_input = st.selectbox(t('license_tier'), [t('tier_1_name'), t('tier_2_name'), t('tier_3_name')])
             submitted = st.form_submit_button(t('gen_key_btn'))
             
-            if submitted:
-                key, expiry = license_manager.generate_secure_license(client_input, tier_input, validity_input)
-                st.success(f"✅ تم توليد مفتاح الترخيص بنجاح: `{key}` (ينتهي في: {expiry})")
-
+            if submitted and client_input:
+                key, expiry = license_manager.generate_secure_license(client_input, tier_input)
+                st.success(f"✅ تم توليد الترخيص بنجاح! المفتاح: `{key}` (ينتهي في: {expiry})")
+        
         st.markdown("---")
         st.subheader(t('active_licenses'))
         active_lics = license_manager.get_active_licenses()
         if active_lics:
-            df_lics = pd.DataFrame(active_lics)
-            st.dataframe(df_lics, use_container_width=True)
+            st.dataframe(pd.DataFrame(active_lics), use_container_width=True)
         else:
             st.info(t('no_licenses'))
 
-    # 3️⃣ العملاء وبوابات الدفع والباقات الثلاث
+    # 3️⃣ العملاء وبوابات الدفع (Clients & Payment Portals)
     elif nav_option == t('nav_clients'):
         st.subheader(t('clients_title'))
-        st.markdown(f"### {t('select_tier_action')}")
         
-        col_t1, col_t2, col_t3 = st.columns(3)
-        
-        with col_t1:
+        col1, col2, col3 = st.columns(3)
+        with col1:
             st.markdown(f"""
             <div class="tier-card">
-                <h4>{t('tier_1_name')}</h4>
-                <h3 style="color: #00CCFF;">{t('tier_1_price')}</h3>
+                <h3>{t('tier_1_name')}</h3>
+                <h4>{t('tier_1_price')}</h4>
                 <p>{t('tier_1_desc')}</p>
             </div>
             """, unsafe_allow_html=True)
-            if st.button("اختر الباقة الأولى", key="btn_tier1"):
-                st.session_state.selected_tier = t('tier_1_name')
-                st.success("تم اختيار الباقة الأولى بنجاح!")
-
-        with col_t2:
+        with col2:
             st.markdown(f"""
-            <div class="tier-card" style="border-color: #00CCFF; box-shadow: 0 0 15px rgba(0,204,255,0.2);">
-                <h4>{t('tier_2_name')}</h4>
-                <h3 style="color: #00CCFF;">{t('tier_2_price')}</h3>
+            <div class="tier-card">
+                <h3>{t('tier_2_name')}</h3>
+                <h4>{t('tier_2_price')}</h4>
                 <p>{t('tier_2_desc')}</p>
             </div>
             """, unsafe_allow_html=True)
-            if st.button("اختر الباقة الثانية", key="btn_tier2"):
-                st.session_state.selected_tier = t('tier_2_name')
-                st.success("تم اختيار الباقة الثانية بنجاح!")
-
-        with col_t3:
+        with col3:
             st.markdown(f"""
             <div class="tier-card">
-                <h4>{t('tier_3_name')}</h4>
-                <h3 style="color: #00CCFF;">{t('tier_3_price')}</h3>
+                <h3>{t('tier_3_name')}</h3>
+                <h4>{t('tier_3_price')}</h4>
                 <p>{t('tier_3_desc')}</p>
             </div>
             """, unsafe_allow_html=True)
-            if st.button("اختر الباقة الثالثة", key="btn_tier3"):
-                st.session_state.selected_tier = t('tier_3_name')
-                st.success("تم اختيار الباقة الثالثة بنجاح!")
-
+            
         st.markdown("---")
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown(f"### {t('client_login')}")
-            st.text_input(t('email'))
-            st.text_input(t('password'), type="password")
-            if st.button(t('login_btn')):
-                st.success("✅ تم تسجيل الدخول بنجاح إلى البوابة السيادية.")
+        st.subheader(t('paypal_sim'))
+        selected_tier = st.selectbox(t('select_tier_action'), [t('tier_1_name'), t('tier_2_name'), t('tier_3_name')])
+        gateway = st.radio(t('payment_gateway'), [t('stripe_checkout'), t('paypal_express')])
         
-        with c2:
-            st.markdown(f"### {t('paypal_sim')}")
-            st.info(f"الباقة المختارة حالياً للدفع: **{st.session_state.get('selected_tier', t('tier_2_name'))}**")
-            gateway_choice = st.radio(t('payment_gateway'), [t('stripe_checkout'), t('paypal_express')])
-            if st.button(t('pay_now')):
-                st.success(t('payment_processed').format(gateway=gateway_choice))
+        if st.button(t('pay_now')):
+            st.success(t('payment_processed').format(gateway=gateway))
 
     # 4️⃣ صحة النظام والشبكة (System Health)
     elif nav_option == t('nav_health'):
         st.subheader(t('health_title'))
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric(t('server_load'), "14.2%", "-2.1%")
-        m2.metric(t('network_latency'), "11.4 ms", "-0.5 ms")
-        m3.metric(t('packet_loss'), "0.0001%", "0.0%")
-        m4.metric(t('cpu_usage'), "32.1%", "+1.4%")
-        st.info("🟢 كافة العقد المدارية والخوادم السيادية تعمل بكفاءة تامة دون أي معوقات.")
+        h1, h2, h3, h4 = st.columns(4)
+        h1.metric(t('server_load'), "14.2%", "-2.1%")
+        h2.metric(t('network_latency'), "18.4 ms", "-0.5 ms")
+        h3.metric(t('packet_loss'), "0.0001%", "0.0%")
+        h4.metric(t('cpu_usage'), "38.6%", "+4.2%")
 
     # 5️⃣ الإعدادات المتقدمة (Advanced Settings)
     elif nav_option == t('nav_settings'):
         st.subheader(t('settings_title'))
-        st.text_input(t('api_endpoint'), SOURCE_CONFIG['baseUrl'])
-        st.selectbox(t('encryption_level'), ["AES-256 Quantum Resistant", "RSA-4096 Sovereign", "ECC Secp256k1"])
-        if st.button(t('save_settings')):
-            st.success(t('settings_saved'))
+        with st.form("settings_form"):
+            st.text_input(t('api_endpoint'), value=SOURCE_CONFIG['baseUrl'])
+            st.selectbox(t('encryption_level'), ["Quantum AES-256 Sovereign", "Standard TLS 1.3"])
+            if st.form_submit_button(t('save_settings')):
+                st.success(t('settings_saved'))
 
-    st.markdown('<div class="copyright">© 2026 COSMIC-324 6G Titan X - All Sovereign Rights Reserved.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="copyright">COSMIC-324 6G Titan X Global Edition © 2026 | Secure Sovereign Defense Systems</div>', unsafe_allow_html=True)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
