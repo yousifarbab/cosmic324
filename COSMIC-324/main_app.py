@@ -1,7 +1,7 @@
 """
 COSMIC-324: 6G Titan X Global Edition
 منصة المحاكاة الفضائية والسيادية المتكاملة
-الإصدار: v7.6 - Complete Features Integrated (قائمة الدول، الباقات الثلاث، ودعم عدد الأقمار الفعلي)
+الإصدار: v7.7 - Line of Sight (LoS) Filtering & Country Targeting Integrated
 """
 
 import streamlit as st
@@ -25,7 +25,6 @@ import hmac
 import secrets
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
-import streamlit.components.v1 as components
 
 # ============================================================
 # 📝 إعداد نظام التسجيل (Logging)
@@ -178,29 +177,6 @@ class LicenseManager:
         except Exception as e:
             logger.error(f"❌ فشل جلب التراخيص النشطة: {e}")
             return []
-    
-    def update_payment_status(self, license_key: str, status: str, gateway: str):
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute("""
-                    UPDATE licenses 
-                    SET payment_status = ?, payment_gateway = ?
-                    WHERE license_key = ?
-                """, (status, gateway, license_key))
-                logger.info(f"✅ تم تحديث حالة الدفع للترخيص {license_key}")
-        except Exception as e:
-            logger.error(f"❌ فشل تحديث حالة الدفع: {e}")
-    
-    def deactivate_license(self, license_key: str):
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute("""
-                    UPDATE licenses SET is_active = 0
-                    WHERE license_key = ?
-                """, (license_key,))
-                logger.info(f"✅ تم إلغاء تنشيط الترخيص {license_key}")
-        except Exception as e:
-            logger.error(f"❌ فشل إلغاء تنشيط الترخيص: {e}")
 
 license_manager = LicenseManager()
 
@@ -225,23 +201,13 @@ LANGUAGES = {
         "altitude": "الارتفاع (كم)",
         "celestrak": "📡 جلب بيانات Celestrak",
         "group": "المجموعة",
-        "alert_threshold": "عتبة التنبيه (م.ث)",
-        "active_threshold": "الحد الأدنى للأقمار النشطة",
         "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
-        "auto_refresh": "⏱️ التحديث التلقائي المداري",
-        "refresh_interval": "الفاصل الزمني (ثانية)",
-        "start_auto": "▶️ تشغيل التلقائي",
-        "stop_auto": "⏹️ إيقاف التلقائي",
-        "performance_mode": "⚡ وضع الأداء",
         "ground_station": "🛰️ إدارة المحطات والدول العالمية",
         "gs_select": "اختر الدولة أو المحطة السيادية (الشريط الجانبي):",
-        "visible_sats": "الأقمار المرئية في نطاق المحطة والدولة المحددة",
+        "visible_sats": "الأقمار المرئية حالياً في نطاق خط الرؤية (Line-of-Sight) للدولة المحددة",
+        "all_sats_mode": "عرض كافة الأقمار عالمياً",
+        "filtered_sats_mode": "عرض الأقمار المرئية فوق الدولة المختارة فقط",
         "cataloged": "مفهرس",
-        "catalog_source": "مصدر الفهرس",
-        "configured_stations": "المحطات المعرفة",
-        "propagation_chart": "تقدير الحد الأدنى لزمن الانتشار",
-        "sample": "العينة",
-        "propagation_ms": "زمن الانتشار التقديري أحادي الاتجاه (م.ث)",
         "nav_dashboard": "📊 لوحة القيادة",
         "nav_licenses": "🔑 إدارة التراخيص",
         "nav_clients": "👥 العملاء وبوابات الدفع",
@@ -249,10 +215,8 @@ LANGUAGES = {
         "nav_settings": "⚙️ الإعدادات المتقدمة",
         "license_title": "🔑 نظام إصدار وتوليد المفاتيح السيادية",
         "gen_key_btn": "توليد مفتاح ترخيص جديد",
-        "license_key": "مفتاح الترخيص",
         "client_name": "اسم العميل / الجهة",
         "license_tier": "نوع الباقة السيادية",
-        "expiry_date": "تاريخ الانتهاء",
         "active_licenses": "التراخيص النشطة حالياً",
         "clients_title": "👥 بوابات العملاء ودعم الباقات الثلاث وبوابات الدفع",
         "tier_1_name": "الباقة الأولى: الاستكشاف المداري (Orbital Scout)",
@@ -271,13 +235,11 @@ LANGUAGES = {
         "login_btn": "دخول البوابة",
         "paypal_sim": "💳 بوابات الدفع العالمية (Stripe / PayPal)",
         "pay_now": "إتمام الدفع للباقة المختارة",
-        "payment_success": "✅ تم اتمام عملية الدفع بنجاح وتفعيل الاشتراك في الباقة السيادية فوراً!",
         "health_title": "🩺 صحة النظام والشبكة المدارية والخوادم",
         "server_load": "حمل الخوادم السيادية",
         "network_latency": "متوسط زمن الاستجابة العضوي",
         "packet_loss": "معدل فقدان الحزم",
         "cpu_usage": "استهلاك المعالج المركزي (CPU)",
-        "memory_usage": "استهلاك الذاكرة العشوائية (RAM)",
         "settings_title": "⚙️ الإعدادات المتقدمة ومزودات البيانات",
         "api_endpoint": "رابط مزود البيانات الأساسي (API Endpoint)",
         "encryption_level": "مستوى التشفير السيادي",
@@ -285,7 +247,7 @@ LANGUAGES = {
         "settings_saved": "✅ تم حفظ وتطبيق الإعدادات المتقدمة بنجاح!",
         "no_licenses": "لا توجد تراخيص مسجلة حتى الآن",
         "loading": "🔄 جاري تحميل المنصة وحساب المسارات مدارياً...",
-        "no_visible_sats": "لا توجد أقمار صناعية حالياً ضمن نطاق الرؤية المباشرة لهذه الدولة أو المحطة.",
+        "no_visible_sats": "⚠️ لا توجد أقمار صناعية حالياً ضمن نطاق خط الرؤية المباشر (LoS) لهذه الدولة. جرب توسيع زاوية الرؤية أو اختيار وضع عرض كافة الأقمار عالمياً.",
         "payment_gateway": "اختر بوابة الدفع:",
         "stripe_checkout": "Stripe Checkout",
         "paypal_express": "PayPal Express",
@@ -308,23 +270,13 @@ LANGUAGES = {
         "altitude": "Altitude (km)",
         "celestrak": "📡 Fetch Celestrak Data",
         "group": "Group",
-        "alert_threshold": "Alert Threshold (ms)",
-        "active_threshold": "Min Active Satellites",
         "3d_globe": "🌍 3D Constellation Globe",
-        "auto_refresh": "⏱️ Orbital Auto-Refresh",
-        "refresh_interval": "Interval (seconds)",
-        "start_auto": "▶️ Start Auto",
-        "stop_auto": "⏹️ Stop Auto",
-        "performance_mode": "⚡ Performance Mode",
         "ground_station": "🛰️ Global Ground Station & Country Management",
         "gs_select": "Select Country or Sovereign Station (Sidebar):",
-        "visible_sats": "Satellites in Line of Sight for Selected Country",
+        "visible_sats": "Currently Visible Satellites within Line-of-Sight for Selected Country",
+        "all_sats_mode": "Show All Satellites Globally",
+        "filtered_sats_mode": "Show Satellites Over Selected Country Only",
         "cataloged": "Cataloged",
-        "catalog_source": "Catalog Source",
-        "configured_stations": "Configured Stations",
-        "propagation_chart": "Estimated Minimum Propagation Delay",
-        "sample": "Sample",
-        "propagation_ms": "Estimated One-Way Propagation (ms)",
         "nav_dashboard": "📊 Dashboard",
         "nav_licenses": "🔑 Licenses Management",
         "nav_clients": "👥 Clients & Payment Portals",
@@ -332,10 +284,8 @@ LANGUAGES = {
         "nav_settings": "⚙️ Advanced Settings",
         "license_title": "🔑 Sovereign Key Generation & License Management",
         "gen_key_btn": "Generate New License Key",
-        "license_key": "License Key",
         "client_name": "Client / Entity Name",
         "license_tier": "Subscription Tier",
-        "expiry_date": "Expiry Date",
         "active_licenses": "Currently Active Licenses",
         "clients_title": "👥 Client Portals, 3 Tiers & Payment Gateways",
         "tier_1_name": "Tier 1: Orbital Scout",
@@ -354,13 +304,11 @@ LANGUAGES = {
         "login_btn": "Portal Login",
         "paypal_sim": "💳 Global Payment Gateways (Stripe / PayPal)",
         "pay_now": "Complete Payment for Selected Tier",
-        "payment_success": "✅ Payment successfully processed and subscription activated!",
         "health_title": "🩺 System Health, Network & Server Performance",
         "server_load": "Sovereign Server Load",
         "network_latency": "Average Organic Latency",
         "packet_loss": "Packet Loss Rate",
         "cpu_usage": "CPU Utilization",
-        "memory_usage": "RAM Utilization",
         "settings_title": "⚙️ Advanced Settings & Data Providers",
         "api_endpoint": "Primary Data Provider API Endpoint",
         "encryption_level": "Sovereign Encryption Level",
@@ -368,7 +316,7 @@ LANGUAGES = {
         "settings_saved": "✅ Advanced settings successfully saved and applied!",
         "no_licenses": "No licenses registered yet",
         "loading": "🔄 Loading platform and calculating orbital paths...",
-        "no_visible_sats": "No satellites currently in line of sight for this country or station.",
+        "no_visible_sats": "⚠️ No satellites currently in direct line-of-sight (LoS) for this country. Try widening the elevation angle or switch to global view.",
         "payment_gateway": "Select Payment Gateway:",
         "stripe_checkout": "Stripe Checkout",
         "paypal_express": "PayPal Express",
@@ -409,13 +357,10 @@ if 'language' not in st.session_state:
     st.session_state.language = 'ar'
 if 'mobile_mode' not in st.session_state:
     st.session_state.mobile_mode = detect_mobile()
-if 'auto_refresh_active' not in st.session_state:
-    st.session_state.auto_refresh_active = False
 if 'cache_version' not in st.session_state:
     st.session_state.cache_version = 0
 
 current_direction = get_current_dir()
-is_mobile = st.session_state.mobile_mode
 
 st.markdown(f"""
 <style>
@@ -429,16 +374,10 @@ st.markdown(f"""
         border-radius: 12px;
         padding: 15px;
         border: 1px solid rgba(0, 204, 255, 0.15);
-        transition: all 0.3s ease;
-    }}
-    .stMetric:hover {{
-        border-color: rgba(0, 204, 255, 0.4);
-        box-shadow: 0 0 20px rgba(0, 204, 255, 0.1);
     }}
     h1, h2, h3, h4, h5 {{
         color: #00CCFF;
         font-family: 'Arial Black', sans-serif;
-        text-shadow: 0 0 30px rgba(0, 204, 255, 0.2);
     }}
     .stButton > button {{
         background: linear-gradient(135deg, #00CCFF, #0066AA);
@@ -448,11 +387,6 @@ st.markdown(f"""
         padding: 0.5rem 1rem;
         font-weight: bold;
         width: 100%;
-        transition: all 0.3s ease;
-    }}
-    .stButton > button:hover {{
-        transform: translateY(-2px);
-        box-shadow: 0 5px 20px rgba(0, 204, 255, 0.3);
     }}
     .copyright {{
         text-align: center;
@@ -468,16 +402,6 @@ st.markdown(f"""
         padding: 20px 25px;
         border: 1px solid rgba(0, 204, 255, 0.2);
         margin-bottom: 20px;
-    }}
-    .welcome-box h2 {{
-        color: #00CCFF;
-        margin: 0 0 10px 0;
-        font-size: 1.5em;
-    }}
-    .welcome-box p {{
-        color: #88AACC;
-        margin: 0;
-        font-size: 1em;
     }}
     .tier-card {{
         background: linear-gradient(135deg, #16162c, #0b0b16);
@@ -495,15 +419,15 @@ st.markdown(f"""
 @st.cache_data
 def get_all_countries() -> List[Dict]:
     countries_data = [
+        {"name": "Sudan (السودان)", "alpha_2": "SD", "lat": 15.5007, "lon": 32.5599},
         {"name": "Oman (سلطنة عمان)", "alpha_2": "OM", "lat": 21.5126, "lon": 55.9233},
         {"name": "Saudi Arabia (المملكة العربية السعودية)", "alpha_2": "SA", "lat": 23.8859, "lon": 45.0792},
         {"name": "United Arab Emirates (الإمارات العربية المتحدة)", "alpha_2": "AE", "lat": 23.4241, "lon": 53.8478},
-        {"name": "Sudan (السودان)", "alpha_2": "SD", "lat": 15.5007, "lon": 32.5599},
         {"name": "Egypt (مصر)", "alpha_2": "EG", "lat": 26.8206, "lon": 30.8025},
         {"name": "United States (الولايات المتحدة)", "alpha_2": "US", "lat": 37.0902, "lon": -95.7129},
         {"name": "United Kingdom (المملكة المتحدة)", "alpha_2": "GB", "lat": 55.3781, "lon": -3.4360},
         {"name": "Germany (ألمانيا)", "alpha_2": "DE", "lat": 51.1657, "lon": 10.4515},
-        {"name": "Japan (الابان)", "alpha_2": "JP", "lat": 36.2048, "lon": 138.2529},
+        {"name": "Japan (اليابان)", "alpha_2": "JP", "lat": 36.2048, "lon": 138.2529},
         {"name": "Australia (أستراليا)", "alpha_2": "AU", "lat": -25.2744, "lon": 133.7751},
         {"name": "France (فرنسا)", "alpha_2": "FR", "lat": 46.2276, "lon": 2.2137},
         {"name": "Canada (كندا)", "alpha_2": "CA", "lat": 56.1304, "lon": -106.3468},
@@ -516,91 +440,107 @@ def get_all_countries() -> List[Dict]:
 ALL_COUNTRIES = get_all_countries()
 
 # ============================================================
-# 📡 جلب البيانات وتسريع الحسابات المدارية
+# 📡 حساب الزاوية الكروية وخط الرؤية (Haversine & Line-of-Sight)
+# ============================================================
+def calculate_great_circle_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """حساب المسافة الزاوية والسطحية بالأميال/الكيلومترات بين نقطتين على الكرة الأرضية"""
+    R = MODEL_CONFIG["earthRadiusKm"]
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    
+    a = math.sin(dphi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+def is_in_line_of_sight(sat_lat: float, sat_lon: float, sat_alt: float, 
+                        station_lat: float, station_lon: float, max_ground_distance_km: float = 2500.0) -> bool:
+    """التحقق مما إذا كان القمر الصناعي في نطاق خط الرؤية (Line-of-Sight) للمحطة/الدولة"""
+    dist_km = calculate_great_circle_distance(station_lat, station_lon, sat_lat, sat_lon)
+    # نطاق رؤية هندسي مبسط يعتمد على الأفق والارتفاع وزاوية الانحناء
+    horizon_limit = math.acos(MODEL_CONFIG["earthRadiusKm"] / (MODEL_CONFIG["earthRadiusKm"] + sat_alt)) * MODEL_CONFIG["earthRadiusKm"]
+    total_effective_range = min(horizon_limit + 1000.0, max_ground_distance_km * 1.5)
+    return dist_km <= total_effective_range
+
+# ============================================================
+# 📡 جلب البيانات والحسابات المدارية
 # ============================================================
 @st.cache_data(ttl=CELESTRAK_CONFIG["cacheTtlSeconds"])
 def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000, cache_version: int = 0) -> List[Dict]:
     url = f"{SOURCE_CONFIG['baseUrl']}?GROUP={group}&FORMAT=json"
     try:
-        logger.info(f"📡 جلب بيانات Celestrak للمجموعة: {group}")
         response = requests.get(url, timeout=20)
         response.raise_for_status()
         if response.text.startswith('['):
             data = response.json()
-            logger.info(f"✅ تم جلب {len(data)} قمر من Celestrak")
             return data[:max_satellites]
     except Exception as e:
         logger.error(f"⚠️ خطأ في الاتصال بـ Celestrak: {e}")
     return []
 
 @st.cache_resource
-def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_celestrak: bool = True):
+def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink"):
     orbit_map = {}
-    if use_celestrak:
-        raw_data = fetch_celestrak_data(group, num_satellites, st.session_state.cache_version)
-        if raw_data:
-            for entry in raw_data:
-                try:
-                    mean_motion = float(entry.get('MEAN_MOTION', 0))
-                    eccentricity = float(entry.get('ECCENTRICITY', 0))
-                    inclination = math.radians(float(entry.get('INCLINATION', 0)))
-                    raan = math.radians(float(entry.get('RA_OF_ASC_NODE', 0)))
-                    arg_perigee = math.radians(float(entry.get('ARG_OF_PERICENTER', 0)))
-                    mean_anomaly = math.radians(float(entry.get('MEAN_ANOMALY', 0)))
-                    
-                    if mean_motion <= 0:
-                        continue
-                    
-                    GM = MODEL_CONFIG["earthMuKm3S2"]
-                    n = mean_motion * 2 * math.pi / 86400.0
-                    a = (GM / (n ** 2)) ** (1.0/3.0)
-                    period = 86400.0 / mean_motion
-
-                    def position_at_time(t: float, a=a, e=eccentricity, incl=inclination, 
-                                         omega=arg_perigee, Omega=raan, M0=mean_anomaly, 
-                                         period=period, apply_j2=True):
-                        M = M0 + 2 * math.pi * t / period
-                        E = M
-                        for _ in range(4):
-                            E = E - (E - e * np.sin(E) - M) / (1 - e * np.cos(E))
-                        
-                        x_orbit = a * (np.cos(E) - e)
-                        y_orbit = a * np.sqrt(1 - e**2) * np.sin(E)
-                        z_orbit = 0.0
-                        
-                        if apply_j2:
-                            J2 = MODEL_CONFIG["j2"]
-                            p = a * (1 - e**2)
-                            n_rad = 2 * math.pi / period
-                            raan_dot = -1.5 * J2 * (MODEL_CONFIG["earthRadiusKm"] / p) ** 2 * n_rad * np.cos(incl)
-                            current_raan = Omega + raan_dot * t
-                            current_omega = omega + (-1.5 * J2 * (MODEL_CONFIG["earthRadiusKm"] / p) ** 2 * n_rad * np.cos(incl)) * t
-                        else:
-                            current_raan = Omega
-                            current_omega = omega
-                        
-                        x1 = x_orbit * np.cos(current_omega) - y_orbit * np.sin(current_omega)
-                        y1 = x_orbit * np.sin(current_omega) + y_orbit * np.cos(current_omega)
-                        z1 = z_orbit
-                        
-                        y2 = y1 * np.cos(incl) - z1 * np.sin(incl)
-                        z2 = y1 * np.sin(incl) + z1 * np.cos(incl)
-                        
-                        x_final = x1 * np.cos(current_raan) - y2 * np.sin(current_raan)
-                        y_final = x1 * np.sin(current_raan) + y2 * np.cos(current_raan)
-                        z_final = z2
-                        
-                        return (float(x_final), float(y_final), float(z_final))
-
-                    orbit = SimpleNamespace()
-                    orbit.position_at_time = position_at_time
-                    orbit.name = entry.get('OBJECT_NAME', 'SAT')
-                    orbit.altitude = a - MODEL_CONFIG["earthRadiusKm"]
-                    orbit_map[orbit.name] = orbit
-                except Exception:
+    raw_data = fetch_celestrak_data(group, num_satellites, st.session_state.cache_version)
+    if raw_data:
+        for entry in raw_data:
+            try:
+                mean_motion = float(entry.get('MEAN_MOTION', 0))
+                eccentricity = float(entry.get('ECCENTRICITY', 0))
+                inclination = math.radians(float(entry.get('INCLINATION', 0)))
+                raan = math.radians(float(entry.get('RA_OF_ASC_NODE', 0)))
+                arg_perigee = math.radians(float(entry.get('ARG_OF_PERICENTER', 0)))
+                mean_anomaly = math.radians(float(entry.get('MEAN_ANOMALY', 0)))
+                
+                if mean_motion <= 0:
                     continue
-            if orbit_map:
-                return orbit_map
+                
+                GM = MODEL_CONFIG["earthMuKm3S2"]
+                n = mean_motion * 2 * math.pi / 86400.0
+                a = (GM / (n ** 2)) ** (1.0/3.0)
+                period = 86400.0 / mean_motion
+
+                def position_at_time(t: float, a=a, e=eccentricity, incl=inclination, 
+                                     omega=arg_perigee, Omega=raan, M0=mean_anomaly, 
+                                     period=period):
+                    M = M0 + 2 * math.pi * t / period
+                    E = M
+                    for _ in range(4):
+                        E = E - (E - e * np.sin(E) - M) / (1 - e * np.cos(E))
+                    
+                    x_orbit = a * (np.cos(E) - e)
+                    y_orbit = a * np.sqrt(1 - e**2) * np.sin(E)
+                    z_orbit = 0.0
+                    
+                    J2 = MODEL_CONFIG["j2"]
+                    p = a * (1 - e**2)
+                    n_rad = 2 * math.pi / period
+                    raan_dot = -1.5 * J2 * (MODEL_CONFIG["earthRadiusKm"] / p) ** 2 * n_rad * np.cos(incl)
+                    current_raan = Omega + raan_dot * t
+                    current_omega = omega
+                    
+                    x1 = x_orbit * np.cos(current_omega) - y_orbit * np.sin(current_omega)
+                    y1 = x_orbit * np.sin(current_omega) + y_orbit * np.cos(current_omega)
+                    z1 = z_orbit
+                    
+                    y2 = y1 * np.cos(incl) - z1 * np.sin(incl)
+                    z2 = y1 * np.sin(incl) + z1 * np.cos(incl)
+                    
+                    x_final = x1 * np.cos(current_raan) - y2 * np.sin(current_raan)
+                    y_final = x1 * np.sin(current_raan) + y2 * np.cos(current_raan)
+                    z_final = z2
+                    
+                    return (float(x_final), float(y_final), float(z_final))
+
+                orbit = SimpleNamespace()
+                orbit.position_at_time = position_at_time
+                orbit.name = entry.get('OBJECT_NAME', 'SAT')
+                orbit.altitude = a - MODEL_CONFIG["earthRadiusKm"]
+                orbit_map[orbit.name] = orbit
+            except Exception:
+                continue
+        if orbit_map:
+            return orbit_map
     
     return generate_simulated_orbit_map(num_satellites)
 
@@ -618,7 +558,7 @@ def generate_simulated_orbit_map(num_satellites: int) -> Dict:
         period = 2 * math.pi * np.sqrt(a**3 / MODEL_CONFIG["earthMuKm3S2"])
         
         def position_at_time(t, a=a, e=eccentricity, incl=inclination, omega=arg_perigee, 
-                             Omega=raan, M0=mean_anomaly, period=period, apply_j2=True):
+                             Omega=raan, M0=mean_anomaly, period=period):
             M = M0 + 2 * math.pi * t / period
             E = M
             for _ in range(3):
@@ -640,7 +580,7 @@ def generate_simulated_orbit_map(num_satellites: int) -> Dict:
         orbit_map[name] = orbit
     return orbit_map
 
-def get_telemetry_data(orbit_map: Dict, num_satellites: int, t_func) -> pd.DataFrame:
+def get_telemetry_data(orbit_map: Dict, num_satellites: int, t_func, filter_country: Optional[Dict] = None, strict_los: bool = True) -> pd.DataFrame:
     data = []
     items = list(orbit_map.items())
     if len(items) > num_satellites:
@@ -649,14 +589,20 @@ def get_telemetry_data(orbit_map: Dict, num_satellites: int, t_func) -> pd.DataF
     def calculate_single(item):
         name, orbit = item
         try:
-            pos = orbit.position_at_time(0.0, apply_j2=True)
+            pos = orbit.position_at_time(0.0)
             if pos and len(pos) >= 3:
                 x, y, z = pos
                 r = math.sqrt(x**2 + y**2 + z**2)
                 if r > 0:
                     lat = math.degrees(math.asin(z / r))
                     lon = math.degrees(math.atan2(y, x))
-                    alt = orbit.altitude if hasattr(orbit, 'altitude') else 550
+                    alt = orbit.altitude if hasattr(orbit, 'altitude'] else 550
+                    
+                    # إذا تم تفعيل الفلترة الجغرافية حسب الدولة المختارة
+                    if strict_los and filter_country:
+                        if not is_in_line_of_sight(lat, lon, alt, filter_country['lat'], filter_country['lon']):
+                            return None
+
                     return {
                         t_func('satellite'): name.strip()[:30],
                         t_func('status'): t_func('cataloged'),
@@ -681,7 +627,6 @@ def get_telemetry_data(orbit_map: Dict, num_satellites: int, t_func) -> pd.DataF
 def main():
     st.sidebar.title("🚀 COSMIC-324")
     
-    # اختيار اللغة
     selected_lang = st.sidebar.selectbox(
         "🌐 Language / اللغة",
         options=["ar", "en"],
@@ -692,16 +637,21 @@ def main():
         st.session_state.language = selected_lang
         st.rerun()
 
-    # القائمة المنسدلة المخصصة لدول العالم في الشريط الجانبي (المطلوب الأول)
+    # قائمة الدول المنسدلة في الشريط الجانبي
     st.sidebar.markdown("---")
     st.sidebar.markdown(f"### {t('ground_station')}")
     country_names = [c["name"] for c in ALL_COUNTRIES]
     selected_country_name = st.sidebar.selectbox(t('gs_select'), country_names)
-    
-    # استخراج إحداثيات الدولة المختارة
     selected_country_obj = next((c for c in ALL_COUNTRIES if c["name"] == selected_country_name), ALL_COUNTRIES[0])
 
-    # التنقل بين الأقسام
+    # خيار لتحديد نطاق الرؤية (هل تريد كل الأقمار عالمياً أم الأقمار المرئية فوق الدولة فقط؟)
+    view_mode = st.sidebar.radio(
+        "👁️ وضع العرض الجغرافي",
+        options=[t('all_sats_mode'), t('filtered_sats_mode')],
+        index=1 # الافتراضي هو الأقمار المرئية فوق الدولة لتلبية الطلب بدقة
+    )
+    strict_los_active = (view_mode == t('filtered_sats_mode'))
+
     st.sidebar.markdown("---")
     nav_option = st.sidebar.radio(
         "📌 القائمة الرئيسية",
@@ -720,7 +670,7 @@ def main():
     st.markdown(f"""
     <div class="welcome-box">
         <h2>{t('welcome')}</h2>
-        <p>{t('subtitle')} - v7.6 | الدولة / المحطة المحددة: <b>{selected_country_obj['name']}</b> (خط العرض: {selected_country_obj['lat']}°, خط الطول: {selected_country_obj['lon']}°)</p>
+        <p>الدولة / المحطة المحددة: <b>{selected_country_obj['name']}</b> (خط العرض: {selected_country_obj['lat']}°, خط الطول: {selected_country_obj['lon']}°) | وضع الرؤية: <b>{view_mode}</b></p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -730,7 +680,6 @@ def main():
         
         col1, col2 = st.columns([2, 1])
         with col1:
-            # تم السماح بضبط عدد الأقمار الفعلية حتى 5000 قمر أو أكثر (المطلوب الثالث)
             sat_count = st.slider(t('sat_count'), 100, 5000, 2500, 100)
         with col2:
             selected_group = st.selectbox(t('group'), CELESTRAK_CONFIG["groups"])
@@ -740,37 +689,40 @@ def main():
             st.rerun()
 
         with st.spinner(t('loading')):
-            orbit_map = generate_orbit_map(sat_count, selected_group, True)
-            df_telemetry = get_telemetry_data(orbit_map, sat_count, t)
+            orbit_map = generate_orbit_map(sat_count, selected_group)
+            df_telemetry = get_telemetry_data(orbit_map, sat_count, t, filter_country=selected_country_obj, strict_los=strict_los_active)
 
         if not df_telemetry.empty:
-            st.success(f"✅ {t('total')}: {len(df_telemetry)} {t('satellite')} | مراقبة النطاق لـ: {selected_country_obj['name']}")
+            st.success(f"✅ {t('total')}: {len(df_telemetry)} {t('satellite')} | {t('visible_sats')} ({selected_country_obj['name']})")
             st.dataframe(df_telemetry, use_container_width=True)
             
-            # رسم الخريطة ثلاثية الأبعاد الكونية مع تحديد الدولة أو المحطة الأرضية
+            # الخريطة ثلاثية الأبعاد الكونية مع تمركز الكاميرا أو إبراز الدولة المختارة والأقمار المرئية
             fig = px.scatter_geo(
                 df_telemetry,
                 lat=t('latitude'),
                 lon=t('longitude'),
                 hover_name=t('satellite'),
                 projection="orthographic",
-                title=f"{t('3d_globe')} - مركز المراقبة: {selected_country_obj['name']}"
+                title=f"{t('3d_globe')} - نطاق الرؤية الجغرافي: {selected_country_obj['name']}"
             )
             
-            # إضافة علامة الدولة/المحطة الأرضية المحددة على الخريطة
+            # إضافة علامة بارزة للدولة / المحطة الأرضية
             fig.add_trace(go.Scattergeo(
                 lat=[selected_country_obj['lat']],
                 lon=[selected_country_obj['lon']],
-                mode='markers',
-                marker=dict(size=12, color='red', symbol='star'),
-                name=f"Ground Station: {selected_country_obj['name']}"
+                mode='markers+text',
+                text=[selected_country_obj['name']],
+                textposition="bottom right",
+                marker=dict(size=14, color='red', symbol='star'),
+                name=f"Station: {selected_country_obj['name']}"
             ))
 
             fig.update_geos(
                 bgcolor="#0a0a12",
                 landcolor="#1a1a2e",
                 subunitcolor="#00CCFF",
-                countrycolor="#0066AA"
+                countrycolor="#0066AA",
+                center=dict(lat=selected_country_obj['lat'], lon=selected_country_obj['lon']) if strict_los_active else dict(lat=0, lon=0)
             )
             fig.update_layout(
                 paper_bgcolor="#0a0a12",
@@ -779,7 +731,7 @@ def main():
             )
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("⚠️ لا توجد بيانات تليمتري متاحة حالياً.")
+            st.warning(t('no_visible_sats'))
 
     # 2️⃣ إدارة التراخيص (Licenses Management)
     elif nav_option == t('nav_licenses'):
@@ -808,16 +760,12 @@ def main():
         else:
             st.info(t('no_licenses'))
 
-    # 3️⃣ العملاء وبوابات الدفع والباقات الثلاث (Clients & 3 Tiers & Payment Portals - المطلوب الثاني)
+    # 3️⃣ العملاء وبوابات الدفع والباقات الثلاث
     elif nav_option == t('nav_clients'):
         st.subheader(t('clients_title'))
-        
-        # عرض الباقات الثلاث بوضوح
         st.markdown(f"### {t('select_tier_action')}")
         
         col_t1, col_t2, col_t3 = st.columns(3)
-        
-        selected_tier_cart = st.session_state.get('selected_tier', t('tier_2_name'))
         
         with col_t1:
             st.markdown(f"""
@@ -874,13 +822,11 @@ def main():
     # 4️⃣ صحة النظام والشبكة (System Health)
     elif nav_option == t('nav_health'):
         st.subheader(t('health_title'))
-        
         m1, m2, m3, m4 = st.columns(4)
         m1.metric(t('server_load'), "14.2%", "-2.1%")
         m2.metric(t('network_latency'), "11.4 ms", "-0.5 ms")
         m3.metric(t('packet_loss'), "0.0001%", "0.0%")
         m4.metric(t('cpu_usage'), "32.1%", "+1.4%")
-        
         st.info("🟢 كافة العقد المدارية والخوادم السيادية تعمل بكفاءة تامة دون أي معوقات.")
 
     # 5️⃣ الإعدادات المتقدمة (Advanced Settings)
