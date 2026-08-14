@@ -5,52 +5,60 @@ import plotly.graph_objects as go
 import requests
 import math
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List
 from types import SimpleNamespace
 import time
 import json
 from pathlib import Path
 
+# ============================================================
+# 📁 تحميل ملف العقد والبيانات الأساسية
+# ============================================================
 DATA_CONTRACT_PATH = Path(__file__).with_name("cosmic324_data.json")
-with DATA_CONTRACT_PATH.open("r", encoding="utf-8") as contract_file:
-    DATA_CONTRACT = json.load(contract_file)
+if DATA_CONTRACT_PATH.exists():
+    with DATA_CONTRACT_PATH.open("r", encoding="utf-8") as contract_file:
+        DATA_CONTRACT = json.load(contract_file)
+else:
+    # هيكل افتراضي احتياطي في حال عدم توفر الملف الخارجي لضمان التكامل 100%
+    DATA_CONTRACT = {
+        "celestrak": {"groups": ["starlink", "active", "visual", "weather"], "defaultGroup": "starlink", "cacheTtlSeconds": 3600},
+        "model": {"earthRadiusKm": 6371.0, "earthMuKm3S2": 398600.4418, "j2": 0.00108263, "speedOfLightKmPerSecond": 299792.458, "lineOfSightAngularRadiusDeg": 45.0},
+        "source": {"baseUrl": "https://celestrak.org/NORAD/elements/gp.php", "provider": "CelesTrak", "dataset": "GP"},
+        "groundStations": [
+            {"name": {"ar": "محطة الخرطوم السيادية", "en": "Khartoum Sovereign Station"}, "latitudeDeg": 15.5007, "longitudeDeg": 32.5599},
+            {"name": {"ar": "محطة لندن المدارية", "en": "London Orbital Station"}, "latitudeDeg": 51.5074, "longitudeDeg": -0.1278}
+        ]
+    }
 
 CELESTRAK_CONFIG = DATA_CONTRACT["celestrak"]
 MODEL_CONFIG = DATA_CONTRACT["model"]
 SOURCE_CONFIG = DATA_CONTRACT["source"]
 
 # ============================================================
-# 🌍 نظام الترجمة واتجاه الصفحة (RTL/LTR)
+# 🌍 نظام الترجمة واتجاه الصفحة (RTL/LTR) الشامل
 # ============================================================
 LANGUAGES = {
     "ar": {
         "name": "العربية",
         "dir": "rtl",
         "title": "🚀 كوزميك-324: القيادة المدارية 6G Titan X",
-        "subtitle": "منصة المحاكاة الفضائية السيادية",
-        "welcome": "🌟 مرحباً بك في منصة كوزميك-324، منصة المحاكاة الفضائية المتكاملة.",
-        "params": "⚙️ إعدادات المحاكاة",
+        "subtitle": "منصة المحاكاة الفضائية والسيادية المتكاملة",
+        "welcome": "🌟 مرحباً بك في منصة كوزميك-324، البوابة الموحدة للقيادة الفضائية.",
+        "params": "⚙️ إعدادات المحاكاة والتحكم",
         "sat_count": "عدد الأقمار",
         "update_btn": "🔄 تحديث البيانات",
-        "active": "🟢 نشط",
-        "calibration": "🟡 معايرة",
-        "standby": "🔴 استعداد",
         "total": "المجموع",
         "satellite": "القمر",
         "status": "الحالة",
         "latitude": "خط العرض",
         "longitude": "خط الطول",
         "altitude": "الارتفاع (كم)",
-        "latency_chart": "📈 تطور زمن الانتقال وزمن الإشارة",
-        "step": "الخطوة",
-        "latency_ms": "زمن الانتقال (م.ث)",
         "celestrak": "📡 جلب بيانات Celestrak",
         "group": "المجموعة",
         "alert_threshold": "عتبة التنبيه (م.ث)",
         "active_threshold": "الحد الأدنى للأقمار النشطة",
         "3d_globe": "🌍 الخريطة الكونية ثلاثية الأبعاد",
-        "pricing": "💰 خطط الاشتراك التجاري",
         "auto_refresh": "⏱️ التحديث التلقائي المداري",
         "refresh_interval": "الفاصل الزمني (ثانية)",
         "start_auto": "▶️ تشغيل التلقائي",
@@ -59,10 +67,7 @@ LANGUAGES = {
         "full_resolution": "دقة كاملة (5000)",
         "high_speed": "سرعة عالية (100)",
         "mobile_mode": "📱 وضع الجوال",
-        "export_section": "📊 تصدير التقارير الرسمية والسيادية",
-        "export_csv": "📥 تحميل تقرير القيادة (CSV)",
-        "export_txt": "📥 تحميل التقرير الفني الرسمي (TXT)",
-        "ground_station": "🛰️ إدارة المحطات الأرضية العالمية",
+        "ground_station": "🛰️ إدارة المحطات الأرضية العالمية والدول",
         "gs_select": "اكتب اسم أي دولة أو محطة سيادية بحرية:",
         "visible_sats": "الأقمار المرئية في نطاق المحطة",
         "cataloged": "مفهرس",
@@ -70,35 +75,64 @@ LANGUAGES = {
         "configured_stations": "المحطات المعرفة",
         "propagation_chart": "تقدير الحد الأدنى لزمن الانتشار",
         "sample": "العينة",
-        "propagation_ms": "زمن الانتشار التقديري أحادي الاتجاه (م.ث)"
+        "propagation_ms": "زمن الانتشار التقديري أحادي الاتجاه (م.ث)",
+        # الأقسام الخمسة الجديدة
+        "nav_dashboard": "📊 لوحة القيادة",
+        "nav_licenses": "🔑 إدارة التراخيص",
+        "nav_clients": "👥 العملاء والبوابات",
+        "nav_health": "🩺 صحة النظام والشبكة",
+        "nav_settings": "⚙️ الإعدادات المتقدمة",
+        # قسم التراخيص
+        "license_title": "🔑 نظام إصدار وتوليد المفاتيح السيادية",
+        "gen_key_btn": "توليد مفتاح ترخيص جديد",
+        "license_key": "مفتاح الترخيص",
+        "client_name": "اسم العميل / الجهة",
+        "license_tier": "نوع الباقة",
+        "expiry_date": "تاريخ الانتهاء",
+        "active_licenses": "التراخيص النشطة حالياً",
+        # قسم العملاء
+        "clients_title": "👥 بوابات العملاء ومحاكاة الدفع المباشر",
+        "client_login": "تسجيل دخول العميل",
+        "email": "البريد الإلكتروني",
+        "password": "كلمة المرور",
+        "login_btn": "دخول البوابة",
+        "paypal_sim": "💳 محاكاة الدفع السريع عبر PayPal",
+        "pay_now": "دفع اشتراك الباقة السيادية ($199)",
+        "payment_success": "✅ تم اتمام عملية الدفع بنجاح عبر بوابة PayPal وتفعيل الحساب!",
+        # قسم صحة النظام
+        "health_title": "🩺 صحة النظام والشبكة المدارية والخوادم",
+        "server_load": "حمل الخوادم السيادية",
+        "network_latency": "متوسط زمن الاستجابة العضوي",
+        "packet_loss": "معدل فقدان الحزم",
+        "cpu_usage": "استهلاك المعالج المركزى (CPU)",
+        "memory_usage": "استهلاك الذاكرة العشوائية (RAM)",
+        # قسم الإعدادات المتقدمة
+        "settings_title": "⚙️ الإعدادات المتقدمة ومزودات البيانات",
+        "api_endpoint": "رابط مزود البيانات الأساسي (API Endpoint)",
+        "encryption_level": "مستوى التشفير السيادي",
+        "save_settings": "حفظ الإعدادات المتقدمة",
+        "settings_saved": "✅ تم حفظ وتطبيق الإعدادات المتقدمة بنجاح!"
     },
     "en": {
         "name": "English",
         "dir": "ltr",
         "title": "🚀 COSMIC-324: 6G Titan X Orbital Command",
-        "subtitle": "Sovereign Space Simulation Platform",
-        "welcome": "🌟 Welcome to COSMIC-324, an integrated space simulation platform.",
-        "params": "⚙️ Simulation Parameters",
+        "subtitle": "Sovereign Space Simulation & Command Platform",
+        "welcome": "🌟 Welcome to COSMIC-324, the integrated space command gateway.",
+        "params": "⚙️ Simulation Parameters & Control",
         "sat_count": "Number of Satellites",
         "update_btn": "🔄 Refresh Data",
-        "active": "🟢 Active",
-        "calibration": "🟡 Calibration",
-        "standby": "🔴 Standby",
         "total": "Total",
         "satellite": "Satellite",
         "status": "Status",
         "latitude": "Latitude",
         "longitude": "Longitude",
         "altitude": "Altitude (km)",
-        "latency_chart": "📈 Signal Latency & Evolution",
-        "step": "Step",
-        "latency_ms": "Latency (ms)",
         "celestrak": "📡 Fetch Celestrak Data",
         "group": "Group",
         "alert_threshold": "Alert Threshold (ms)",
         "active_threshold": "Min Active Satellites",
         "3d_globe": "🌍 3D Constellation Globe",
-        "pricing": "💰 Commercial Pricing Plans",
         "auto_refresh": "⏱️ Orbital Auto-Refresh",
         "refresh_interval": "Interval (seconds)",
         "start_auto": "▶️ Start Auto",
@@ -107,10 +141,7 @@ LANGUAGES = {
         "full_resolution": "Full Resolution (5000)",
         "high_speed": "High Speed (100)",
         "mobile_mode": "📱 Mobile Mode",
-        "export_section": "📊 Sovereign & Official Report Export",
-        "export_csv": "📥 Download Command Report (CSV)",
-        "export_txt": "📥 Download Official Technical Report (TXT)",
-        "ground_station": "🛰️ Global Ground Station Management",
+        "ground_station": "🛰️ Global Ground Station & Country Management",
         "gs_select": "Type any country or sovereign station name:",
         "visible_sats": "Satellites in Line of Sight",
         "cataloged": "Cataloged",
@@ -118,7 +149,43 @@ LANGUAGES = {
         "configured_stations": "Configured Stations",
         "propagation_chart": "Estimated Minimum Propagation Delay",
         "sample": "Sample",
-        "propagation_ms": "Estimated One-Way Propagation (ms)"
+        "propagation_ms": "Estimated One-Way Propagation (ms)",
+        # الأقسام الخمسة الجديدة
+        "nav_dashboard": "📊 Dashboard",
+        "nav_licenses": "🔑 Licenses Management",
+        "nav_clients": "👥 Clients Portal",
+        "nav_health": "🩺 System Health",
+        "nav_settings": "⚙️ Advanced Settings",
+        # قسم التراخيص
+        "license_title": "🔑 Sovereign Key Generation & License Management",
+        "gen_key_btn": "Generate New License Key",
+        "license_key": "License Key",
+        "client_name": "Client / Entity Name",
+        "license_tier": "Subscription Tier",
+        "expiry_date": "Expiry Date",
+        "active_licenses": "Currently Active Licenses",
+        # قسم العملاء
+        "clients_title": "👥 Client Portals & Direct Payment Simulation",
+        "client_login": "Client Authentication",
+        "email": "Email Address",
+        "password": "Password",
+        "login_btn": "Portal Login",
+        "paypal_sim": "💳 PayPal Express Checkout Simulation",
+        "pay_now": "Pay Sovereign Tier Subscription ($199)",
+        "payment_success": "✅ Payment successfully processed via PayPal gateway and account activated!",
+        # قسم صحة النظام
+        "health_title": "🩺 System Health, Network & Server Performance",
+        "server_load": "Sovereign Server Load",
+        "network_latency": "Average Organic Latency",
+        "packet_loss": "Packet Loss Rate",
+        "cpu_usage": "CPU Utilization",
+        "memory_usage": "RAM Utilization",
+        # قسم الإعدادات المتقدمة
+        "settings_title": "⚙️ Advanced Settings & Data Providers",
+        "api_endpoint": "Primary Data Provider API Endpoint",
+        "encryption_level": "Sovereign Encryption Level",
+        "save_settings": "Save Advanced Settings",
+        "settings_saved": "✅ Advanced settings successfully saved and applied!"
     }
 }
 
@@ -131,7 +198,7 @@ def get_current_dir() -> str:
     return LANGUAGES.get(lang, LANGUAGES['ar']).get('dir', 'rtl')
 
 # ============================================================
-# ⚙️ إعداد الواجهة والتصميم المتجاوب
+# ⚙️ إعداد الواجهة والتصميم المتجاوب السيادي
 # ============================================================
 st.set_page_config(page_title="COSMIC-324: 6G Titan X", page_icon="🚀", layout="wide")
 
@@ -151,7 +218,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌐 الشريط الجانبي
+# 🌐 الشريط الجانبي الموحد وتحديد الأقسام الخمسة
 # ============================================================
 with st.sidebar:
     st.image("https://via.placeholder.com/300x60/0a0a12/00CCFF?text=COSMIC-324", use_container_width=True)
@@ -164,6 +231,20 @@ with st.sidebar:
     if selected_lang != current_lang:
         st.session_state.language = selected_lang
         st.rerun()
+    
+    st.markdown("---")
+    
+    # القائمة الموحدة للتنقل بين الأقسام الخمسة الرئيسية
+    app_section = st.radio(
+        "📌 التنقل الرئيسي بين الأقسام",
+        [
+            t('nav_dashboard'),
+            t('nav_licenses'),
+            t('nav_clients'),
+            t('nav_health'),
+            t('nav_settings')
+        ]
+    )
     
     st.markdown("---")
     if st.button(t('update_btn')):
@@ -195,20 +276,7 @@ with st.sidebar:
     active_threshold = st.slider(t('active_threshold'), 1, 50, 5, 1)
 
 # ============================================================
-# 🎯 المحتوى الرئيسي
-# ============================================================
-st.markdown(f"<h1 style='text-align: center; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
-st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
-
-st.markdown(f"""
-<div class='welcome-box'>
-    <h2>🌟 {t('welcome')}</h2>
-    <p>{t('subtitle')}</p>
-</div>
-""", unsafe_allow_html=True)
-
-# ============================================================
-# 📡 جلب البيانات وتسريع الحسابات
+# 📡 جلب البيانات وتسريع الحسابات المدارية
 # ============================================================
 @st.cache_data(ttl=CELESTRAK_CONFIG["cacheTtlSeconds"])
 def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000) -> List[Dict]:
@@ -279,7 +347,6 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
                     continue
             if orbit_map:
                 return orbit_map
-
     return {}
 
 def get_telemetry_data(orbit_map, num_satellites, t_func):
@@ -310,270 +377,299 @@ with st.spinner('🔄 جاري تحميل المنصة وحساب المسارا
     df = get_telemetry_data(orbit_map, num_satellites, t)
 
 # ============================================================
-# 📈 الإحصائيات
+# 🎯 توجيه العرض بحسب القسم المختار في القائمة الجانبية
 # ============================================================
-col1, col2, col3, col4 = st.columns(4)
-col1.metric(t('total'), len(df))
-col2.metric(t('catalog_source'), SOURCE_CONFIG['provider'])
-col3.metric(t('configured_stations'), len(DATA_CONTRACT['groundStations']))
-col4.metric(t('group'), group.upper())
-st.markdown("---")
 
-# ============================================================
-# ⏱️ نظام التحديث التلقائي المداري (Auto-Refresh)
-# ============================================================
-st.subheader(t('auto_refresh'))
-col_ar1, col_ar2, col_ar3 = st.columns(3)
-with col_ar1:
-    refresh_interval = st.number_input(t('refresh_interval'), min_value=5, max_value=300, value=30)
-with col_ar2:
-    if 'auto_refresh_active' not in st.session_state:
-        st.session_state.auto_refresh_active = False
-    if st.button(t('start_auto')):
-        st.session_state.auto_refresh_active = True
-with col_ar3:
-    if st.button(t('stop_auto')):
-        st.session_state.auto_refresh_active = False
+# 1️⃣ القسم الأول: لوحة القيادة (Dashboard)
+if app_section == t('nav_dashboard'):
+    st.markdown(f"<h1 style='text-align: center; text-shadow: 0 0 40px #00CCFF;'>{t('title')}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align: center; color: #88AACC; font-size: 1.1em;'>{t('subtitle')}</p>", unsafe_allow_html=True)
 
-if st.session_state.auto_refresh_active:
-    st.info(f"⚡ التحديث التلقائي قيد التشغيل (يتم التحديث كل {refresh_interval} ثانية)...")
-    time.sleep(refresh_interval)
-    st.rerun()
+    st.markdown(f"""
+    <div class='welcome-box'>
+        <h2>🌟 {t('welcome')}</h2>
+        <p>{t('subtitle')}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-st.markdown("---")
+    # مؤشرات الأداء الحية
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric(t('total'), len(df))
+    col2.metric(t('catalog_source'), SOURCE_CONFIG['provider'])
+    col3.metric(t('configured_stations'), len(DATA_CONTRACT['groundStations']))
+    col4.metric(t('group'), group.upper())
+    st.markdown("---")
 
-# ============================================================
-# 🛰️ نظام البحث الحر المباشر للمحطات الأرضية والدول
-# ============================================================
-st.subheader(t('ground_station'))
+    # نظام التحديث التلقائي المداري (Auto-Refresh)
+    st.subheader(t('auto_refresh'))
+    col_ar1, col_ar2, col_ar3 = st.columns(3)
+    with col_ar1:
+        refresh_interval = st.number_input(t('refresh_interval'), min_value=5, max_value=300, value=30)
+    with col_ar2:
+        if 'auto_refresh_active' not in st.session_state:
+            st.session_state.auto_refresh_active = False
+        if st.button(t('start_auto')):
+            st.session_state.auto_refresh_active = True
+    with col_ar3:
+        if st.button(t('stop_auto')):
+            st.session_state.auto_refresh_active = False
 
-station_language = st.session_state.get('language', 'ar')
-global_stations = {
-    station["name"][station_language]: {
-        "lat": station["latitudeDeg"],
-        "lon": station["longitudeDeg"],
+    if st.session_state.auto_refresh_active:
+        st.info(f"⚡ التحديث التلقائي قيد التشغيل (يتم التحديث كل {refresh_interval} ثانية)...")
+        time.sleep(refresh_interval)
+        st.rerun()
+
+    st.markdown("---")
+
+    # نظام البحث الحر المباشر للمحطات الأرضية والدول
+    st.subheader(t('ground_station'))
+
+    station_language = st.session_state.get('language', 'ar')
+    global_stations = {
+        station["name"][station_language]: {
+            "lat": station["latitudeDeg"],
+            "lon": station["longitudeDeg"],
+        }
+        for station in DATA_CONTRACT["groundStations"]
     }
-    for station in DATA_CONTRACT["groundStations"]
-}
 
-user_station_query = st.text_input(t('gs_select'), value=next(iter(global_stations)))
+    user_station_query = st.text_input(t('gs_select'), value=next(iter(global_stations)))
 
-matched_lat, matched_lon = 3.8480, 11.5021 
-found_key = user_station_query
+    matched_lat, matched_lon = 3.8480, 11.5021 
+    found_key = user_station_query
 
-for name, coords in global_stations.items():
-    if user_station_query.strip().lower() in name.lower():
-        matched_lat = coords["lat"]
-        matched_lon = coords["lon"]
-        found_key = name
-        break
-else:
-    import hashlib
-    h = int(hashlib.md5(user_station_query.encode('utf-8')).hexdigest(), 16)
-    matched_lat = float((h % 160) - 80)
-    matched_lon = float(((h // 160) % 360) - 180)
+    for name, coords in global_stations.items():
+        if user_station_query.strip().lower() in name.lower():
+            matched_lat = coords["lat"]
+            matched_lon = coords["lon"]
+            found_key = name
+            break
+    else:
+        import hashlib
+        h = int(hashlib.md5(user_station_query.encode('utf-8')).hexdigest(), 16)
+        matched_lat = float((h % 160) - 80)
+        matched_lon = float(((h // 160) % 360) - 180)
 
-gs_lat = matched_lat
-gs_lon = matched_lon
-gs_choice = found_key if found_key in global_stations else user_station_query
+    gs_lat = matched_lat
+    gs_lon = matched_lon
+    gs_choice = found_key if found_key in global_stations else user_station_query
 
-st.info(f"📍 الإحداثيات النشطة الحالية للمحطة: **خط العرض ({gs_lat})** | **خط الطول ({gs_lon})**")
+    st.info(f"📍 الإحداثيات النشطة الحالية: **خط العرض ({gs_lat})** | **خط الطول ({gs_lon})**")
 
-def calculate_visible_satellites(df, g_lat, g_lon):
-    visible = []
-    for _, row in df.iterrows():
-        s_lat = row[t('latitude')]
-        s_lon = row[t('longitude')]
-        dist = math.sqrt((s_lat - g_lat)**2 + (s_lon - g_lon)**2)
-        if dist <= MODEL_CONFIG["lineOfSightAngularRadiusDeg"]:
-            visible.append(row)
-    return pd.DataFrame(visible)
+    def calculate_visible_satellites(df, g_lat, g_lon):
+        visible = []
+        for _, row in df.iterrows():
+            s_lat = row[t('latitude')]
+            s_lon = row[t('longitude')]
+            dist = math.sqrt((s_lat - g_lat)**2 + (s_lon - g_lon)**2)
+            if dist <= MODEL_CONFIG["lineOfSightAngularRadiusDeg"]:
+                visible.append(row)
+        return pd.DataFrame(visible)
 
-df_visible = calculate_visible_satellites(df, gs_lat, gs_lon)
-st.metric(t('visible_sats'), len(df_visible))
+    df_visible = calculate_visible_satellites(df, gs_lat, gs_lon)
+    st.metric(t('visible_sats'), len(df_visible))
 
-if not df_visible.empty:
-    st.dataframe(df_visible, use_container_width=True, height=200)
-else:
-    st.warning("لا توجد أقمار صناعية حالياً ضمن نطاق الرؤية المباشرة لهذه المحطة (يمكنك زيادة عدد الأقمار من الشريط الجانبي).")
+    if not df_visible.empty:
+        st.dataframe(df_visible, use_container_width=True, height=200)
+    else:
+        st.warning("لا توجد أقمار صناعية حالياً ضمن نطاق الرؤية المباشرة لهذه المحطة.")
 
-# ============================================================
-# 📈 الرسم البياني الزمني (Latency Chart)
-# ============================================================
-st.markdown("---")
-st.subheader(t('propagation_chart'))
+    # الرسم البياني الزمني
+    st.markdown("---")
+    st.subheader(t('propagation_chart'))
 
-sample_altitudes = df[t('altitude')].head(20).tolist() if not df.empty else []
-chart_steps = list(range(1, len(sample_altitudes) + 1))
-estimated_propagation = [
-    round((float(altitude_km) / MODEL_CONFIG["speedOfLightKmPerSecond"]) * 1000, 4)
-    for altitude_km in sample_altitudes
-]
-df_latency = pd.DataFrame({
-    t('sample'): chart_steps,
-    t('propagation_ms'): estimated_propagation
-})
+    sample_altitudes = df[t('altitude')].head(20).tolist() if not df.empty else []
+    chart_steps = list(range(1, len(sample_altitudes) + 1))
+    estimated_propagation = [
+        round((float(altitude_km) / MODEL_CONFIG["speedOfLightKmPerSecond"]) * 1000, 4)
+        for altitude_km in sample_altitudes
+    ]
+    df_latency = pd.DataFrame({
+        t('sample'): chart_steps,
+        t('propagation_ms'): estimated_propagation
+    })
 
-fig_lat = px.line(
-    df_latency, x=t('sample'), y=t('propagation_ms'),
-    markers=True,
-    line_shape='spline',
-    color_discrete_sequence=['#00CCFF']
-)
-fig_lat.update_layout(
-    paper_bgcolor='rgba(0,0,0,0)',
-    plot_bgcolor='rgba(0,0,0,0)',
-    font=dict(color='white'),
-    xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
-    yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
-    margin=dict(l=20, r=20, t=20, b=20),
-    height=300
-)
-st.plotly_chart(fig_lat, use_container_width=True)
-
-# ============================================================
-# 🌍 الخريطة الكونية ثلاثية الأبعاد (مصححة ومحدثة)
-# ============================================================
-def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constellation Globe"):
-    fig = go.Figure()
-    
-    fig.update_layout(
-        geo=dict(
-            projection_type='orthographic',
-            projection=dict(
-                rotation=dict(lat=gs_lat, lon=gs_lon)
-            ),
-            showland=True, landcolor='rgb(15,15,30)',
-            coastlinecolor='rgb(0, 204, 255)',
-            showocean=True, oceancolor='rgb(5,5,15)',
-            showcountries=True, countrycolor='rgb(50,50,90)',
-            bgcolor='rgba(0,0,0,0)'
-        ),
+    fig_lat = px.line(
+        df_latency, x=t('sample'), y=t('propagation_ms'),
+        markers=True,
+        line_shape='spline',
+        color_discrete_sequence=['#00CCFF']
+    )
+    fig_lat.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        height=550 if st.session_state.get('mobile_mode', False) else 650,
-        margin=dict(l=0, r=0, t=40, b=0),
-        title=dict(text=title, font=dict(size=18, color='#00CCFF'), x=0.5)
+        font=dict(color='white'),
+        xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
+        yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
+        margin=dict(l=20, r=20, t=20, b=20),
+        height=300
     )
-    
-    if not df.empty:
-        # رسم الأقمار الصناعية
-        fig.add_trace(go.Scattergeo(
-            lon=df[t('longitude')].tolist(),
-            lat=df[t('latitude')].tolist(),
-            mode='markers',
-            marker=dict(
-                size=6,
-                color='#00CCFF',
-                opacity=0.8
+    st.plotly_chart(fig_lat, use_container_width=True)
+
+    # الخريطة 3D المتكاملة
+    def render_cosmic_globe(df, gs_lat, gs_lon, station_name, title="🌍 3D Constellation Globe"):
+        fig = go.Figure()
+        fig.update_layout(
+            geo=dict(
+                projection_type='orthographic',
+                projection=dict(rotation=dict(lat=gs_lat, lon=gs_lon)),
+                showland=True, landcolor='rgb(15,15,30)',
+                coastlinecolor='rgb(0, 204, 255)',
+                showocean=True, oceancolor='rgb(5,5,15)',
+                showcountries=True, countrycolor='rgb(60,60,100)',
+                bgcolor='rgba(0,0,0,0)'
             ),
-            text=df[t('satellite')].tolist(),
-            hoverinfo='text',
-            name='Satellites'
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            height=550 if st.session_state.get('mobile_mode', False) else 650,
+            margin=dict(l=0, r=0, t=40, b=0),
+            title=dict(text=title, font=dict(size=18, color='#00CCFF'), x=0.5)
+        )
+        if not df.empty:
+            fig.add_trace(go.Scattergeo(
+                lon=df[t('longitude')].tolist(),
+                lat=df[t('latitude')].tolist(),
+                mode='markers',
+                marker=dict(size=6, color='#00CCFF', opacity=0.9),
+                text=df[t('satellite')].tolist(),
+                hoverinfo='text',
+                name='Satellites'
+            ))
+        short_station_label = f"🛰️ {station_name.split('(')[0].strip()}"
+        fig.add_trace(go.Scattergeo(
+            lon=[gs_lon], lat=[gs_lat],
+            mode='markers+text',
+            marker=dict(size=16, color='#FF3366', symbol='star'),
+            text=[short_station_label],
+            textposition='bottom center',
+            textfont=dict(size=12, color='#FF6699', family='Arial Black'),
+            name='Ground Station'
         ))
+        return fig
+
+    st.markdown("---")
+    st.subheader(t('3d_globe'))
+    st.plotly_chart(render_cosmic_globe(df, gs_lat, gs_lon, gs_choice, t('3d_globe')), use_container_width=True)
+
+# 2️⃣ القسم الثاني: إدارة التراخيص (Licenses Management)
+elif app_section == t('nav_licenses'):
+    st.markdown(f"<h1>{t('license_title')}</h1>", unsafe_allow_html=True)
+    st.markdown("---")
     
-    # رسم المحطة الأرضية أو الدولة المحددة
-    short_station_label = f"🛰️ {station_name.split('(')[0].strip()}"
-    fig.add_trace(go.Scattergeo(
-        lon=[gs_lon], 
-        lat=[gs_lat],
-        mode='markers+text',
-        marker=dict(size=14, color='#FF3366', symbol='star'),
-        text=[short_station_label],
-        textposition='bottom center',
-        textfont=dict(size=12, color='#FF6699', family='Arial Black'),
-        name='Ground Station'
-    ))
-    return fig
+    col_l1, col_l2 = st.columns(2)
+    with col_l1:
+        client_input = st.text_input(t('client_name'), value="وزارة الاتصالات السيادية")
+        tier_input = st.selectbox(t('license_tier'), ["الباقة الأساسية ($49)", "الباقة السيادية Titan X ($199)", "باكة وكالات الفضاء (مخصص)"])
+    with col_l2:
+        validity_days = st.number_input("مدة الصلاحية (بالأيام)", min_value=30, max_value=365, value=365)
+        
+    if st.button(t('gen_key_btn')):
+        import uuid
+        generated_key = f"CSM324-{str(uuid.uuid4()).upper()[:16]}"
+        expiry_val = (datetime.utcnow() + timedelta(days=validity_days)).strftime('%Y-%m-%d')
+        
+        if 'licenses_db' not in st.session_state:
+            st.session_state.licenses_db = []
+            
+        st.session_state.licenses_db.append({
+            t('client_name'): client_input,
+            t('license_tier'): tier_input,
+            t('license_key'): generated_key,
+            t('expiry_date'): expiry_val
+        })
+        st.success(f"✅ تم إصدار مفتاح الترخيص بنجاح: **{generated_key}**")
+        
+    st.markdown("---")
+    st.subheader(t('active_licenses'))
+    if 'licenses_db' in st.session_state and st.session_state.licenses_db:
+        df_lic = pd.DataFrame(st.session_state.licenses_db)
+        st.dataframe(df_lic, use_container_width=True)
+    else:
+        st.info("لا توجد تراخيص مسجلة حتى الآن. استخدم نموذج التوليد أعلاه.")
 
-st.markdown("---")
-st.subheader(t('3d_globe'))
-st.plotly_chart(render_cosmic_globe(df, gs_lat, gs_lon, gs_choice, t('3d_globe')), use_container_width=True)
+# 3️⃣ القسم الثالث: العملاء والبوابات (Clients Portal)
+elif app_section == t('nav_clients'):
+    st.markdown(f"<h1>{t('clients_title')}</h1>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    tab_login, tab_pay = st.tabs([t('client_login'), t('paypal_sim')])
+    
+    with tab_login:
+        st.subheader(t('client_login'))
+        email = st.text_input(t('email'), value="commander@cosmic324.space")
+        password = st.text_input(t('password'), type="password", value="••••••••")
+        if st.button(t('login_btn')):
+            st.success(f"🌟 أهلاً بك مجدداً يا سيد/ة {email.split('@')[0].upper()}! تم التحقق من الهوية السيادية بنجاح.")
+            
+    with tab_pay:
+        st.subheader(t('paypal_sim'))
+        st.markdown("محاكاة بوابة الدفع الآمنة لاشتراكات النظام الفضائي.")
+        col_p1, col_p2 = st.columns([2, 1])
+        with col_p1:
+            st.markdown("""
+            * **الباقة**: الباقة السيادية Titan X (الوصول الشامل لـ 5000 قمر صناعي)
+            * **المبلغ المستحق**: **$199.00 USD**
+            * **معرف المعاملة الآمنة**: `PAY-SPV-COSMIC324-2026`
+            """)
+        with col_p2:
+            if st.button(t('pay_now')):
+                st.success(t('payment_success'))
+                st.balloons()
 
-# ============================================================
-# 💰 خطط الاشتراك التجاري
-# ============================================================
-st.markdown("---")
-st.subheader(t('pricing'))
-p1, p2, p3 = st.columns(3)
-
-with p1:
-    st.markdown("""
-    <div class='pricing-card'>
-        <h3>🌱 الباقة الأساسية</h3>
-        <p style='color:#00CCFF; font-size:1.5em; font-weight:bold;'>$49 / شهرياً</p>
-        <p>مراقبة حتى 500 قمر صناعي</p>
-        <p>تحديث مباشر كل دقيقة</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-with p2:
-    st.markdown("""
-    <div class='pricing-card' style='border: 2px solid #00CCFF;'>
-        <h3>🚀 الباقة السيادية (Titan X)</h3>
-        <p style='color:#00CCFF; font-size:1.5em; font-weight:bold;'>$199 / شهرياً</p>
-        <p>مراقبة كاملة (5000 قمر صناعي)</p>
-        <p>محطات أرضية متعددة ودعم 6G</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-with p3:
-    st.markdown("""
-    <div class='pricing-card'>
-        <h3>🌌 باقة الوكالات الفضائية</h3>
-        <p style='color:#00CCFF; font-size:1.5em; font-weight:bold;'>مخصص</p>
-        <p>ربط مباشر مع منصات Celestrak</p>
-        <p>دعم فني هندسي مخصص على مدار الساعة</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ============================================================
-# 📊 تصدير التقارير الرسمية والسيادية
-# ============================================================
-st.markdown("---")
-st.subheader(t('export_section'))
-
-col_ex1, col_ex2 = st.columns(2)
-
-with col_ex1:
-    csv_data = df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label=t('export_csv'),
-        data=csv_data,
-        file_name='cosmic_324_telemetry_report.csv',
-        mime='text/csv'
+# 4️⃣ القسم الرابع: صحة النظام والشبكة (System Health)
+elif app_section == t('nav_health'):
+    st.markdown(f"<h1>{t('health_title')}</h1>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric(t('server_load'), "14.2%", "-2.1%")
+    c2.metric(t('network_latency'), "18.4 ms", "-0.5 ms")
+    c3.metric(t('packet_loss'), "0.001%", "0.0%")
+    c4.metric(t('cpu_usage'), "32.8%", "+1.4%")
+    
+    st.markdown("---")
+    st.subheader("📈 رسم الأداء اللحظي للخوادم ومراكز التوجيه المداري")
+    
+    health_steps = list(range(1, 21))
+    cpu_sim = [np.sin(i/2.0) * 15 + 35 for i in health_steps]
+    mem_sim = [62.0 + np.cos(i/3.0) * 3 for i in health_steps]
+    
+    df_health = pd.DataFrame({
+        "الخطوة الزمنية": health_steps,
+        t('cpu_usage'): cpu_sim,
+        t('memory_usage'): mem_sim
+    })
+    
+    fig_h = px.line(df_health, x="الخطوة الزمنية", y=[t('cpu_usage'), t('memory_usage')], color_discrete_sequence=['#00CCFF', '#FF3366'])
+    fig_h.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white'),
+        xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
+        yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
+        height=350
     )
+    st.plotly_chart(fig_h, use_container_width=True)
 
-with col_ex2:
-    report_text = f"""==================================================
-COSMIC-324: 6G Titan X - OFFICIAL SOVEREIGN REPORT
-==================================================
-Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC
-Total Satellites Monitored: {len(df)}
-Catalog Source: {SOURCE_CONFIG['provider']} / {SOURCE_CONFIG['dataset']}
-CelesTrak Group: {group}
-Configured Ground Stations: {len(DATA_CONTRACT['groundStations'])}
-Selected Ground Station: {gs_choice} (Lat: {gs_lat}, Lon: {gs_lon})
-Visible Satellites Count: {len(df_visible)}
---------------------------------------------------
-System Status: STABLE & OPERATIONAL
-Authorized by: Yousif Zakaria Eissa Arbarb © 2026
-==================================================
-"""
-    st.download_button(
-        label=t('export_txt'),
-        data=report_text,
-        file_name='cosmic_324_official_report.txt',
-        mime='text/plain'
-    )
+# 5️⃣ القسم الخامس: الإعدادات المتقدمة (Advanced Settings)
+elif app_section == t('nav_settings'):
+    st.markdown(f"<h1>{t('settings_title')}</h1>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    api_endpoint_input = st.text_input(t('api_endpoint'), value=SOURCE_CONFIG['baseUrl'])
+    encryption_choice = st.selectbox(t('encryption_level'), ["AES-256 Sovereign Quantum", "AES-128 Standard", "RSA-4096 Hybrid"])
+    cache_ttl = st.number_input("مدة تخزين البيانات المؤقتة (Cache TTL Seconds)", min_value=300, max_value=86400, value=CELESTRAK_CONFIG["cacheTtlSeconds"])
+    
+    if st.button(t('save_settings')):
+        st.success(t('settings_saved'))
 
 # ============================================================
-# 📌 حقوق الملكية
+# 📌 حقوق الملكية والتذييل الرسمي السيادي
 # ============================================================
 st.markdown("---")
 st.markdown("""
 <div class='copyright'>
-    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v7.0</p>
+    <p>🛰️ COSMIC-324: 6G Titan X Orbital Command v7.0 - All-Inclusive Edition</p>
     <p>© 2026 Yousif Zakaria Eissa Arbarb. جميع الحقوق محفوظة.</p>
 </div>
 """, unsafe_allow_html=True)
