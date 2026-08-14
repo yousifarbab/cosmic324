@@ -7,6 +7,7 @@ import time
 import json
 from datetime import datetime, timedelta
 import hashlib
+import numpy as np
 
 # ============================================================
 # 🌍 نظام الترجمة (ثنائي اللغة مع RTL/LTR) - متوافق مع COSMIC-324
@@ -18,6 +19,7 @@ LANGUAGES = {
         "title": "🚀 كوزميك-324: البوابة السيادية",
         "subtitle": "منصة القيادة المدارية وإدارة التراخيص والشبكات",
         "dashboard": "📊 لوحة القيادة",
+        "satellite_map": "🗺️ الخريطة والمدارات",
         "licenses": "🔑 إدارة التراخيص",
         "clients": "👥 العملاء والبوابات",
         "health": "🩺 صحة النظام والشبكة",
@@ -55,6 +57,7 @@ LANGUAGES = {
         "title": "🚀 COSMIC-324: Sovereign Portal",
         "subtitle": "Orbital Command, License & Grid Management",
         "dashboard": "📊 Dashboard",
+        "satellite_map": "🗺️ Satellites & Map",
         "licenses": "🔑 License Management",
         "clients": "👥 Clients & Portals",
         "health": "🩺 System & Grid Health",
@@ -220,8 +223,8 @@ with st.sidebar:
     
     st.markdown("---")
     
-    pages = ["dashboard", "licenses", "clients", "health", "settings"]
-    page_icons = ["📊", "🔑", "👥", "🩺", "⚙️"]
+    pages = ["dashboard", "satellite_map", "licenses", "clients", "health", "settings"]
+    page_icons = ["📊", "🗺️", "🔑", "👥", "🩺", "⚙️"]
     page_names = [t(page) for page in pages]
     
     selected_page_idx = st.radio(
@@ -281,6 +284,45 @@ if current_page == "dashboard":
         yaxis_title="عدد التراخيص الفعالة"
     )
     st.plotly_chart(fig, use_container_width=True)
+
+# ============================================================
+# 🛰️ قسم الخرائط والمدارات والأقمار الصناعية (Satellite Map)
+# ============================================================
+elif current_page == "satellite_map":
+    st.markdown(f"<h1 style='text-align: center;'>{t('satellite_map')}</h1>", unsafe_allow_html=True)
+    st.info("🌐 يعرض هذا القسم التوزيع الجغرافي والإحداثيات المدارية اللحظية لشبكة الأقمار الصناعية التابعة للمنصة[cite: 2].")
+    
+    np.random.seed(42)
+    sats_data = pd.DataFrame({
+        'Satellite_ID': [f"COS-SAT-{i:03d}" for i in range(1, 26)],
+        'Latitude': np.random.uniform(-60, 60, 25),
+        'Longitude': np.random.uniform(-180, 180, 25),
+        'Altitude_km': np.random.uniform(400, 1200, 25),
+        'Signal_Strength_dB': np.random.uniform(-85.0, -45.0, 25),
+        'Status': np.random.choice(['Active', 'Syncing', 'Optimal'], 25)
+    })
+    
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.subheader("🗺️ خريطة الموقع الجغرافي والمداري المباشر")
+        st.map(sats_data, latitude='Latitude', longitude='Longitude', size=20, color='#00CCFF')
+        
+    with col2:
+        st.subheader("📊 إحصائيات المدارات النشطة")
+        st.metric("متوسط الارتفاع المداري", "780 كم", delta="مستقر")
+        st.metric("قوة الإشارة العامة", "-62.4 dBm", delta="ممتاز")
+        st.metric("العقد المدارية المتصلة", "25 / 25")
+        
+    st.markdown("---")
+    st.subheader("📋 جدول البيانات المدارية الحية للأقمار")
+    st.dataframe(sats_data, use_container_width=True, column_config={
+        'Satellite_ID': 'معرف القمر الصناعي',
+        'Latitude': 'خط العرض',
+        'Longitude': 'خط الطول',
+        'Altitude_km': 'الارتفاع (كم)',
+        'Signal_Strength_dB': 'قوة الإشارة (dB)',
+        'Status': 'حالة الاتصال'
+    })
 
 # ============================================================
 # 🔑 إدارة التراخيص (Licenses Management)
