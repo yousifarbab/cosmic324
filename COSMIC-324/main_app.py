@@ -1,7 +1,7 @@
 """
 COSMIC-324: 6G Titan X Global Edition
 منصة المحاكاة الفضائية والسيادية المتكاملة
-الإصدار: v7.5 - Stripe & PayPal Integrated (معدل ومكتمل بدون أخطاء)
+الإصدار: v7.6 - Complete Features Integrated (قائمة الدول، الباقات الثلاث، ودعم عدد الأقمار الفعلي)
 """
 
 import streamlit as st
@@ -49,9 +49,6 @@ SECRET_KEY = os.environ.get('COSMIC_SECRET_KEY', 'default-secret-key-change-me-i
 # 📁 تحميل ملف العقد والبيانات الأساسية (مع دعم مسارات متعددة)
 # ============================================================
 def load_contract_data() -> Dict:
-    """
-    تحميل بيانات العقد من ملف JSON مع دعم مسارات متعددة
-    """
     possible_paths = [
         Path(__file__).with_name("cosmic324_data.json"),
         Path(os.getcwd()) / "data" / "cosmic324_data.json",
@@ -74,7 +71,6 @@ def load_contract_data() -> Dict:
     return get_default_contract()
 
 def get_default_contract() -> Dict:
-    """توفير بيانات احتياطية في حالة عدم وجود ملف التكوين"""
     return {
         "celestrak": {
             "groups": ["starlink", "active", "visual", "weather", "gps", "iridium"],
@@ -107,7 +103,6 @@ def get_default_contract() -> Dict:
         ]
     }
 
-# تحميل البيانات
 DATA_CONTRACT = load_contract_data()
 CELESTRAK_CONFIG = DATA_CONTRACT["celestrak"]
 MODEL_CONFIG = DATA_CONTRACT["model"]
@@ -117,14 +112,11 @@ SOURCE_CONFIG = DATA_CONTRACT["source"]
 # 🗄️ نظام إدارة التراخيص باستخدام SQLite
 # ============================================================
 class LicenseManager:
-    """مدير التراخيص مع تخزين دائم في SQLite"""
-    
     def __init__(self, db_path: str = "licenses.db"):
         self.db_path = db_path
         self._init_db()
     
     def _init_db(self):
-        """إنشاء جدول التراخيص إذا لم يكن موجوداً"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("""
@@ -151,9 +143,6 @@ class LicenseManager:
             logger.error(f"❌ فشل تهيئة قاعدة البيانات: {e}")
     
     def generate_secure_license(self, client_name: str, tier: str, validity_days: int = 365) -> Tuple[str, str]:
-        """
-        توليد مفتاح ترخيص آمن مع توقيع HMAC
-        """
         expiry_date = (datetime.utcnow() + timedelta(days=validity_days)).strftime('%Y-%m-%d')
         license_id = secrets.token_hex(16)
         data = f"{license_id}:{client_name}:{tier}:{expiry_date}"
@@ -176,7 +165,6 @@ class LicenseManager:
         return license_key, expiry_date
     
     def get_active_licenses(self) -> List[Dict]:
-        """الحصول على جميع التراخيص النشطة"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
@@ -192,7 +180,6 @@ class LicenseManager:
             return []
     
     def update_payment_status(self, license_key: str, status: str, gateway: str):
-        """تحديث حالة الدفع للترخيص"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("""
@@ -205,7 +192,6 @@ class LicenseManager:
             logger.error(f"❌ فشل تحديث حالة الدفع: {e}")
     
     def deactivate_license(self, license_key: str):
-        """إلغاء تنشيط الترخيص"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("""
@@ -229,7 +215,7 @@ LANGUAGES = {
         "subtitle": "منصة المحاكاة الفضائية والسيادية المتكاملة",
         "welcome": "🌟 مرحباً بك في منصة كوزميك-324، البوابة الموحدة للقيادة الفضائية.",
         "params": "⚙️ إعدادات المحاكاة والتحكم",
-        "sat_count": "عدد الأقمار",
+        "sat_count": "عدد الأقمار (الفعلي)",
         "update_btn": "🔄 تحديث البيانات",
         "total": "المجموع",
         "satellite": "القمر",
@@ -247,12 +233,9 @@ LANGUAGES = {
         "start_auto": "▶️ تشغيل التلقائي",
         "stop_auto": "⏹️ إيقاف التلقائي",
         "performance_mode": "⚡ وضع الأداء",
-        "full_resolution": "دقة كاملة (5000)",
-        "high_speed": "سرعة عالية (100)",
-        "mobile_mode": "📱 وضع الجوال",
         "ground_station": "🛰️ إدارة المحطات والدول العالمية",
-        "gs_select": "اختر الدولة العالمية أو المحطة السيادية:",
-        "visible_sats": "الأقمار المرئية في نطاق المحطة",
+        "gs_select": "اختر الدولة أو المحطة السيادية (الشريط الجانبي):",
+        "visible_sats": "الأقمار المرئية في نطاق المحطة والدولة المحددة",
         "cataloged": "مفهرس",
         "catalog_source": "مصدر الفهرس",
         "configured_stations": "المحطات المعرفة",
@@ -268,17 +251,27 @@ LANGUAGES = {
         "gen_key_btn": "توليد مفتاح ترخيص جديد",
         "license_key": "مفتاح الترخيص",
         "client_name": "اسم العميل / الجهة",
-        "license_tier": "نوع الباقة",
+        "license_tier": "نوع الباقة السيادية",
         "expiry_date": "تاريخ الانتهاء",
         "active_licenses": "التراخيص النشطة حالياً",
-        "clients_title": "👥 بوابات العملاء ودعم بوابات الدفع (Stripe & PayPal)",
+        "clients_title": "👥 بوابات العملاء ودعم الباقات الثلاث وبوابات الدفع",
+        "tier_1_name": "الباقة الأولى: الاستكشاف المداري (Orbital Scout)",
+        "tier_1_price": "$49 / شهرياً",
+        "tier_1_desc": "تتبع أساسي لـ 100 قمر، تحديث كل دقيقة، دعم فني قياسي.",
+        "tier_2_name": "الباقة الثانية: القيادة التكتيكية (Tactical Command)",
+        "tier_2_price": "$199 / شهرياً",
+        "tier_2_desc": "تتبع متقدم حتى 1000 قمر، ربط المحطات الأرضية ودول العالم، زمن استجابة فائق.",
+        "tier_3_name": "الباقة الثالثة: السيادة المطلقة 6G Titan (Absolute Sovereign)",
+        "tier_3_price": "$499 / شهرياً",
+        "tier_3_desc": "تتبع مفتوح لجميع الأقمار المتاحة (حتى 5000+ قمر)، تشفير كمومي، دعم مباشر 24/7.",
+        "select_tier_action": "اختر الباقة للاشتراك الفوري:",
         "client_login": "تسجيل دخول العميل",
         "email": "البريد الإلكتروني",
         "password": "كلمة المرور",
         "login_btn": "دخول البوابة",
         "paypal_sim": "💳 بوابات الدفع العالمية (Stripe / PayPal)",
-        "pay_now": "دفع اشتراك الباقة السيادية ($199)",
-        "payment_success": "✅ تم اتمام عملية الدفع بنجاح وتفعيل الحساب السيادي فوراً!",
+        "pay_now": "إتمام الدفع للباقة المختارة",
+        "payment_success": "✅ تم اتمام عملية الدفع بنجاح وتفعيل الاشتراك في الباقة السيادية فوراً!",
         "health_title": "🩺 صحة النظام والشبكة المدارية والخوادم",
         "server_load": "حمل الخوادم السيادية",
         "network_latency": "متوسط زمن الاستجابة العضوي",
@@ -292,12 +285,11 @@ LANGUAGES = {
         "settings_saved": "✅ تم حفظ وتطبيق الإعدادات المتقدمة بنجاح!",
         "no_licenses": "لا توجد تراخيص مسجلة حتى الآن",
         "loading": "🔄 جاري تحميل المنصة وحساب المسارات مدارياً...",
-        "no_visible_sats": "لا توجد أقمار صناعية حالياً ضمن نطاق الرؤية المباشرة لهذه الدولة.",
-        "auto_refresh_active": "⚡ التحديث التلقائي قيد التشغيل (يتم التحديث كل {interval} ثانية)...",
+        "no_visible_sats": "لا توجد أقمار صناعية حالياً ضمن نطاق الرؤية المباشرة لهذه الدولة أو المحطة.",
         "payment_gateway": "اختر بوابة الدفع:",
         "stripe_checkout": "Stripe Checkout",
         "paypal_express": "PayPal Express",
-        "payment_processed": "✅ تم اتمام الدفع بنجاح عبر بوابة {gateway} وتفعيل الاشتراك السيادي فوراً!"
+        "payment_processed": "✅ تم اتمام الدفع بنجاح عبر بوابة {gateway} للباقة المختارة وتفعيل الحساب فوراً!"
     },
     "en": {
         "name": "English",
@@ -306,7 +298,7 @@ LANGUAGES = {
         "subtitle": "Global Sovereign Space Simulation & Command Platform",
         "welcome": "🌟 Welcome to COSMIC-324, the integrated space command gateway.",
         "params": "⚙️ Simulation Parameters & Control",
-        "sat_count": "Number of Satellites",
+        "sat_count": "Number of Satellites (Actual)",
         "update_btn": "🔄 Refresh Data",
         "total": "Total",
         "satellite": "Satellite",
@@ -324,12 +316,9 @@ LANGUAGES = {
         "start_auto": "▶️ Start Auto",
         "stop_auto": "⏹️ Stop Auto",
         "performance_mode": "⚡ Performance Mode",
-        "full_resolution": "Full Resolution (5000)",
-        "high_speed": "High Speed (100)",
-        "mobile_mode": "📱 Mobile Mode",
         "ground_station": "🛰️ Global Ground Station & Country Management",
-        "gs_select": "Select Global Country or Sovereign Station:",
-        "visible_sats": "Satellites in Line of Sight",
+        "gs_select": "Select Country or Sovereign Station (Sidebar):",
+        "visible_sats": "Satellites in Line of Sight for Selected Country",
         "cataloged": "Cataloged",
         "catalog_source": "Catalog Source",
         "configured_stations": "Configured Stations",
@@ -348,14 +337,24 @@ LANGUAGES = {
         "license_tier": "Subscription Tier",
         "expiry_date": "Expiry Date",
         "active_licenses": "Currently Active Licenses",
-        "clients_title": "👥 Client Portals & Payment Gateways (Stripe & PayPal)",
+        "clients_title": "👥 Client Portals, 3 Tiers & Payment Gateways",
+        "tier_1_name": "Tier 1: Orbital Scout",
+        "tier_1_price": "$49 / month",
+        "tier_1_desc": "Basic tracking for 100 satellites, standard support.",
+        "tier_2_name": "Tier 2: Tactical Command",
+        "tier_2_price": "$199 / month",
+        "tier_2_desc": "Advanced tracking up to 1000 satellites, ground stations & world countries support.",
+        "tier_3_name": "Tier 3: Absolute Sovereign 6G Titan",
+        "tier_3_price": "$499 / month",
+        "tier_3_desc": "Full open tracking for all available satellites (up to 5000+), quantum encryption, 24/7 direct support.",
+        "select_tier_action": "Select Tier for Immediate Subscription:",
         "client_login": "Client Authentication",
         "email": "Email Address",
         "password": "Password",
         "login_btn": "Portal Login",
         "paypal_sim": "💳 Global Payment Gateways (Stripe / PayPal)",
-        "pay_now": "Pay Sovereign Tier Subscription ($199)",
-        "payment_success": "✅ Payment successfully processed and sovereign account activated!",
+        "pay_now": "Complete Payment for Selected Tier",
+        "payment_success": "✅ Payment successfully processed and subscription activated!",
         "health_title": "🩺 System Health, Network & Server Performance",
         "server_load": "Sovereign Server Load",
         "network_latency": "Average Organic Latency",
@@ -369,12 +368,11 @@ LANGUAGES = {
         "settings_saved": "✅ Advanced settings successfully saved and applied!",
         "no_licenses": "No licenses registered yet",
         "loading": "🔄 Loading platform and calculating orbital paths...",
-        "no_visible_sats": "No satellites currently in line of sight for this country.",
-        "auto_refresh_active": "⚡ Auto-refresh is active (updating every {interval} seconds)...",
+        "no_visible_sats": "No satellites currently in line of sight for this country or station.",
         "payment_gateway": "Select Payment Gateway:",
         "stripe_checkout": "Stripe Checkout",
         "paypal_express": "PayPal Express",
-        "payment_processed": "✅ Payment successfully processed via {gateway} and sovereign subscription activated!"
+        "payment_processed": "✅ Payment successfully processed via {gateway} for selected tier and subscription activated!"
     }
 }
 
@@ -481,31 +479,37 @@ st.markdown(f"""
         margin: 0;
         font-size: 1em;
     }}
+    .tier-card {{
+        background: linear-gradient(135deg, #16162c, #0b0b16);
+        border: 1px solid rgba(0, 204, 255, 0.3);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌐 قاعدة بيانات الدول المدمجة (بديلة pycountry لضمان الاستقرار)
+# 🌐 قاعدة بيانات الدول العالمية المدمجة للشريط الجانبي
 # ============================================================
 @st.cache_data
 def get_all_countries() -> List[Dict]:
-    """قائمة شاملة ومدمجة لجميع دول العالم مع إحداثيات تقريبية"""
     countries_data = [
-        {"name": "Oman", "alpha_2": "OM", "lat": 21.5126, "lon": 55.9233},
-        {"name": "Saudi Arabia", "alpha_2": "SA", "lat": 23.8859, "lon": 45.0792},
-        {"name": "United Arab Emirates", "alpha_2": "AE", "lat": 23.4241, "lon": 53.8478},
-        {"name": "Sudan", "alpha_2": "SD", "lat": 15.5007, "lon": 32.5599},
-        {"name": "Egypt", "alpha_2": "EG", "lat": 26.8206, "lon": 30.8025},
-        {"name": "United States", "alpha_2": "US", "lat": 37.0902, "lon": -95.7129},
-        {"name": "United Kingdom", "alpha_2": "GB", "lat": 55.3781, "lon": -3.4360},
-        {"name": "Germany", "alpha_2": "DE", "lat": 51.1657, "lon": 10.4515},
-        {"name": "Japan", "alpha_2": "JP", "lat": 36.2048, "lon": 138.2529},
-        {"name": "Australia", "alpha_2": "AU", "lat": -25.2744, "lon": 133.7751},
-        {"name": "France", "alpha_2": "FR", "lat": 46.2276, "lon": 2.2137},
-        {"name": "Canada", "alpha_2": "CA", "lat": 56.1304, "lon": -106.3468},
-        {"name": "Brazil", "alpha_2": "BR", "lat": -14.2350, "lon": -51.9253},
-        {"name": "India", "alpha_2": "IN", "lat": 20.5937, "lon": 78.9629},
-        {"name": "China", "alpha_2": "CN", "lat": 35.8617, "lon": 104.1954}
+        {"name": "Oman (سلطنة عمان)", "alpha_2": "OM", "lat": 21.5126, "lon": 55.9233},
+        {"name": "Saudi Arabia (المملكة العربية السعودية)", "alpha_2": "SA", "lat": 23.8859, "lon": 45.0792},
+        {"name": "United Arab Emirates (الإمارات العربية المتحدة)", "alpha_2": "AE", "lat": 23.4241, "lon": 53.8478},
+        {"name": "Sudan (السودان)", "alpha_2": "SD", "lat": 15.5007, "lon": 32.5599},
+        {"name": "Egypt (مصر)", "alpha_2": "EG", "lat": 26.8206, "lon": 30.8025},
+        {"name": "United States (الولايات المتحدة)", "alpha_2": "US", "lat": 37.0902, "lon": -95.7129},
+        {"name": "United Kingdom (المملكة المتحدة)", "alpha_2": "GB", "lat": 55.3781, "lon": -3.4360},
+        {"name": "Germany (ألمانيا)", "alpha_2": "DE", "lat": 51.1657, "lon": 10.4515},
+        {"name": "Japan (الابان)", "alpha_2": "JP", "lat": 36.2048, "lon": 138.2529},
+        {"name": "Australia (أستراليا)", "alpha_2": "AU", "lat": -25.2744, "lon": 133.7751},
+        {"name": "France (فرنسا)", "alpha_2": "FR", "lat": 46.2276, "lon": 2.2137},
+        {"name": "Canada (كندا)", "alpha_2": "CA", "lat": 56.1304, "lon": -106.3468},
+        {"name": "Brazil (البرازيل)", "alpha_2": "BR", "lat": -14.2350, "lon": -51.9253},
+        {"name": "India (الهند)", "alpha_2": "IN", "lat": 20.5937, "lon": 78.9629},
+        {"name": "China (الصين)", "alpha_2": "CN", "lat": 35.8617, "lon": 104.1954}
     ]
     return sorted(countries_data, key=lambda x: x["name"])
 
@@ -519,7 +523,7 @@ def fetch_celestrak_data(group: str = "starlink", max_satellites: int = 5000, ca
     url = f"{SOURCE_CONFIG['baseUrl']}?GROUP={group}&FORMAT=json"
     try:
         logger.info(f"📡 جلب بيانات Celestrak للمجموعة: {group}")
-        response = requests.get(url, timeout=15)
+        response = requests.get(url, timeout=20)
         response.raise_for_status()
         if response.text.startswith('['):
             data = response.json()
@@ -602,7 +606,7 @@ def generate_orbit_map(num_satellites: int = 5000, group: str = "starlink", use_
 
 def generate_simulated_orbit_map(num_satellites: int) -> Dict:
     orbit_map = {}
-    for i in range(min(num_satellites, 100)):
+    for i in range(num_satellites):
         name = f"SIM-SAT-{i+1:04d}"
         inclination = math.radians(np.random.uniform(20, 90))
         raan = math.radians(np.random.uniform(0, 360))
@@ -677,6 +681,7 @@ def get_telemetry_data(orbit_map: Dict, num_satellites: int, t_func) -> pd.DataF
 def main():
     st.sidebar.title("🚀 COSMIC-324")
     
+    # اختيار اللغة
     selected_lang = st.sidebar.selectbox(
         "🌐 Language / اللغة",
         options=["ar", "en"],
@@ -687,6 +692,17 @@ def main():
         st.session_state.language = selected_lang
         st.rerun()
 
+    # القائمة المنسدلة المخصصة لدول العالم في الشريط الجانبي (المطلوب الأول)
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(f"### {t('ground_station')}")
+    country_names = [c["name"] for c in ALL_COUNTRIES]
+    selected_country_name = st.sidebar.selectbox(t('gs_select'), country_names)
+    
+    # استخراج إحداثيات الدولة المختارة
+    selected_country_obj = next((c for c in ALL_COUNTRIES if c["name"] == selected_country_name), ALL_COUNTRIES[0])
+
+    # التنقل بين الأقسام
+    st.sidebar.markdown("---")
     nav_option = st.sidebar.radio(
         "📌 القائمة الرئيسية",
         options=[
@@ -704,7 +720,7 @@ def main():
     st.markdown(f"""
     <div class="welcome-box">
         <h2>{t('welcome')}</h2>
-        <p>{t('subtitle')} - v7.5</p>
+        <p>{t('subtitle')} - v7.6 | الدولة / المحطة المحددة: <b>{selected_country_obj['name']}</b> (خط العرض: {selected_country_obj['lat']}°, خط الطول: {selected_country_obj['lon']}°)</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -714,7 +730,8 @@ def main():
         
         col1, col2 = st.columns([2, 1])
         with col1:
-            sat_count = st.slider(t('sat_count'), 100, 5000, 1000, 100)
+            # تم السماح بضبط عدد الأقمار الفعلية حتى 5000 قمر أو أكثر (المطلوب الثالث)
+            sat_count = st.slider(t('sat_count'), 100, 5000, 2500, 100)
         with col2:
             selected_group = st.selectbox(t('group'), CELESTRAK_CONFIG["groups"])
         
@@ -727,18 +744,28 @@ def main():
             df_telemetry = get_telemetry_data(orbit_map, sat_count, t)
 
         if not df_telemetry.empty:
-            st.success(f"✅ {t('total')}: {len(df_telemetry)} {t('satellite')}")
+            st.success(f"✅ {t('total')}: {len(df_telemetry)} {t('satellite')} | مراقبة النطاق لـ: {selected_country_obj['name']}")
             st.dataframe(df_telemetry, use_container_width=True)
             
-            # رسم الخريطة ثلاثية الأبعاد الكونية
+            # رسم الخريطة ثلاثية الأبعاد الكونية مع تحديد الدولة أو المحطة الأرضية
             fig = px.scatter_geo(
                 df_telemetry,
                 lat=t('latitude'),
                 lon=t('longitude'),
                 hover_name=t('satellite'),
                 projection="orthographic",
-                title=t('3d_globe')
+                title=f"{t('3d_globe')} - مركز المراقبة: {selected_country_obj['name']}"
             )
+            
+            # إضافة علامة الدولة/المحطة الأرضية المحددة على الخريطة
+            fig.add_trace(go.Scattergeo(
+                lat=[selected_country_obj['lat']],
+                lon=[selected_country_obj['lon']],
+                mode='markers',
+                marker=dict(size=12, color='red', symbol='star'),
+                name=f"Ground Station: {selected_country_obj['name']}"
+            ))
+
             fig.update_geos(
                 bgcolor="#0a0a12",
                 landcolor="#1a1a2e",
@@ -760,7 +787,11 @@ def main():
         
         with st.form("license_form"):
             client_input = st.text_input(t('client_name'), "الجهة السيادية")
-            tier_input = st.selectbox(t('license_tier'), ["Standard 6G", "Enterprise Titan", "Government Sovereign"])
+            tier_input = st.selectbox(t('license_tier'), [
+                t('tier_1_name'), 
+                t('tier_2_name'), 
+                t('tier_3_name')
+            ])
             validity_input = st.slider("فترة الصلاحية (أيام)", 30, 365, 365)
             submitted = st.form_submit_button(t('gen_key_btn'))
             
@@ -777,10 +808,54 @@ def main():
         else:
             st.info(t('no_licenses'))
 
-    # 3️⃣ العملاء وبوابات الدفع (Clients & Payment Portals)
+    # 3️⃣ العملاء وبوابات الدفع والباقات الثلاث (Clients & 3 Tiers & Payment Portals - المطلوب الثاني)
     elif nav_option == t('nav_clients'):
         st.subheader(t('clients_title'))
         
+        # عرض الباقات الثلاث بوضوح
+        st.markdown(f"### {t('select_tier_action')}")
+        
+        col_t1, col_t2, col_t3 = st.columns(3)
+        
+        selected_tier_cart = st.session_state.get('selected_tier', t('tier_2_name'))
+        
+        with col_t1:
+            st.markdown(f"""
+            <div class="tier-card">
+                <h4>{t('tier_1_name')}</h4>
+                <h3 style="color: #00CCFF;">{t('tier_1_price')}</h3>
+                <p>{t('tier_1_desc')}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("اختر الباقة الأولى", key="btn_tier1"):
+                st.session_state.selected_tier = t('tier_1_name')
+                st.success("تم اختيار الباقة الأولى بنجاح!")
+
+        with col_t2:
+            st.markdown(f"""
+            <div class="tier-card" style="border-color: #00CCFF; box-shadow: 0 0 15px rgba(0,204,255,0.2);">
+                <h4>{t('tier_2_name')}</h4>
+                <h3 style="color: #00CCFF;">{t('tier_2_price')}</h3>
+                <p>{t('tier_2_desc')}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("اختر الباقة الثانية", key="btn_tier2"):
+                st.session_state.selected_tier = t('tier_2_name')
+                st.success("تم اختيار الباقة الثانية بنجاح!")
+
+        with col_t3:
+            st.markdown(f"""
+            <div class="tier-card">
+                <h4>{t('tier_3_name')}</h4>
+                <h3 style="color: #00CCFF;">{t('tier_3_price')}</h3>
+                <p>{t('tier_3_desc')}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("اختر الباقة الثالثة", key="btn_tier3"):
+                st.session_state.selected_tier = t('tier_3_name')
+                st.success("تم اختيار الباقة الثالثة بنجاح!")
+
+        st.markdown("---")
         c1, c2 = st.columns(2)
         with c1:
             st.markdown(f"### {t('client_login')}")
@@ -791,6 +866,7 @@ def main():
         
         with c2:
             st.markdown(f"### {t('paypal_sim')}")
+            st.info(f"الباقة المختارة حالياً للدفع: **{st.session_state.get('selected_tier', t('tier_2_name'))}**")
             gateway_choice = st.radio(t('payment_gateway'), [t('stripe_checkout'), t('paypal_express')])
             if st.button(t('pay_now')):
                 st.success(t('payment_processed').format(gateway=gateway_choice))
