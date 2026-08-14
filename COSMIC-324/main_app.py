@@ -599,7 +599,7 @@ if 'licenses_db' not in st.session_state:
 
 current_direction = get_current_dir()
 
-# CSS المتقدم
+# CSS المتقدم المكتمل والمصحح
 st.markdown(f"""
 <style>
     /* التصميم الأساسي */
@@ -668,4 +668,184 @@ st.markdown(f"""
     .welcome-box h2 {{
         color: #00CCFF;
         margin: 0 0 10px 0;
-        font-size: 1.5
+        font-size: 1.5rem;
+    }}
+    .welcome-box p {{
+        color: #aabbcc;
+        margin: 0;
+        font-size: 1rem;
+    }}
+</style>
+""", unsafe_allow_html=True)
+
+# ============================================================
+# 🧭 الشريط الجانبي والتنقل الأساسي
+# ============================================================
+with st.sidebar:
+    st.image("https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400", use_container_width=True)
+    st.markdown(f"### {t('title')}")
+    
+    # اختيار اللغة
+    selected_lang = st.selectbox(
+        "🌐 Language / اللغة",
+        options=["ar", "en"],
+        format_func=lambda x: LANGUAGES[x]["name"],
+        index=0 if st.session_state.language == 'ar' else 1
+    )
+    if selected_lang != st.session_state.language:
+        st.session_state.language = selected_lang
+        st.rerun()
+    
+    st.markdown("---")
+    
+    # القائمة الجانبية التنقلية
+    page = st.radio(
+        "Navigation",
+        options=[t("nav_dashboard"), t("nav_licenses"), t("nav_clients"), t("nav_health"), t("nav_settings")],
+        label_visibility="collapsed"
+    )
+    
+    st.markdown("---")
+    st.markdown(f"<div class='copyright'>COSMIC-324 v7.6<br>© 2026 Sovereign Space Agency</div>", unsafe_allow_html=True)
+
+# ============================================================
+# 🚀 الصفحة الرئيسية: لوحة القيادة (Dashboard)
+# ============================================================
+if page == t("nav_dashboard"):
+    st.markdown(f"""
+    <div class="welcome-box">
+        <h2>{t('title')}</h2>
+        <p>{t('welcome')}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric(label=t("sat_count"), value="5,000+", delta="Active Orbit")
+    with col2:
+        st.metric(label=t("network_latency"), value="12.4 ms", delta="-1.2 ms")
+    with col3:
+        st.metric(label=t("server_load"), value="38.5%", delta="Optimal")
+    
+    st.markdown(f"### {t('3d_globe')}")
+    
+    # محاكاة بيانات الأقمار الصناعية للعرض التجريبي الخرائطي
+    np.random.seed(42)
+    sample_lats = np.random.uniform(-60, 60, 100)
+    sample_lons = np.random.uniform(-180, 180, 100)
+    sample_alts = np.random.uniform(400, 1200, 100)
+    
+    df_sats = pd.DataFrame({
+        'Latitude': sample_lats,
+        'Longitude': sample_lons,
+        'Altitude': sample_alts,
+        'Status': ['Operational'] * 90 + ['Warning'] * 10
+    })
+    
+    fig = px.scatter_geo(
+        df_sats,
+        lat='Latitude',
+        lon='Longitude',
+        color='Status',
+        size='Altitude',
+        projection="orthographic",
+        color_discrete_map={'Operational': '#00CCFF', 'Warning': '#FFaa00'}
+    )
+    fig.update_geos(
+        bgcolor="#0a0a12",
+        landcolor="#1a1a2e",
+        oceancolor="#0d0d1a",
+        showcountries=True,
+        countrycolor="#334455"
+    )
+    fig.update_layout(
+        paper_bgcolor="#0a0a12",
+        plot_bgcolor="#0a0a12",
+        margin=dict(l=0, r=0, t=0, b=0),
+        legend=dict(font=dict(color="white"))
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+# ============================================================
+# 🔑 إدارة التراخيص (Licenses Management)
+# ============================================================
+elif page == t("nav_licenses"):
+    st.markdown(f"### {t('license_title')}")
+    
+    with st.form("license_form"):
+        c_name = st.text_input(t("client_name"))
+        c_tier = st.selectbox(t("license_tier"), ["Titan Enterprise", "Sovereign Gold", "Orbital Standard"])
+        validity = st.number_input("مدة الصلاحية (بالأيام)", min_value=30, max_value=3650, value=365)
+        submit_license = st.form_submit_button(t("gen_key_btn"))
+        
+        if submit_license and c_name:
+            key, expiry = license_manager.generate_license(c_name, c_tier, int(validity))
+            st.success(f"✅ تم توليد مفتاح الترخيص بنجاح: **{key}** (ينتهي في: {expiry})")
+    
+    st.markdown(f"### {t('active_licenses')}")
+    active_lics = license_manager.get_active_licenses()
+    if active_lics:
+        df_lics = pd.DataFrame(active_lics)
+        st.dataframe(df_lics, use_container_width=True)
+    else:
+        st.info(t("no_licenses"))
+
+# ============================================================
+# 👥 العملاء وبوابات الدفع (Clients & Portals)
+# ============================================================
+elif page == t("nav_clients"):
+    st.markdown(f"### {t('clients_title')}")
+    
+    tab1, tab2 = st.tabs([t("client_login"), t("paypal_sim")])
+    
+    with tab1:
+        with st.form("login_form"):
+            st.text_input(t("email"))
+            st.text_input(t("password"), type="password")
+            if st.form_submit_button(t("login_btn")):
+                st.success("✅ تم تسجيل الدخول بنجاح إلى البوابة السيادية للعميل!")
+    
+    with tab2:
+        st.markdown("### اختيار بوابة الدفع المعيارية")
+        gateway_choice = st.selectbox(t("payment_gateway"), [t("stripe_checkout"), t("paypal_express")])
+        if st.button(t("pay_now")):
+            st.success(t("payment_processed").format(gateway=gateway_choice))
+
+# ============================================================
+# 🩺 صحة النظام والشبكة (System Health)
+# ============================================================
+elif page == t("nav_health"):
+    st.markdown(f"### {t('health_title')}")
+    
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.metric(t("cpu_usage"), "28.4%", "-2.1%")
+    with c2:
+        st.metric(t("memory_usage"), "64.2%", "+1.5%")
+    with c3:
+        st.metric(t("packet_loss"), "0.001%", "0.0%")
+    with c4:
+        st.metric(t("network_latency"), "11.8 ms", "-0.4 ms")
+        
+    st.markdown("---")
+    # مخطط بياني زمني لصحة الخوادم
+    health_data = pd.DataFrame({
+        'Time': pd.date_range(start=datetime.now() - timedelta(hours=1), periods=10, freq='6min'),
+        'CPU Load (%)': np.random.uniform(20, 45, 10),
+        'Network Load (Mbps)': np.random.uniform(450, 850, 10)
+    })
+    fig_health = px.line(health_data, x='Time', y=['CPU Load (%)', 'Network Load (Mbps)'], markers=True)
+    fig_health.update_layout(paper_bgcolor="#0a0a12", plot_bgcolor="#0a0a12", font=dict(color="white"))
+    st.plotly_chart(fig_health, use_container_width=True)
+
+# ============================================================
+# ⚙️ الإعدادات المتقدمة (Advanced Settings)
+# ============================================================
+elif page == t("nav_settings"):
+    st.markdown(f"### {t('settings_title')}")
+    
+    with st.form("settings_form"):
+        st.text_input(t("api_endpoint"), value=SOURCE_CONFIG["baseUrl"])
+        st.selectbox(t("encryption_level"), ["AES-256-GCM Sovereign", "ChaCha20-Poly1305"])
+        if st.form_submit_button(t("save_settings")):
+            st.success(t("settings_saved"))
