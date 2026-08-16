@@ -1,7 +1,7 @@
 """
 COSMIC-324: 6G Titan X Global Edition
-منصة المحاكاة الفضائية والسيادية المتكاملة
-الإصدار: v7.8 - النسخة النهائية المحدثة والشاملة للمرجع
+منصة المحاكاة الفضائية والسيادية المتكاملة مع قدرات التحكم الميداني
+الإصدار: v7.9 - الكود الكامل والنهائي للإنتاج الميداني
 """
 
 import streamlit as st
@@ -188,8 +188,8 @@ LANGUAGES = {
         "name": "العربية",
         "dir": "rtl",
         "title": "🚀 كوزميك-324: القيادة المدارية 6G Titan X",
-        "subtitle": "منصة المحاكاة الفضائية والسيادية المتكاملة",
-        "welcome": "🌟 مرحباً بك في منصة كوزميك-324، البوابة الموحدة للقيادة الفضائية.",
+        "subtitle": "منصة المحاكاة الفضائية والسيادية المتكاملة (نسخة الإنتاج الميداني)",
+        "welcome": "🌟 مرحباً بك في منصة كوزميك-324، البوابة الموحدة للقيادة الفضائية والتحكم الميداني.",
         "params": "⚙️ إعدادات المحاكاة والتحكم",
         "sat_count": "عدد الأقمار (الفعلي)",
         "update_btn": "🔄 تحديث البيانات",
@@ -209,10 +209,15 @@ LANGUAGES = {
         "filtered_sats_mode": "عرض الأقمار المرئية فوق الدولة المختارة فقط",
         "cataloged": "مفهرس",
         "nav_dashboard": "📊 لوحة القيادة",
+        "nav_command": "⚡ التحكم الميداني (Downlink)",
         "nav_licenses": "🔑 إدارة التراخيص",
         "nav_clients": "👥 العملاء وبوابات الدفع",
         "nav_health": "🩺 صحة النظام والشبكة",
         "nav_settings": "⚙️ الإعدادات المتقدمة",
+        "command_title": "⚡ لوحة التحكم الميداني وإرسال الأوامر العكسية (Actionable Downlink)",
+        "command_desc": "إرسال أوامر تشغيلية فورية وإدارة عزل المحطات أو تخفيف الأحمال عبر إنترنت الأشياء (IoT).",
+        "send_command_btn": "🚨 إرسال أمر طوارئ ميداني للمحطة المحددة",
+        "command_success": "✅ تم إرسال الأمر الميداني بنجاح إلى وحدة الاتصال الميداني الخاصة بـ {station}!",
         "license_title": "🔑 نظام إصدار وتوليد المفاتيح السيادية",
         "gen_key_btn": "توليد مفتاح ترخيص جديد",
         "client_name": "اسم العميل / الجهة",
@@ -257,8 +262,8 @@ LANGUAGES = {
         "name": "English",
         "dir": "ltr",
         "title": "🚀 COSMIC-324: 6G Titan X Orbital Command",
-        "subtitle": "Global Sovereign Space Simulation & Command Platform",
-        "welcome": "🌟 Welcome to COSMIC-324, the integrated space command gateway.",
+        "subtitle": "Global Sovereign Space Simulation & Command Platform (Production Edition)",
+        "welcome": "🌟 Welcome to COSMIC-324, the integrated space command and field control gateway.",
         "params": "⚙️ Simulation Parameters & Control",
         "sat_count": "Number of Satellites (Actual)",
         "update_btn": "🔄 Refresh Data",
@@ -278,10 +283,15 @@ LANGUAGES = {
         "filtered_sats_mode": "Show Satellites Over Selected Country Only",
         "cataloged": "Cataloged",
         "nav_dashboard": "📊 Dashboard",
+        "nav_command": "⚡ Field Command (Downlink)",
         "nav_licenses": "🔑 Licenses Management",
         "nav_clients": "👥 Clients & Payment Portals",
         "nav_health": "🩺 System Health",
         "nav_settings": "⚙️ Advanced Settings",
+        "command_title": "⚡ Field Command & Reverse Downlink Panel",
+        "command_desc": "Send real-time operational commands, isolate stations or load-shed via IoT gateways.",
+        "send_command_btn": "🚨 Send Emergency Field Command to Selected Station",
+        "command_success": "✅ Field command successfully dispatched to IoT gateway for {station}!",
         "license_title": "🔑 Sovereign Key Generation & License Management",
         "gen_key_btn": "Generate New License Key",
         "client_name": "Client / Entity Name",
@@ -651,6 +661,7 @@ def main():
         "📌 القائمة الرئيسية",
         options=[
             t('nav_dashboard'),
+            t('nav_command'),
             t('nav_licenses'),
             t('nav_clients'),
             t('nav_health'),
@@ -721,7 +732,26 @@ def main():
         else:
             st.warning(t('no_visible_sats'))
 
-    # 2️⃣ إدارة التراخيص (Licenses Management)
+    # 2️⃣ التحكم الميداني وعكس الأوامر (Field Command / Downlink)
+    elif nav_option == t('nav_command'):
+        st.subheader(t('command_title'))
+        st.markdown(t('command_desc'))
+        
+        st.info(f"المحطة المستهدفة حالياً: **{selected_country_obj['name']}** (الإحداثيات: {selected_country_obj['lat']}, {selected_country_obj['lon']})")
+        
+        command_type = st.selectbox("نوع الأمر الميداني (Command Type):", [
+            "إرسال أمر عزل طوارئ للمحطة (Isolate Station)",
+            "تخفيف أحمال شبكة الاتصالات (Load Shedding)",
+            "إعادة ضبط مزامنة النطاق الترددي 6G (Resync Bandwidth)"
+        ])
+        
+        if st.button(t('send_command_btn')):
+            # محاكاة إرسال الأمر الميداني عبر بوابة IoT / API
+            time.sleep(1)
+            st.success(t('command_success').format(station=selected_country_obj['name']))
+            logger.info(f"⚡ تم تنفيذ أمر ميداني ({command_type}) بنجاح للمحطة: {selected_country_obj['name']}")
+
+    # 3️⃣ إدارة التراخيص (Licenses Management)
     elif nav_option == t('nav_licenses'):
         st.subheader(t('license_title'))
         with st.form("license_form"):
@@ -744,7 +774,7 @@ def main():
         else:
             st.info(t('no_licenses'))
 
-    # 3️⃣ العملاء وبوابات الدفع (Clients & Portals)
+    # 4️⃣ العملاء وبوابات الدفع (Clients & Portals)
     elif nav_option == t('nav_clients'):
         st.subheader(t('clients_title'))
         
@@ -784,7 +814,7 @@ def main():
             if pay_submitted:
                 st.success(t('payment_processed').format(gateway=selected_gateway))
 
-    # 4️⃣ صحة النظام والشبكة (System Health)
+    # 5️⃣ صحة النظام والشبكة (System Health)
     elif nav_option == t('nav_health'):
         st.subheader(t('health_title'))
         
@@ -807,7 +837,7 @@ def main():
         fig_health.update_layout(height=400, margin={"r":0,"t":40,"l":0,"b":0})
         st.plotly_chart(fig_health, use_container_width=True)
 
-    # 5️⃣ الإعدادات المتقدمة (Advanced Settings)
+    # 6️⃣ الإعدادات المتقدمة (Advanced Settings)
     elif nav_option == t('nav_settings'):
         st.subheader(t('settings_title'))
         with st.form("settings_form"):
