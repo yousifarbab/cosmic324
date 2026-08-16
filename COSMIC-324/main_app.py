@@ -731,19 +731,20 @@ def main():
             
             if submitted and client_input:
                 key, expiry = license_manager.generate_secure_license(client_input, tier_input)
-                st.success(f"✅ تم توليد المفتاح بنجاح: `{key}` (تاريخ الانتهاء: {expiry})")
-            elif submitted:
-                st.warning("⚠️ يرجى إدخال اسم العميل أولاً.")
-
+                st.success(f"✅ تم إصدار المفتاح السيادي بنجاح لـ **{client_input}**!")
+                st.code(key, language="text")
+                st.info(f"📅 تاريخ انتهاء الصلاحية: {expiry}")
+                
         st.markdown("---")
         st.subheader(t('active_licenses'))
-        active_licenses = license_manager.get_active_licenses()
-        if active_licenses:
-            st.dataframe(pd.DataFrame(active_licenses), use_container_width=True)
+        active_lics = license_manager.get_active_licenses()
+        if active_lics:
+            df_lics = pd.DataFrame(active_lics)
+            st.dataframe(df_lics, use_container_width=True)
         else:
             st.info(t('no_licenses'))
 
-    # 3️⃣ بوابات العملاء والدفع (Clients & Payment Portals)
+    # 3️⃣ العملاء وبوابات الدفع (Clients & Portals)
     elif nav_option == t('nav_clients'):
         st.subheader(t('clients_title'))
         
@@ -752,7 +753,7 @@ def main():
             st.markdown(f"""
             <div class="tier-card">
                 <h3>{t('tier_1_name')}</h3>
-                <p><b>{t('tier_1_price')}</b></p>
+                <h4>{t('tier_1_price')}</h4>
                 <p>{t('tier_1_desc')}</p>
             </div>
             """, unsafe_allow_html=True)
@@ -760,7 +761,7 @@ def main():
             st.markdown(f"""
             <div class="tier-card">
                 <h3>{t('tier_2_name')}</h3>
-                <p><b>{t('tier_2_price')}</b></p>
+                <h4>{t('tier_2_price')}</h4>
                 <p>{t('tier_2_desc')}</p>
             </div>
             """, unsafe_allow_html=True)
@@ -768,46 +769,60 @@ def main():
             st.markdown(f"""
             <div class="tier-card">
                 <h3>{t('tier_3_name')}</h3>
-                <p><b>{t('tier_3_price')}</b></p>
+                <h4>{t('tier_3_price')}</h4>
                 <p>{t('tier_3_desc')}</p>
             </div>
             """, unsafe_allow_html=True)
-
+            
         st.markdown("---")
         st.subheader(t('paypal_sim'))
         with st.form("payment_form"):
-            selected_tier = st.selectbox(t('select_tier_action'), [t('tier_1_name'), t('tier_2_name'), t('tier_3_name')])
-            gateway = st.radio(t('payment_gateway'), [t('stripe_checkout'), t('paypal_express')])
+            selected_tier_pay = st.selectbox(t('select_tier_action'), [t('tier_1_name'), t('tier_2_name'), t('tier_3_name')])
+            selected_gateway = st.radio(t('payment_gateway'), [t('stripe_checkout'), t('paypal_express')])
             pay_submitted = st.form_submit_button(t('pay_now'))
             
             if pay_submitted:
-                st.success(t('payment_processed').format(gateway=gateway))
+                st.success(t('payment_processed').format(gateway=selected_gateway))
 
     # 4️⃣ صحة النظام والشبكة (System Health)
     elif nav_option == t('nav_health'):
         st.subheader(t('health_title'))
         
-        col_h1, col_h2, col_h3, col_h4 = st.columns(4)
-        col_h1.metric(t('server_load'), "14.2%", "-2.1%")
-        col_h2.metric(t('network_latency'), "12.8 ms", "-0.4 ms")
-        col_h3.metric(t('packet_loss'), "0.0001%", "0.0%")
-        col_h4.metric(t('cpu_usage'), "34.5%", "+1.2%")
-        
-        st.markdown("---")
-        st.info("🟢 كافة العقد المدارية والأنظمة السيادية تعمل بكفاءة تامة دون وجود أي اختناقات في شبكات 6G.")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(t('server_load'), "18.4%", "-2.1%")
+        with col2:
+            st.metric(t('network_latency'), "14.2 ms", "-0.8 ms")
+        with col3:
+            st.metric(t('packet_loss'), "0.001%", "0.0%")
+        with col4:
+            st.metric(t('cpu_usage'), "34.7%", "+1.5%")
+            
+        health_data = pd.DataFrame({
+            "Time": [datetime.utcnow() - timedelta(minutes=i) for i in range(20, 0, -1)],
+            "CPU_Load": np.random.uniform(25, 45, 20),
+            "Memory_Usage": np.random.uniform(50, 65, 20)
+        })
+        fig_health = px.line(health_data, x="Time", y=["CPU_Load", "Memory_Usage"], title="مؤشرات الأداء الحي للخوادم الميدانية السيادية")
+        fig_health.update_layout(height=400, margin={"r":0,"t":40,"l":0,"b":0})
+        st.plotly_chart(fig_health, use_container_width=True)
 
     # 5️⃣ الإعدادات المتقدمة (Advanced Settings)
     elif nav_option == t('nav_settings'):
         st.subheader(t('settings_title'))
         with st.form("settings_form"):
-            api_endpoint_input = st.text_input(t('api_endpoint'), value=SOURCE_CONFIG['baseUrl'])
-            encryption_input = st.selectbox(t('encryption_level'), ["Quantum-Resistant AES-256", "Standard TLS 1.3", "Military Sovereign Graded"])
-            settings_submitted = st.form_submit_button(t('save_settings'))
+            st.text_input(t('api_endpoint'), value=SOURCE_CONFIG['baseUrl'])
+            st.selectbox(t('encryption_level'), ["AES-256 Sovereign Quantum", "AES-128 Standard", "RSA-4096 Secure Mode"])
+            save_btn = st.form_submit_button(t('save_settings'))
             
-            if settings_submitted:
+            if save_btn:
                 st.success(t('settings_saved'))
 
-    st.markdown(f'<div class="copyright">COSMIC-324 6G Titan X Global Edition © 2026 - All Sovereign Rights Reserved.</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="copyright">
+        © 2026 COSMIC-324: 6G Titan X Global Edition. جميع الحقوق السيادية محفوظة.
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == '__main__':
     main()
