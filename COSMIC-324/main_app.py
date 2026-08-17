@@ -96,7 +96,6 @@ class SovereignEnterpriseDB:
                         notes TEXT NOT NULL
                     )
                 """)
-                # إدخال بيانات تجريبية أولية لضمان ظهور جدول الامتثال
                 cursor = conn.cursor()
                 cursor.execute("SELECT COUNT(*) FROM compliance_table")
                 if cursor.fetchone()[0] == 0:
@@ -426,7 +425,6 @@ def main():
             
         if not df_res.empty:
             st.success(f"✅ إجمالي الأقمار المرصودة حياً في النطاق السيادي: {len(df_res)} قمر صناعي.")
-            # إخفاء الفهرس نهائياً
             st.dataframe(df_res.reset_index(drop=True), use_container_width=True)
             
             fig = px.scatter_geo(
@@ -478,7 +476,6 @@ def main():
         records = sov_db.get_compliance_records()
         if records:
             df_comp = pd.DataFrame(records)
-            # إخفاء الفهرس نهائياً
             st.dataframe(df_comp.reset_index(drop=True), use_container_width=True)
         else:
             st.info("لا توجد سجلات امتثال متاحة حالياً.")
@@ -529,8 +526,10 @@ def main():
     elif nav == t('doppler_panel'):
         st.subheader("🌐 تحليل إزاحة دوبلر والانتقال (Doppler & Handover)")
         col_d1, col_d2 = st.columns(2)
-        with col_d1: st.info("**تردد الوصلة الهابطة:** 20.5 GHz\n\n**الانزياح:** $\\pm 45.2 \\text{ kHz}$')
-        with col_d2: st.success("**الانتقال السلس (Handover):** جاهز\n\n**زمن التبديل:** $< 4.2 \\text{ ms}$')
+        with col_d1:
+            st.info("تردد الوصلة الهابطة: 20.5 GHz\n\nالانزياح: ±45.2 kHz")
+        with col_d2:
+            st.success("الانتقال السلس (Handover): جاهز\n\nزمن التبديل: < 4.2 ms")
 
     # Command
     elif nav == t('command_panel'):
@@ -554,7 +553,6 @@ def main():
         logs = sov_db.get_audit_logs()
         if logs:
             df_logs = pd.DataFrame(logs)
-            # إخفاء الفهرس نهائياً
             st.dataframe(df_logs.reset_index(drop=True), use_container_width=True)
             csv_data = df_logs.to_csv(index=False).encode('utf-8')
             st.download_button("📥 تحميل تقارير التدقيق والتليمتري (CSV)", data=csv_data, file_name=f"sovereign_audit_logs_{datetime.utcnow().strftime('%Y%m%d')}.csv", mime="text/csv")
@@ -593,7 +591,6 @@ def main():
         st.markdown("---")
         lics = sov_db.get_licenses()
         if lics:
-            # إخفاء الفهرس نهائياً
             st.dataframe(pd.DataFrame(lics).reset_index(drop=True), use_container_width=True)
         else:
             st.info("لا توجد تراخيص مسجلة حالياً.")
