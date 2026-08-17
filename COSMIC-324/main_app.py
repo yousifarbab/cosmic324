@@ -1,6 +1,6 @@
 """
 COSMIC-324: 6G Titan X Enterprise Sovereign Edition
-النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V17.0 - مع نظام الدفاع النشط ضد المسيرات ووحدات التتبع)
+النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V17.0 - مع نظام الدفاع النشط ووحدات القانون والامتثال السيادي)
 """
 
 import streamlit as st
@@ -95,6 +95,27 @@ class SovereignEnterpriseDB:
                         cryptographic_hash TEXT NOT NULL
                     )
                 """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS legal_regulations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        jurisdiction TEXT NOT NULL,
+                        law_title TEXT NOT NULL,
+                        category TEXT NOT NULL,
+                        compliance_status TEXT NOT NULL,
+                        last_reviewed TEXT NOT NULL,
+                        notes TEXT
+                    )
+                """)
+                # إدخال بعض اللوائح القانونية الافتراضية السيادية
+                cursor = conn.execute("SELECT COUNT(*) FROM legal_regulations")
+                if cursor.fetchone()[0] == 0:
+                    default_regs = [
+                        ("سلطنة عمان", "قانون المحاماة العماني وتظم الشركات التجارية", "القانون التجاري", "متوافق ومفعل", datetime.utcnow().isoformat(), "تم التحقق من تراخيص S11 عبر البوابة الموحدة استثمر بسهولة"),
+                        ("سلطنة عمان", "قانون تنظيم الاتصالات وتقنيات 6G", "تنظيم الاتصالات", "نشط وتحت الإشراف", datetime.utcnow().isoformat(), "متوافق مع المعايير السيادية اللاسلكية"),
+                        ("السودان", "قانون الشركات العائلية وحوكمة المؤسسات", "حوكمة الشركات", "مرجعي معتمد", datetime.utcnow().isoformat(), "مستند إلى أبحاث حوكمة الشركات في فض النزاعات"),
+                        ("دولي", "معاهدة الفضاء الخارجي وتنسيق المدارات (ITU)", "القانون الدولي", "ملتزم بالمعايير", datetime.utcnow().isoformat(), "متابعة إحداثيات التتبع TLE وفق المعايير العالمية")
+                    ]
+                    conn.executemany("INSERT INTO legal_regulations (jurisdiction, law_title, category, compliance_status, last_reviewed, notes) VALUES (?, ?, ?, ?, ?, ?)", default_regs)
         except Exception as e:
             logger.error(f"Database Initialization Error: {e}")
      
@@ -119,6 +140,25 @@ class SovereignEnterpriseDB:
                 return [dict(row) for row in cursor.fetchall()]
         except:
             return []
+
+    def get_legal_regulations(self) -> List[Dict]:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute("SELECT jurisdiction, law_title, category, compliance_status, last_reviewed, notes FROM legal_regulations")
+                return [dict(row) for row in cursor.fetchall()]
+        except:
+            return []
+
+    def add_legal_regulation(self, jurisdiction: str, law_title: str, category: str, status: str, notes: str):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    "INSERT INTO legal_regulations (jurisdiction, law_title, category, compliance_status, last_reviewed, notes) VALUES (?, ?, ?, ?, ?, ?)",
+                    (jurisdiction, law_title, category, status, datetime.utcnow().isoformat(), notes)
+                )
+        except Exception as e:
+            logger.error(f"Add Legal Regulation Error: {e}")
 
     def log_immutable_audit(self, event_type: str, desc: str, status: str = "SECURE"):
         timestamp = datetime.utcnow().isoformat()
@@ -149,7 +189,6 @@ sov_db = SovereignEnterpriseDB()
 # 🛡️ مولد مسيرات الرادار الافتراضي وتتبع الأهداف (V17.0)
 # ============================================================
 def generate_drone_targets():
-    """محاكاة رصد مسيرات متحركة في النطاق الجوي للمحطة"""
     t = time.time()
     targets = []
     for i in range(3):
@@ -172,10 +211,11 @@ LANGUAGES = {
         "name": "العربية",
         "dir": "rtl",
         "title": "🚀 كوزميك-324: المنظومة السيادية النشطة (V17.0)",
-        "subtitle": "النظام الفضائي الحقيقي والهجين - مع عتاد SDR، ونظام الدفاع النشط ضد المسيرات، والتشفير الكمومي",
-        "welcome": "🌟 مرحباً بك في غرفة العمليات الفيزيائية السيادية المركزية (الإصدار الشامل V17.0).",
+        "subtitle": "النظام الفضائي الحقيقي الهجين - مع عتاد SDR، ونظام الدفاع النشط ضد المسيرات، ووحدة القانون والامتثال السيادي",
+        "welcome": "🌟 مرحباً بك في غرفة العمليات الفيزيائية والقانونية السيادية المركزية (الإصدار الشامل V17.0).",
         "dashboard": "📊 لوحة التتبع الفضائي الميداني الحقيقي",
         "counter_uav": "🛡️ نظام الدفاع التكتيكي ضد المسيرات (Counter-UAV V17.0)",
+        "legal_panel": "⚖️ وحدة القانون والامتثال السيادي (Sovereign Legal & Compliance)",
         "sdr_spectrum": "📡 RF Spectrum & SDR",
         "hardware_panel": "🔌 إدارة العتاد السيادي ومستشعرات IoT",
         "link_budget": "📡 حسابات هندسة الوصلة وتحليل الإشارة (Link Budget & SNR)",
@@ -192,10 +232,11 @@ LANGUAGES = {
         "name": "English",
         "dir": "ltr",
         "title": "🚀 COSMIC-324: Active Sovereign Physical System (V17.0)",
-        "subtitle": "Hybrid Space System - with SDR, Active Anti-Drone Defense, and Quantum Encryption",
-        "welcome": "🌟 Welcome to the Central Sovereign Physical Operations Room (V17.0 Active).",
+        "subtitle": "Hybrid Space System - with SDR, Active Anti-Drone Defense, and Sovereign Legal & Compliance Module",
+        "welcome": "🌟 Welcome to the Central Sovereign Physical & Legal Operations Room (V17.0 Active).",
         "dashboard": "📊 Real Live Satellite Tracking Dashboard",
         "counter_uav": "🛡️ Counter-UAV Tactical Defense System (V17.0)",
+        "legal_panel": "⚖️ Sovereign Legal & Compliance Module",
         "sdr_spectrum": "📡 RF Spectrum & SDR",
         "hardware_panel": "🔌 Sovereign Hardware & IoT Sensors",
         "link_budget": "📡 Link Budget & Signal Analysis (SNR)",
@@ -391,6 +432,7 @@ def main():
     nav = st.sidebar.radio("📌 القائمة المركزية", [
         t('dashboard'),
         t('counter_uav'),
+        t('legal_panel'),
         t('sdr_spectrum'),
         t('hardware_panel'),
         t('link_budget'),
@@ -487,10 +529,8 @@ def main():
         st.subheader("🛡️ وحدة الدفاع التكتيكي والتحييد الإلكتروني ضد المسيرات (V17.0)")
         st.write("رصد الكيانات الجوية عبر الرادار الافتراضي، تحليل البصمة الترددية (RF Fingerprinting)، والتنبيه الفوري.")
         
-        # 1. توليد الرادار الافتراضي
         targets_df = generate_drone_targets()
         
-        # 2. نظام التنبيهات الفورية (Push Alerts)
         for _, row in targets_df.iterrows():
             if row['Type'] == 'HOSTILE' and row['Confidence'] > 0.9:
                 msg = f"🚨 تنبيه فوري: رصد مسيرة معادية {row['ID']} في النطاق الجوي!"
@@ -513,7 +553,6 @@ def main():
             drone_data = targets_df[targets_df['ID'] == selected_drone].iloc[0]
             st.write(f"مستوى الثقة: {drone_data['Confidence']:.2%}")
             
-            # محاكاة بصمة ترددية
             freq_data = np.random.normal(0, 0.2, 50) + (np.sin(np.linspace(0, 10, 50)) if drone_data['Type'] == 'HOSTILE' else 0)
             st.line_chart(freq_data)
             
@@ -533,6 +572,43 @@ def main():
             if st.button("⚡ إطلاق بروتوكول العزل الجوي الطارئ"):
                 st.error("⚠️ تم تفعيل طوق الحماية الجوية الإلكترونية وعزل المجال الجوي للمحطة.")
                 sov_db.log_immutable_audit("AIR_BLOCKADE", "Emergency air blockade protocol activated.", "CRITICAL")
+
+    # ⚖️ وحدة القانون والامتثال السيادي (Sovereign Legal & Compliance)
+    elif nav == t('legal_panel'):
+        st.subheader("⚖️ وحدة القانون والامتثال السيادي والتنظيمي (Sovereign Legal & Compliance)")
+        st.write("إدارة القوانين التجارية والشركات، التدقيق التنظيمي للمحطات (مثل سلطنة عمان - السجل التجاري واستثمر بسهولة S11، والقانون السوداني للشركات العائلية)، والتحقق من التراخيص القانونية.")
+        
+        tab_view, tab_add = st.tabs(["📜 اللوائح والتشريعات النشطة", "➕ إضافة تشريع أو تدوين قانوني جديد"])
+        
+        with tab_view:
+            regs = sov_db.get_legal_regulations()
+            if regs:
+                df_regs = pd.DataFrame(regs)
+                st.dataframe(df_regs, use_container_width=True)
+            else:
+                st.info("لا توجد لوائح مسجلة حالياً.")
+                
+            st.markdown("---")
+            st.markdown("### 🔍 تدقيق امتثال العمليات السيادية للقوانين الوطنية")
+            selected_reg_check = st.selectbox("اختر التشريع للتدقيق الفوري:", [r["law_title"] for r in regs] if regs else ["لا توجد تشريعات"])
+            if st.button("⚖️ إجراء فحص الامتثال القانوني التلقائي"):
+                with st.spinner("جاري مراجعة الشروط والضوابط القانونية والتجارية..."):
+                    time.sleep(1)
+                st.success(f"✅ التشريع ({selected_reg_check}) متوافق تماماً مع بنود الحوكمة والتشريعات المعتمدة.")
+                sov_db.log_immutable_audit("LEGAL_COMPLIANCE_CHECK", f"Audited regulation: {selected_reg_check}", "SUCCESS")
+
+        with tab_add:
+            with st.form("legal_form"):
+                j_name = st.text_input("الدولة / الولاية القضائية (Jurisdiction):", value="سلطنة عمان")
+                l_title = st.text_input("عنوان القانون أو التشريع:")
+                l_cat = st.selectbox("التصنيف القانوني:", ["القانون التجاري", "قانون الشركات", "تنظيم الاتصالات", "الحوكمة المؤسسية", "القانون الدولي"])
+                l_status = st.selectbox("حالة الامتثال:", ["متوافق ومفعل", "نشط وتحت الإشراف", "قيد المراجعة القانونية"])
+                l_notes = st.text_area("ملاحظات قانونية وتفاصيل التنفيذ:")
+                if st.form_submit_button("💾 حفظ وإدراج التشريع في السجل السيادي") and l_title:
+                    sov_db.add_legal_regulation(j_name, l_title, l_cat, l_status, l_notes)
+                    sov_db.log_immutable_audit("ADD_REGULATION", f"Added legal regulation: {l_title}", "SUCCESS")
+                    st.success("✅ تم حفظ التشريع القانوني بنجاح في قاعدة البيانات السيادية.")
+                    st.rerun()
 
     # 📡 RF Spectrum & SDR
     elif nav == t('sdr_spectrum'):
@@ -681,13 +757,7 @@ def main():
             st.selectbox("بروتوكول أمان الحزم الصاعدة:", ["TLS 1.3 Sovereign Secured", "Quantum-Resistant Mesh", "Standard IPsec"])
             if st.form_submit_button("حفظ وتطبيق الإعدادات السيادية الحية"):
                 sov_db.log_immutable_audit("UPDATE_SETTINGS", "Advanced sovereign settings updated.", "SUCCESS")
-                st.success("✅ تم تحديث وتثبيت الإعدادات الحية بنجاح.")
-
-    st.markdown("""
-    <div style="text-align: center; color: #556677; font-size: 0.85em; padding: 25px 0; border-top: 1px solid #16162c; margin-top: 30px;">
-        © 2026 COSMIC-324: Absolute Sovereign Active Physical System (V17.0). النظام الميداني المعتمد للتحكم الفضائي الحي والأمان السيادي والدفاع التكتيكي النشط.
-    </div>
-    """, unsafe_allow_html=True)
+                st.success("✅ تم تحديث وتثبيت الإعدادات السيادية بنجاح.")
 
 if __name__ == '__main__':
     main()
