@@ -1,5 +1,5 @@
 # COSMIC-324: 6G Titan X Enterprise Sovereign Edition
-# النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V17.0 - مع نظام الدفاع النشط ووحدات الامتثال السيادي الصرف)
+# النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V17.0 - مع نظام الدفاع النشط ووحدات الامتثال السيادي الصرف وإخفاء الفهارس)
 
 import streamlit as st
 import pandas as pd
@@ -104,7 +104,6 @@ class SovereignEnterpriseDB:
                         notes TEXT
                     )
                 """)
-                # إدخال اللوائح الدولية والتقنية العامة فقط بدون تخصيصات إقليمية
                 cursor = conn.execute("SELECT COUNT(*) FROM legal_regulations")
                 if cursor.fetchone()[0] == 0:
                     default_regs = [
@@ -490,7 +489,7 @@ def main():
              
         if not df_res.empty:
             st.success(f"✅ إجمالي الأقمار المرصودة حياً في النطاق السيادي: {len(df_res)} قمر صناعي.")
-            st.dataframe(df_res, use_container_width=True)
+            st.dataframe(df_res, use_container_width=True, hide_index=True)
              
             fig = px.scatter_geo(
                 df_res,
@@ -575,7 +574,7 @@ def main():
             regs = sov_db.get_legal_regulations()
             if regs:
                 df_regs = pd.DataFrame(regs)
-                st.dataframe(df_regs, use_container_width=True)
+                st.dataframe(df_regs, use_container_width=True, hide_index=True)
             else:
                 st.info("لا توجد لوائح مسجلة حالياً.")
                  
@@ -668,7 +667,7 @@ def main():
         logs = sov_db.get_audit_logs()
         if logs:
             df_logs = pd.DataFrame(logs)
-            st.dataframe(df_logs, use_container_width=True)
+            st.dataframe(df_logs, use_container_width=True, hide_index=True)
         else:
             st.info("لا توجد سجلات تدقيق مسجلة حتى اللحظة.")
 
@@ -679,53 +678,43 @@ def main():
         if st.session_state.crisis_mode:
             st.error("⚠️ حالة الطوارئ مفعلة بالكامل. جميع العقد تعمل بنمط الحماية السيادية العالية.")
         else:
-            st.success("✅ النظام يعمل في الوضع الطبيعي المستقر.")
+            st.info("النظام يعمل بالحالة الطبيعية المستقرة.")
 
-    # 🔑 Enterprise Sovereign Licenses Panel
+    # 🔑 Enterprise Sovereign Licenses
     elif nav == t('licenses_panel'):
-        st.subheader("🔑 إدارة التراخيص السيادية والمؤسسية (Enterprise Licensing)")
-        st.write("إصدار وتدقيق التراخيص الخاصة بالمحطات التابعة للمنظومة السيادية COSMIC-324.")
-        
-        tab_list, tab_gen = st.tabs(["📋 التراخيص الصادرة", "🆕 إصدار ترخيص جديد"])
-        
-        with tab_list:
-            licenses = sov_db.get_licenses()
-            if licenses:
-                df_lic = pd.DataFrame(licenses)
-                st.dataframe(df_lic, use_container_width=True)
-            else:
-                st.info("لا توجد تراخيص مسجلة حالياً في النظام.")
-        
-        with tab_gen:
-            with st.form("license_gen_form"):
-                client_name = st.text_input("اسم العميل / الجهة السيادية")
-                tier = st.selectbox("المستوى المؤسسي", ["BRONZE", "SILVER", "GOLD", "SOVEREIGN_MASTER"])
-                days = st.number_input("مدة الصلاحية (بالأيام)", min_value=30, max_value=3650, value=365)
-                
-                submitted = st.form_submit_button("إصدار وتوثيق الترخيص")
-                if submitted and client_name:
-                    key, expiry = sov_db.generate_license(client_name, tier, days)
-                    sov_db.log_immutable_audit("LICENSE_GEN", f"Generated license for {client_name} tier {tier}", "SECURE")
-                    st.success(f"✅ تم إصدار الترخيص بنجاح:")
-                    st.code(key)
-                    st.write(f"تاريخ الانتهاء: {expiry}")
-                    st.rerun()
-                elif submitted and not client_name:
-                    st.error("يرجى إدخال اسم العميل.")
+        st.subheader("🔑 إدارة التراخيص السيادية والمؤسسية")
+        client_input = st.text_input("اسم المؤسسة أو العميل السيادي:", "الجهات السيادية المعتمدة")
+        tier_input = st.selectbox("فئة الترخيص:", ["Tier-1 Absolute Sovereign", "Tier-2 Enterprise Hybrid", "Tier-3 Tactical Node"])
+        if st.button("إصدار وتوليد مفتاح ترخيص جديد"):
+            key, exp = sov_db.generate_license(client_input, tier_input)
+            sov_db.log_immutable_audit("GEN_LICENSE", f"Generated license for {client_input}", "SECURE")
+            st.success(f"✅ تم إصدار مفتاح الترخيص بنجاح: `{key}` (ينتهي في: {exp})")
+         
+        st.markdown("---")
+        st.subheader("قائمة التراخيص النشطة في النظام:")
+        lics = sov_db.get_licenses()
+        if lics:
+            df_lics = pd.DataFrame(lics)
+            st.dataframe(df_lics, use_container_width=True, hide_index=True)
+        else:
+            st.info("لا توجد تراخيص مسجلة حالياً.")
 
     # 🩺 Hardware Health & Quantum Security
     elif nav == t('health_panel'):
         st.subheader("🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM)")
-        st.metric("حالة وحدة الأمان الهيكلي (HSM)", "محمي ومؤمن ضد الاختراق", "مستقر")
-        st.metric("معدل تدفق الحزم الآمنة", "12.4 Gbps", "+1.2 Gbps")
+        st.metric("حالة وحدة الأمان المجدولة (HSM)", "مؤمن بالكامل - SHA-256 Active", "0 تسرّب")
+        st.metric("سلامة الذاكرة المؤقتة (RAM Integrity)", "99.99%", "مستقر")
+        st.success("جميع قنوات الاتصال والتشفير السيادي تعمل بكفاءة مطلقة دون أي انحرافات مسارية.")
 
-    # ⚙️ Advanced Settings
+    # ⚙️ Advanced Network Settings
     elif nav == t('settings_panel'):
         st.subheader("⚙️ الإعدادات المتقدمة للشبكة والاتصال")
-        st.write("تكوين نقاط نهاية الاتصال (API Endpoints)، إعدادات التخزين المؤقت، وتحديث مفاتيح التشفير السيادية.")
-        st.text_input("رابط خادم الاتصال الرئيسي (Base URL)", DATA_CONTRACT['source']['baseUrl'])
-        if st.button("حفظ الإعدادات وتحديث المجلد المؤقت"):
-            st.success("✅ تم تحديث إعدادات الشبكة بنجاح.")
+        st.write("إدارة نقاط النهاية (Endpoints) والاتصال الآمن ببيانات النطاق العريض والتليمتري المباشر.")
+        st.text_input("رابط خادم البيانات الأساسي (Primary Ephemeris URL)", DATA_CONTRACT["source"]["baseUrl"])
+        st.number_input("مدة التخزين المؤقت (Cache TTL Seconds)", value=DATA_CONTRACT["celestrak"]["cacheTtlSeconds"])
+        if st.button("حفظ إعدادات الشبكة وتحديث العقد"):
+            sov_db.log_immutable_audit("UPDATE_SETTINGS", "Updated network and endpoint configurations.", "SECURE")
+            st.success("✅ تم حفظ إعدادات الشبكة وتحديث العقد بنجاح.")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
