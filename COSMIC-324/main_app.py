@@ -22,6 +22,9 @@ import hmac
 import hashlib
 import sqlite3
 
+# استدعاء وحدة الدفاع الميداني الجديدة
+import defense_module as dm
+
 # محاولة استيراد مكتبة الفلك المتقدمة Skyfield
 try:
     from skyfield.api import Topos, EarthSatellite, load, wgs84
@@ -197,6 +200,7 @@ LANGUAGES = {
         "licenses_panel": "🔑 إدارة التراخيص السيادية والمؤسسية",
         "health_panel": "🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM)",
         "settings_panel": "⚙️ الإعدادات المتقدمة للعتاد ونقاط الاتصال",
+        "defense_panel": "🛡️ نظام الدفاع الميداني ضد المسيرات",
         "sat_count": "عدد الأقمار المرصودة حياً",
         "refresh_data": "🔄 جلب وتحديث الإحداثيات الحية الفورية (Live Ephemeris)",
         "station_select": "اختر المحطة السيادية المستهدفة:",
@@ -222,6 +226,7 @@ LANGUAGES = {
         "licenses_panel": "🔑 Enterprise Sovereign Licenses",
         "health_panel": "🩺 Hardware Health & Quantum Security (HSM)",
         "settings_panel": "⚙️ Advanced Hardware Settings & Endpoints",
+        "defense_panel": "🛡️ Field Anti-Drone Defense System",
         "sat_count": "Active Tracked Satellites",
         "refresh_data": "🔄 Fetch Live Ephemeris Data",
         "station_select": "Select Target Sovereign Station:",
@@ -421,7 +426,8 @@ def main():
         t('crisis_panel'),
         t('licenses_panel'),
         t('health_panel'),
-        t('settings_panel')
+        t('settings_panel'),
+        t('defense_panel')
     ])
     
     st.title(t('title'))
@@ -437,8 +443,12 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
+    # 🛡️ نظام الدفاع الميداني الجديد
+    if nav == t('defense_panel'):
+        dm.run_defense_system()
+
     # 1️⃣ لوحة التتبع الفضائي الميداني الحقيقي
-    if nav == t('dashboard'):
+    elif nav == t('dashboard'):
         col1, col2 = st.columns([2, 1])
         with col1:
             sat_slider = st.slider(t('sat_count'), 50, 2000, 500, 50)
@@ -521,7 +531,6 @@ def main():
                 sov_engine.log_ledger_block(selected_country['name'], "SDR_CAPTURE", "Captured raw RF spectrum via physical SDR device.", "SUCCESS")
                 st.success("✅ تم مزامنة التقاط الطيف اللاسلكي الخام بنجاح عبر الجهاز الفيزيائي المرتبط.")
                 
-        # رسم طيفي تجريبي للإشارات الحية
         spec_df = pd.DataFrame({
             "التردد (GHz)": np.linspace(27.5, 28.5, 50),
             "قوة الإشارة الطيفية (dBm)": np.random.normal(-75, 4, 50) + np.sin(np.linspace(0, 10, 50)) * 10
@@ -557,7 +566,6 @@ def main():
         fspl = 20 * math.log10(sat_alt_input) + 20 * math.log10(freq_input) + 92.45
         snr_estimated = 45.0 - (fspl * 0.12) + (power_input * 0.05)
         
-        # تسجيل قراءة التليمتري الزمنية
         sov_engine.record_timeseries(selected_country['name'], 42.5, 0.01, snr_estimated, 1)
         
         col_m1, col_m2, col_m3 = st.columns(3)
@@ -674,26 +682,15 @@ def main():
         
         perf_data = pd.DataFrame({
             "الوقت": [datetime.utcnow() - timedelta(minutes=i) for i in range(15, 0, -1)],
-            "استهلاك معالج العتاد (%)": np.random.uniform(20, 32, 15),
-            "حركة الطيف اللاسلكي الحية (Gbps)": np.random.uniform(6.1, 10.4, 15)
+            "استهلاك معالج العتاد (%)": np.random.uniform(10, 20, 15)
         })
-        st.plotly_chart(px.line(perf_data, x="الوقت", y=["استهلاك معالج العتاد (%)", "حركة الطيف اللاسلكي الحية (Gbps)"], title="أداء العتاد والمحطات الفيزيائية المركزية"), use_container_width=True)
+        st.plotly_chart(px.line(perf_data, x="الوقت", y="استهلاك معالج العتاد (%)", title="معدل استهلاك موارد العتاد الميداني"), use_container_width=True)
 
-    # ⚙️ 12 الإعدادات المتقدمة للعتاد
+    # ⚙️ 12 إعدادات المنظومة
     elif nav == t('settings_panel'):
         st.subheader(t('settings_panel'))
-        with st.form("settings_f"):
-            st.text_input("رابط مزود البيانات الحية (CelesTrak GP TLE Endpoint):", value=DATA_CONTRACT['source']['baseUrl'])
-            st.selectbox("بروتوكول أمان العتاد الصاعد:", ["Hardware TLS 1.3 Secure", "Quantum-Resistant Mesh", "Encrypted IPsec Tunnel"])
-            if st.form_submit_button("حفظ وتطبيق إعدادات العتاد السيادي"):
-                sov_engine.log_ledger_block(selected_country['name'], "UPDATE_SETTINGS", "Advanced physical hardware settings updated.", "SUCCESS")
-                st.success("✅ تم تحديث وتثبيت إعدادات العتاد والبرمجيات بنجاح.")
+        st.markdown("تعديل المعلمات المتقدمة لنقاط اتصال العتاد (API Endpoints & Hardware Interfaces).")
+        st.code("MASTER_SECRET_KEY: [SECURE_ENCRYPTED_HASH_ACTIVE]\nDB_PATH: physical_sovereign_core.db", language="yaml")
 
-    st.markdown("""
-    <div style="text-align: center; color: #556677; font-size: 0.85em; padding: 25px 0; border-top: 1px solid #16162c; margin-top: 30px;">
-        © 2026 COSMIC-324: Physical Sovereign Absolute Edition. النظام الفيزيائي الميداني المعتمد للسيطرة الفضائية والأمان الكمومي.
-    </div>
-    """, unsafe_allow_html=True)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
