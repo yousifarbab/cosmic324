@@ -96,7 +96,7 @@ class SovereignEnterpriseDB:
                         notes TEXT NOT NULL
                     )
                 """)
-                # إدخال بيانات تجريبية أولية خالية تماماً من سلطنة عمان
+                # إدخال بيانات تجريبية أولية خالية تماماً من أي إشارات لسلطنة عمان
                 cursor = conn.cursor()
                 cursor.execute("SELECT COUNT(*) FROM compliance_table")
                 if cursor.fetchone()[0] == 0:
