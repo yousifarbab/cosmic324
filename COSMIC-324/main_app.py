@@ -1,6 +1,6 @@
 """
 COSMIC-324: 6G Titan X Enterprise Sovereign Edition
-النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V17.0 - متكامل تماماً في ملف واحد وبدون فهارس)
+النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V17.0 - متكامل تماماً وبدون أي إشارات لسلطنة عمان في الامتثال)
 """
 
 import streamlit as st
@@ -96,6 +96,7 @@ class SovereignEnterpriseDB:
                         notes TEXT NOT NULL
                     )
                 """)
+                # إدخال بيانات تجريبية أولية خالية تماماً من سلطنة عمان
                 cursor = conn.cursor()
                 cursor.execute("SELECT COUNT(*) FROM compliance_table")
                 if cursor.fetchone()[0] == 0:
@@ -269,7 +270,6 @@ st.markdown(f"""
 @st.cache_data
 def get_countries() -> List[Dict]:
     return sorted([
-        {"name": "Oman (سلطنة عمان - مسقط)", "lat": 23.5880, "lon": 58.3829},
         {"name": "Sudan (السودان - الخرطوم)", "lat": 15.5007, "lon": 32.5599},
         {"name": "Saudi Arabia (المملكة العربية السعودية)", "lat": 23.8859, "lon": 45.0792},
         {"name": "United Arab Emirates (الإمارات)", "lat": 23.4241, "lon": 53.8478},
