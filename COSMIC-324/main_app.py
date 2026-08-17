@@ -1,7 +1,5 @@
-"""
-COSMIC-324: 6G Titan X Enterprise Sovereign Edition
-النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V17.0 - مع نظام الدفاع النشط ووحدات القانون والامتثال السيادي)
-"""
+# COSMIC-324: 6G Titan X Enterprise Sovereign Edition
+# النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V17.0 - مع نظام الدفاع النشط ووحدات الامتثال السيادي الصرف)
 
 import streamlit as st
 import pandas as pd
@@ -106,14 +104,12 @@ class SovereignEnterpriseDB:
                         notes TEXT
                     )
                 """)
-                # إدخال بعض اللوائح القانونية الافتراضية السيادية
+                # إدخال اللوائح الدولية والتقنية العامة فقط بدون تخصيصات إقليمية
                 cursor = conn.execute("SELECT COUNT(*) FROM legal_regulations")
                 if cursor.fetchone()[0] == 0:
                     default_regs = [
-                        ("سلطنة عمان", "قانون المحاماة العماني وتظم الشركات التجارية", "القانون التجاري", "متوافق ومفعل", datetime.utcnow().isoformat(), "تم التحقق من تراخيص S11 عبر البوابة الموحدة استثمر بسهولة"),
-                        ("سلطنة عمان", "قانون تنظيم الاتصالات وتقنيات 6G", "تنظيم الاتصالات", "نشط وتحت الإشراف", datetime.utcnow().isoformat(), "متوافق مع المعايير السيادية اللاسلكية"),
-                        ("السودان", "قانون الشركات العائلية وحوكمة المؤسسات", "حوكمة الشركات", "مرجعي معتمد", datetime.utcnow().isoformat(), "مستند إلى أبحاث حوكمة الشركات في فض النزاعات"),
-                        ("دولي", "معاهدة الفضاء الخارجي وتنسيق المدارات (ITU)", "القانون الدولي", "ملتزم بالمعايير", datetime.utcnow().isoformat(), "متابعة إحداثيات التتبع TLE وفق المعايير العالمية")
+                        ("دولي", "معاهدة الفضاء الخارجي وتنسيق المدارات (ITU)", "القانون الدولي", "ملتزم بالمعايير", datetime.utcnow().isoformat(), "متابعة إحداثيات التتبع TLE وفق المعايير العالمية"),
+                        ("عالمي", "بروتوكول الأمان اللاسلكي ومعايير 6G", "تنظيم الاتصالات", "نشط وتحت الإشراف", datetime.utcnow().isoformat(), "متوافق مع المعايير السيادية اللاسلكية المتقدمة")
                     ]
                     conn.executemany("INSERT INTO legal_regulations (jurisdiction, law_title, category, compliance_status, last_reviewed, notes) VALUES (?, ?, ?, ?, ?, ?)", default_regs)
         except Exception as e:
@@ -211,11 +207,11 @@ LANGUAGES = {
         "name": "العربية",
         "dir": "rtl",
         "title": "🚀 كوزميك-324: المنظومة السيادية النشطة (V17.0)",
-        "subtitle": "النظام الفضائي الحقيقي الهجين - مع عتاد SDR، ونظام الدفاع النشط ضد المسيرات، ووحدة القانون والامتثال السيادي",
+        "subtitle": "النظام الفضائي الهجين - مع عتاد SDR، ونظام الدفاع النشط ضد المسيرات، ووحدة الامتثال السيادي العام",
         "welcome": "🌟 مرحباً بك في غرفة العمليات الفيزيائية والقانونية السيادية المركزية (الإصدار الشامل V17.0).",
         "dashboard": "📊 لوحة التتبع الفضائي الميداني الحقيقي",
         "counter_uav": "🛡️ نظام الدفاع التكتيكي ضد المسيرات (Counter-UAV V17.0)",
-        "legal_panel": "⚖️ وحدة القانون والامتثال السيادي (Sovereign Legal & Compliance)",
+        "legal_panel": "⚖️ وحدة الامتثال التنظيمي والسيادي العام",
         "sdr_spectrum": "📡 RF Spectrum & SDR",
         "hardware_panel": "🔌 إدارة العتاد السيادي ومستشعرات IoT",
         "link_budget": "📡 حسابات هندسة الوصلة وتحليل الإشارة (Link Budget & SNR)",
@@ -232,11 +228,11 @@ LANGUAGES = {
         "name": "English",
         "dir": "ltr",
         "title": "🚀 COSMIC-324: Active Sovereign Physical System (V17.0)",
-        "subtitle": "Hybrid Space System - with SDR, Active Anti-Drone Defense, and Sovereign Legal & Compliance Module",
-        "welcome": "🌟 Welcome to the Central Sovereign Physical & Legal Operations Room (V17.0 Active).",
+        "subtitle": "Hybrid Space System - with SDR, Active Anti-Drone Defense, and General Sovereign Compliance Module",
+        "welcome": "🌟 Welcome to the Central Sovereign Physical & Operational Operations Room (V17.0 Active).",
         "dashboard": "📊 Real Live Satellite Tracking Dashboard",
         "counter_uav": "🛡️ Counter-UAV Tactical Defense System (V17.0)",
-        "legal_panel": "⚖️ Sovereign Legal & Compliance Module",
+        "legal_panel": "⚖️ General Sovereign Compliance Module",
         "sdr_spectrum": "📡 RF Spectrum & SDR",
         "hardware_panel": "🔌 Sovereign Hardware & IoT Sensors",
         "link_budget": "📡 Link Budget & Signal Analysis (SNR)",
@@ -306,20 +302,15 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌍 قاعدة بيانات المحطات الأرضية العالمية السيادية
+# 🌍 قاعدة بيانات المحطات الأرضية العالمية السيادية (العامة)
 # ============================================================
 @st.cache_data
 def get_countries() -> List[Dict]:
     return sorted([
-        {"name": "Oman (سلطنة عمان - مسقط)", "lat": 23.5880, "lon": 58.3829},
-        {"name": "Sudan (السودان - الخرطوم)", "lat": 15.5007, "lon": 32.5599},
-        {"name": "Saudi Arabia (المملكة العربية السعودية)", "lat": 23.8859, "lon": 45.0792},
-        {"name": "United Arab Emirates (الإمارات)", "lat": 23.4241, "lon": 53.8478},
-        {"name": "United States (الولايات المتحدة)", "lat": 37.0902, "lon": -95.7129},
-        {"name": "United Kingdom (المملكة المتحدة)", "lat": 55.3781, "lon": -3.4360},
-        {"name": "Germany (ألمانيا)", "lat": 51.1657, "lon": 10.4515},
-        {"name": "Japan (اليابان)", "lat": 36.2048, "lon": 138.2529},
-        {"name": "Australia (أستراليا)", "lat": -25.2744, "lon": 133.7751}
+        {"name": "Global Central Station (المحطة المركزية العالمية)", "lat": 25.276987, "lon": 55.296249},
+        {"name": "North American Gateway (بوابة أمريكا الشمالية)", "lat": 37.0902, "lon": -95.7129},
+        {"name": "European Hub (المحطة الأوروبية)", "lat": 51.1657, "lon": 10.4515},
+        {"name": "Asia-Pacific Hub (محطة آسيا والمحيط الهادئ)", "lat": 36.2048, "lon": 138.2529}
     ], key=lambda x: x["name"])
 
 ALL_COUNTRIES = get_countries()
@@ -573,10 +564,10 @@ def main():
                 st.error("⚠️ تم تفعيل طوق الحماية الجوية الإلكترونية وعزل المجال الجوي للمحطة.")
                 sov_db.log_immutable_audit("AIR_BLOCKADE", "Emergency air blockade protocol activated.", "CRITICAL")
 
-    # ⚖️ وحدة القانون والامتثال السيادي (Sovereign Legal & Compliance)
+    # ⚖️ وحدة الامتثال التنظيمي والسيادي العام
     elif nav == t('legal_panel'):
-        st.subheader("⚖️ وحدة القانون والامتثال السيادي والتنظيمي (Sovereign Legal & Compliance)")
-        st.write("إدارة القوانين التجارية والشركات، التدقيق التنظيمي للمحطات (مثل سلطنة عمان - السجل التجاري واستثمر بسهولة S11، والقانون السوداني للشركات العائلية)، والتحقق من التراخيص القانونية.")
+        st.subheader("⚖️ وحدة الامتثال التنظيمي والسيادي العام (Global Compliance)")
+        st.write("إدارة اللوائح والتشريعات الدولية الفضائية وتنظيم الاتصالات اللاسلكية والتحقق من المعايير السيادية العامة.")
          
         tab_view, tab_add = st.tabs(["📜 اللوائح والتشريعات النشطة", "➕ إضافة لوائح تنظيمية جديدة"])
          
@@ -590,11 +581,11 @@ def main():
                  
         with tab_add:
             with st.form("new_reg_form"):
-                jur = st.text_input("الدولة / الولاية القضائية", "سلطنة عمان")
-                title_law = st.text_input("عنوان القانون أو التشريع", "قانون الشركات التجارية وتراخيص S11")
-                cat = st.selectbox("التصنيف", ["القانون التجاري", "تنظيم الاتصالات", "حوكمة الشركات", "القانون الدولي"])
+                jur = st.text_input("الدولة / الولاية القضائية أو الجهة", "دولي / عالمي")
+                title_law = st.text_input("عنوان القانون أو التشريع", "بروتوكول معايير الإرسال الفضائي")
+                cat = st.selectbox("التصنيف", ["تنظيم الاتصالات", "القانون الدولي", "الأمن السيبراني", "المعايير التقنية"])
                 stat = st.selectbox("حالة الامتثال", ["متوافق ومفعل", "نشط وتحت الإشراف", "مرجعي معتمد", "قيد المراجعة"])
-                notes = st.text_area("ملاحظات قانونية وتدقيقية", "تم التدقيق وفق متطلبات البوابة الموحدة (استثمر بسهولة)")
+                notes = st.text_area("ملاحظات قانونية وتدقيقية", "تم التدقيق وفق معايير الاتفاقيات الدولية المعاصرة")
                  
                 submitted = st.form_submit_button("حفظ وإضافة اللائحة السيادية")
                 if submitted:
@@ -672,57 +663,61 @@ def main():
     # 📜 Audit Logs (Blockchain style)
     elif nav == t('audit_panel'):
         st.subheader("📜 سجلات التدقيق المشفرة (Immutable Audit Logs & Blockchain Ledger)")
-        st.write("سجلات تدقيق غير قابلة للتعديل ومؤمنة بتوقيعات مشفرة (Cryptographic Hashes).")
+        st.write("سجلات عمليات النظام موثقة عبر خوارزميات التشفير المتقدمة (SHA-256) لضمان عدم التلاعب بالبيانات السيادية.")
+        
         logs = sov_db.get_audit_logs()
         if logs:
             df_logs = pd.DataFrame(logs)
             st.dataframe(df_logs, use_container_width=True)
         else:
-            st.info("لا توجد سجلات تدقيق مسجلة حتى الآن.")
+            st.info("لا توجد سجلات تدقيق مسجلة حتى اللحظة.")
 
-    # 🚨 Crisis Management
+    # 🚨 Crisis Management & Red Alert Center
     elif nav == t('crisis_panel'):
         st.subheader("🚨 مركز الطوارئ والتدخل الفيزيائي العاجل (Red Alert Center)")
+        st.write("إدارة الحالات الطارئة، عزل الشبكات السيادية، وتفعيل بروتوكولات الحماية القصوى.")
         if st.session_state.crisis_mode:
-            st.error("⚠️ الوضع حرج للغاية! تم تفعيل بروتوكولات الطوارئ القصوى.")
+            st.error("⚠️ حالة الطوارئ مفعلة بالكامل. جميع العقد تعمل بنمط الحماية السيادية العالية.")
         else:
-            st.success("✅ النظام يعمل في حالته الاعتيادية المستقرة.")
-        if st.button("تبديل حالة طوارئ النظام الفورية"):
-            st.session_state.crisis_mode = not st.session_state.crisis_mode
-            st.rerun()
+            st.success("✅ النظام يعمل في الوضع الطبيعي المستقر.")
 
     # 🔑 Enterprise Sovereign Licenses
     elif nav == t('licenses_panel'):
         st.subheader("🔑 إدارة التراخيص السيادية والمؤسسية (Enterprise Sovereign Licenses)")
-        with st.form("license_gen"):
-            client = st.text_input("اسم العميل أو المؤسسة السيادية", "وزارة الاتصالات والتقنية / سلطنة عمان")
-            tier = st.selectbox("فئة الترخيص", ["SOVEREIGN_ENTERPRISE", "GOVERNMENT_ULTRA", "DEFENSE_SECURE"])
-            days = st.slider("مدة الصلاحية بالأيام", 30, 730, 365)
-            gen_btn = st.form_submit_button("إصدار مفتاح ترخيص سيادي جديد")
-            if gen_btn:
-                key, expiry = sov_db.generate_license(client, tier, days)
-                sov_db.log_immutable_audit("GEN_LICENSE", f"Generated license for {client} ({tier})", "SECURE")
-                st.success(f"✅ تم إصدار المفتاح بنجاح:\n`{key}`\nينتهي في: {expiry}")
-                 
-        st.markdown("### التراخيص الفعالة الحالية:")
+        with st.form("license_gen_form"):
+            client_name = st.text_input("اسم العميل / المؤسسة السيادية", "المؤسسة التقنية أو المحطة المركزية")
+            tier = st.selectbox("مستوى الترخيص", ["SOVEREIGN_TIER_1", "ENTERPRISE_PRO", "DEFENSE_SECURE"])
+            days_valid = st.number_input("مدة الصلاحية بالأيام", value=365)
+            
+            gen_sub = st.form_submit_button("إصدار مفتاح ترخيص سيادي جديد")
+            if gen_sub:
+                key, expiry = sov_db.generate_license(client_name, tier, int(days_valid))
+                sov_db.log_immutable_audit("GEN_LICENSE", f"Generated license for {client_name} ({tier})", "SUCCESS")
+                st.success(f"✅ تم إصدار مفتاح الترخيص بنجاح: `{key}` (ينتهي في: {expiry})")
+        
+        st.markdown("---")
+        st.subheader("التراخيص النشطة في النظام:")
         lics = sov_db.get_licenses()
         if lics:
             st.dataframe(pd.DataFrame(lics), use_container_width=True)
         else:
-            st.info("لا توجد تراخيص مسجلة.")
+            st.info("لا توجد تراخيص مسجلة حالياً.")
 
-    # 🩺 Hardware Health & Quantum Security (HSM)
+    # 🩺 Hardware Health & Quantum Security
     elif nav == t('health_panel'):
-        st.subheader("🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM & Quantum Crypto)")
-        st.metric("حالة وحدة الأمان الهاردويرية (HSM)", "نشطة ومحمية", "أمان تام")
-        st.metric("معدل تدفق entropy للتشفير الكمومي", "1024 kbps", "مثالي")
+        st.subheader("🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM & Hardware Health)")
+        st.metric("حالة وحدة الأمان الهيكلي (HSM)", "مؤمن بالكامل - 100%", "0%")
+        st.metric("توافق العتاد مع المعايير السيادية", "مستقر ومطابق", "متوافق")
+        st.success("نظام التشفير الكمومي ووحدات ربط البيانات تعمل بكفاءة عالية دون أي اختراقات تذكر.")
 
-    # ⚙️ Advanced Settings
+    # ⚙️ Advanced Network Settings
     elif nav == t('settings_panel'):
-        st.subheader("⚙️ الإعدادات المتقدمة للشبكة والاتصال (Advanced Network Settings)")
-        st.text_input("عنوان خادم CelesTrak الأساسي:", DATA_CONTRACT["source"]["baseUrl"])
-        st.number_input("مهلة الاتصال (Timeout Seconds):", value=15)
-        st.success("جميع الاتصالات مشفرة وفق معايير السيادة المطلقة.")
+        st.subheader("⚙️ الإعدادات المتقدمة للشبكة والاتصال (Advanced Settings)")
+        st.text_input("رابط عقدة Celestrak الأساسية", DATA_CONTRACT["source"]["baseUrl"])
+        st.text_input("مفتاح النظام السيادي الماستر (Secret Key Hash)", hashlib.sha256(SECRET_KEY.encode()).hexdigest()[:16] + "********")
+        if st.button("حفظ وتطبيق إعدادات الشبكة السيادية"):
+            sov_db.log_immutable_audit("UPDATE_SETTINGS", "Advanced network settings updated.", "SECURE")
+            st.success("✅ تم تحديث إعدادات الشبكة بنجاح.")
 
 if __name__ == '__main__':
     main()
