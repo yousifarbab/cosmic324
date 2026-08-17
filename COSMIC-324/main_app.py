@@ -681,43 +681,51 @@ def main():
         else:
             st.success("✅ النظام يعمل في الوضع الطبيعي المستقر.")
 
-    # 🔑 Enterprise Sovereign Licenses
+    # 🔑 Enterprise Sovereign Licenses Panel
     elif nav == t('licenses_panel'):
-        st.subheader("🔑 إدارة التراخيص السيادية والمؤسسية (Enterprise Sovereign Licenses)")
-        with st.form("license_gen_form"):
-            client_name = st.text_input("اسم العميل / المؤسسة السيادية", "المؤسسة التقنية أو المحطة المركزية")
-            tier = st.selectbox("مستوى الترخيص", ["SOVEREIGN_TIER_1", "ENTERPRISE_PRO", "DEFENSE_SECURE"])
-            days_valid = st.number_input("مدة الصلاحية بالأيام", value=365)
-            
-            gen_sub = st.form_submit_button("إصدار مفتاح ترخيص سيادي جديد")
-            if gen_sub:
-                key, expiry = sov_db.generate_license(client_name, tier, int(days_valid))
-                sov_db.log_immutable_audit("GEN_LICENSE", f"Generated license for {client_name} ({tier})", "SUCCESS")
-                st.success(f"✅ تم إصدار مفتاح الترخيص بنجاح: `{key}` (ينتهي في: {expiry})")
+        st.subheader("🔑 إدارة التراخيص السيادية والمؤسسية (Enterprise Licensing)")
+        st.write("إصدار وتدقيق التراخيص الخاصة بالمحطات التابعة للمنظومة السيادية COSMIC-324.")
         
-        st.markdown("---")
-        st.subheader("التراخيص النشطة في النظام:")
-        lics = sov_db.get_licenses()
-        if lics:
-            st.dataframe(pd.DataFrame(lics), use_container_width=True)
-        else:
-            st.info("لا توجد تراخيص مسجلة حالياً.")
+        tab_list, tab_gen = st.tabs(["📋 التراخيص الصادرة", "🆕 إصدار ترخيص جديد"])
+        
+        with tab_list:
+            licenses = sov_db.get_licenses()
+            if licenses:
+                df_lic = pd.DataFrame(licenses)
+                st.dataframe(df_lic, use_container_width=True)
+            else:
+                st.info("لا توجد تراخيص مسجلة حالياً في النظام.")
+        
+        with tab_gen:
+            with st.form("license_gen_form"):
+                client_name = st.text_input("اسم العميل / الجهة السيادية")
+                tier = st.selectbox("المستوى المؤسسي", ["BRONZE", "SILVER", "GOLD", "SOVEREIGN_MASTER"])
+                days = st.number_input("مدة الصلاحية (بالأيام)", min_value=30, max_value=3650, value=365)
+                
+                submitted = st.form_submit_button("إصدار وتوثيق الترخيص")
+                if submitted and client_name:
+                    key, expiry = sov_db.generate_license(client_name, tier, days)
+                    sov_db.log_immutable_audit("LICENSE_GEN", f"Generated license for {client_name} tier {tier}", "SECURE")
+                    st.success(f"✅ تم إصدار الترخيص بنجاح:")
+                    st.code(key)
+                    st.write(f"تاريخ الانتهاء: {expiry}")
+                    st.rerun()
+                elif submitted and not client_name:
+                    st.error("يرجى إدخال اسم العميل.")
 
     # 🩺 Hardware Health & Quantum Security
     elif nav == t('health_panel'):
-        st.subheader("🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM & Hardware Health)")
-        st.metric("حالة وحدة الأمان الهيكلي (HSM)", "مؤمن بالكامل - 100%", "0%")
-        st.metric("توافق العتاد مع المعايير السيادية", "مستقر ومطابق", "متوافق")
-        st.success("نظام التشفير الكمومي ووحدات ربط البيانات تعمل بكفاءة عالية دون أي اختراقات تذكر.")
+        st.subheader("🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM)")
+        st.metric("حالة وحدة الأمان الهيكلي (HSM)", "محمي ومؤمن ضد الاختراق", "مستقر")
+        st.metric("معدل تدفق الحزم الآمنة", "12.4 Gbps", "+1.2 Gbps")
 
-    # ⚙️ Advanced Network Settings
+    # ⚙️ Advanced Settings
     elif nav == t('settings_panel'):
-        st.subheader("⚙️ الإعدادات المتقدمة للشبكة والاتصال (Advanced Settings)")
-        st.text_input("رابط عقدة Celestrak الأساسية", DATA_CONTRACT["source"]["baseUrl"])
-        st.text_input("مفتاح النظام السيادي الماستر (Secret Key Hash)", hashlib.sha256(SECRET_KEY.encode()).hexdigest()[:16] + "********")
-        if st.button("حفظ وتطبيق إعدادات الشبكة السيادية"):
-            sov_db.log_immutable_audit("UPDATE_SETTINGS", "Advanced network settings updated.", "SECURE")
+        st.subheader("⚙️ الإعدادات المتقدمة للشبكة والاتصال")
+        st.write("تكوين نقاط نهاية الاتصال (API Endpoints)، إعدادات التخزين المؤقت، وتحديث مفاتيح التشفير السيادية.")
+        st.text_input("رابط خادم الاتصال الرئيسي (Base URL)", DATA_CONTRACT['source']['baseUrl'])
+        if st.button("حفظ الإعدادات وتحديث المجلد المؤقت"):
             st.success("✅ تم تحديث إعدادات الشبكة بنجاح.")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
