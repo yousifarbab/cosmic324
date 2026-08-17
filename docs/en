@@ -1,0 +1,86 @@
+# 📚 COSMIC-324: Technical Documentation & Guides
+
+## 1. Administrator & Deployment Guide
+
+### Overview
+
+This guide covers the system requirements, installation steps, and maintenance procedures for deploying the COSMIC-324 Sovereign platform (either on-premises or cloud environments).
+
+### System Requirements
+
+* **Operating System:** Linux (Ubuntu 20.04+ recommended), macOS, or Windows with Docker support.
+* **Programming Language:** Python 3.10 or higher.
+* **RAM:** Minimum 4 GB RAM.
+* **Storage:** At least 10 GB of free space for database and telemetry logs.
+
+### Quick Deployment via Docker (Recommended)
+
+1. Place the `Dockerfile` and `docker-compose.yml` files in the root directory of your project.
+2. Open your terminal in the project folder.
+3. Run the following command to build and start the container in the background:
+```bash
+docker-compose up --build -d
+
+```
+
+
+4. Access the control dashboard via your browser at:
+```text
+http://localhost:8501
+
+```
+
+
+
+### Security & Data Management
+
+* **Database:** Data is stored locally within the `sovereign_enterprise.db` SQLite file.
+* **Encryption & Audit Logs:** The system features built-in immutable cryptographic audit logging (SHA-256 hash verification) to ensure data integrity and prevent tampering.
+
+---
+
+## 2. Developer & API Integration Guide
+
+### Architecture
+
+The platform is built using a modular architecture, allowing developers to extend functionalities, integrate external telemetry feeds, and manage sovereign hardware components efficiently.
+
+### Sovereign Database Integration
+
+Developers can interact with the core database (`sovereign_enterprise.db`) programmatically via Python:
+
+```python
+from main_app import SovereignEnterpriseDB
+
+# Initialize the sovereign database connection
+sov_db = SovereignEnterpriseDB("sovereign_enterprise.db")
+
+# Example: Programmatically adding a compliance record
+sov_db.add_compliance_record(
+    jurisdiction="International",
+    law_title="Outer Space Treaty & Coordination",
+    category="International Law",
+    compliance_status="Compliant",
+    notes="Regulatory protocols verified successfully."
+)
+
+```
+
+---
+
+## 3. End-User Manual
+
+### Live Tracking Dashboard
+
+* Allows operators to monitor satellites and orbital trajectories in real time.
+* Provides line-of-sight (LoS) filtering and signal link budget evaluations.
+
+### Global Compliance & Sovereign Unit
+
+* Designed for managing regulatory laws, legal frameworks, and centralized compliance matrices.
+* Tracks compliance statuses (e.g., Active, Under Review) with automatic timestamping and review notes.
+
+### Audit & Security Logs
+
+* Records all critical actions and administrative events executed within the control dashboard.
+* Enables easy review and export of log reports in CSV format for institutional auditing.
