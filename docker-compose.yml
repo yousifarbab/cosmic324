@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  cosmic-sovereign:
+    build: .
+    container_name: cosmic-324-enterprise
+    restart: always
+    ports:
+      - "8501:8501"
+    environment:
+      - COSMIC_SECRET_KEY=cosmic-324-absolute-sovereign-master-key
+    volumes:
+      - ./sovereign_enterprise.db:/app/sovereign_enterprise.db
+      - ./logs:/app/logs
