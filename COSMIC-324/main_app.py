@@ -1,6 +1,6 @@
 """
 COSMIC-324: 6G Titan X Enterprise Sovereign Edition
-النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V16.0 - مع نظام الدفاع التكتيكي ضد المسيرات ووحدات التتبع الكاملة)
+النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V17.0 - مع نظام الدفاع النشط ضد المسيرات ووحدات التتبع)
 """
 
 import streamlit as st
@@ -146,17 +146,36 @@ class SovereignEnterpriseDB:
 sov_db = SovereignEnterpriseDB()
 
 # ============================================================
+# 🛡️ مولد مسيرات الرادار الافتراضي وتتبع الأهداف (V17.0)
+# ============================================================
+def generate_drone_targets():
+    """محاكاة رصد مسيرات متحركة في النطاق الجوي للمحطة"""
+    t = time.time()
+    targets = []
+    for i in range(3):
+        angle = (t * 0.1) + (i * 2.09)
+        dist = 2.5 + (0.5 * np.sin(t * 0.5))
+        targets.append({
+            'ID': f"DRONE-{101+i}",
+            'X': dist * np.cos(angle),
+            'Y': dist * np.sin(angle),
+            'Confidence': np.random.uniform(0.7, 0.99),
+            'Type': 'HOSTILE' if i % 2 == 0 else 'CIVILIAN'
+        })
+    return pd.DataFrame(targets)
+
+# ============================================================
 # 🌐 نظام اللغات والواجهات (عربي / إنجليزي)
 # ============================================================
 LANGUAGES = {
     "ar": {
         "name": "العربية",
         "dir": "rtl",
-        "title": "🚀 كوزميك-324: المنظومة السيادية الفيزيائية المطلقة (V16.0)",
-        "subtitle": "النظام الفضائي الحقيقي والهجين - مع عتاد SDR، ونظام الدفاع ضد المسيرات، والتشفير الكمومي",
-        "welcome": "🌟 مرحباً بك في غرفة العمليات الفيزيائية السيادية المركزية (الإصدار الشامل V16.0).",
+        "title": "🚀 كوزميك-324: المنظومة السيادية النشطة (V17.0)",
+        "subtitle": "النظام الفضائي الحقيقي والهجين - مع عتاد SDR، ونظام الدفاع النشط ضد المسيرات، والتشفير الكمومي",
+        "welcome": "🌟 مرحباً بك في غرفة العمليات الفيزيائية السيادية المركزية (الإصدار الشامل V17.0).",
         "dashboard": "📊 لوحة التتبع الفضائي الميداني الحقيقي",
-        "counter_uav": "🛡️ نظام الدفاع التكتيكي ضد المسيرات (Counter-UAV)",
+        "counter_uav": "🛡️ نظام الدفاع التكتيكي ضد المسيرات (Counter-UAV V17.0)",
         "sdr_spectrum": "📡 RF Spectrum & SDR",
         "hardware_panel": "🔌 إدارة العتاد السيادي ومستشعرات IoT",
         "link_budget": "📡 حسابات هندسة الوصلة وتحليل الإشارة (Link Budget & SNR)",
@@ -172,11 +191,11 @@ LANGUAGES = {
     "en": {
         "name": "English",
         "dir": "ltr",
-        "title": "🚀 COSMIC-324: Absolute Sovereign Physical System (V16.0)",
-        "subtitle": "Hybrid Space System - with SDR, Anti-Drone Defense, and Quantum Encryption",
-        "welcome": "🌟 Welcome to the Central Sovereign Physical Operations Room (V16.0 Absolute).",
+        "title": "🚀 COSMIC-324: Active Sovereign Physical System (V17.0)",
+        "subtitle": "Hybrid Space System - with SDR, Active Anti-Drone Defense, and Quantum Encryption",
+        "welcome": "🌟 Welcome to the Central Sovereign Physical Operations Room (V17.0 Active).",
         "dashboard": "📊 Real Live Satellite Tracking Dashboard",
-        "counter_uav": "🛡️ Counter-UAV Tactical Defense System",
+        "counter_uav": "🛡️ Counter-UAV Tactical Defense System (V17.0)",
         "sdr_spectrum": "📡 RF Spectrum & SDR",
         "hardware_panel": "🔌 Sovereign Hardware & IoT Sensors",
         "link_budget": "📡 Link Budget & Signal Analysis (SNR)",
@@ -202,7 +221,7 @@ def get_current_dir() -> str:
 # ============================================================
 # 📱 إعداد واجهة الاستخدام السيادية
 # ============================================================
-st.set_page_config(page_title="COSMIC-324 V16.0 Sovereign Physical", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="COSMIC-324 V17.0 Sovereign Active", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
 
 if 'language' not in st.session_state:
     st.session_state.language = 'ar'
@@ -210,6 +229,8 @@ if 'cache_ver' not in st.session_state:
     st.session_state.cache_ver = 0
 if 'crisis_mode' not in st.session_state:
     st.session_state.crisis_mode = False
+if 'alerts' not in st.session_state:
+    st.session_state.alerts = []
 
 current_dir = get_current_dir()
 
@@ -343,7 +364,7 @@ def build_live_orbit_map(group: str, limit: int) -> Dict:
 # 🖥️ تشغيل الواجهة الرئيسية والتحكم
 # ============================================================
 def main():
-    st.sidebar.title("🚀 COSMIC-324 V16.0")
+    st.sidebar.title("🚀 COSMIC-324 V17.0")
      
     crisis_label = "🔴 إيقاف حالة الطوارئ" if st.session_state.crisis_mode else "🚨 تفعيل وضع الطوارئ الحرج (Red Alert)"
     if st.sidebar.button(crisis_label):
@@ -461,40 +482,53 @@ def main():
         else:
             st.warning("⚠️ لا توجد أقمار ضمن نطاق الرؤية المباشر. يرجى اختيار عرض كامل الأوكتاف العالمي.")
 
-    # 🛡️ نظام الدفاع التكتيكي ضد المسيرات (Counter-UAV)
+    # 🛡️ نظام الدفاع التكتيكي المدمج ضد المسيرات (Counter-UAV V17.0)
     elif nav == t('counter_uav'):
-        st.subheader("🛡️ وحدة الدفاع التكتيكي والتحييد الإلكتروني ضد المسيرات (Counter-UAV)")
-        st.write("نظام رصد الكيانات الجوية المنخفضة، تحليل ترددات التحكم (2.4GHz / 5.8GHz)، وتنفيذ التشويش الموجه.")
-         
-        c1, c2, c3 = st.columns(3)
+        st.subheader("🛡️ وحدة الدفاع التكتيكي والتحييد الإلكتروني ضد المسيرات (V17.0)")
+        st.write("رصد الكيانات الجوية عبر الرادار الافتراضي، تحليل البصمة الترددية (RF Fingerprinting)، والتنبيه الفوري.")
+        
+        # 1. توليد الرادار الافتراضي
+        targets_df = generate_drone_targets()
+        
+        # 2. نظام التنبيهات الفورية (Push Alerts)
+        for _, row in targets_df.iterrows():
+            if row['Type'] == 'HOSTILE' and row['Confidence'] > 0.9:
+                msg = f"🚨 تنبيه فوري: رصد مسيرة معادية {row['ID']} في النطاق الجوي!"
+                if msg not in st.session_state.alerts:
+                    st.toast(msg, icon="⚠️")
+                    st.session_state.alerts.append(msg)
+
+        c1, c2 = st.columns([2, 1])
         with c1:
-            st.metric("حالة الرادار المحلي", "نشط (Active)", "مسح 360 درجة")
+            fig_radar = px.scatter(
+                targets_df, x='X', y='Y', color='Type', symbol='Type',
+                size='Confidence', title="خريطة الرصد التكتيكي الحية للمسيرات"
+            )
+            fig_radar.update_layout(height=450, plot_bgcolor="#080812", paper_bgcolor="#06060c")
+            st.plotly_chart(fig_radar, use_container_width=True)
+            
         with c2:
-            st.metric("نطاق التغطية الرادارية", "5.2 كم", "عالي الدقة")
-        with c3:
-            st.metric("التهديدات المرصودة", "1 (تسلل مشبوه)", "تحذير تكتيكي")
-             
-        radar_targets = pd.DataFrame({
-            'المحور X (كم)': [0.0, 1.8, -2.1, 0.9],
-            'المحور Y (كم)': [0.0, 2.5, -1.4, -3.2],
-            'نوع الكيان': ['محطة الدفاع السيادي', 'مسحوق معادي #1', 'مسحوق معادي #2', 'جسم مدني'],
-            'مستوى الخطورة': ['آمن', 'مرتفع', 'متوسط', 'منخفض']
-        })
-        fig_radar = px.scatter(
-            radar_targets, x='المحور X (كم)', y='المحور Y (كم)', color='نوع الكيان',
-            symbol='نوع الكيان', size=[15, 12, 12, 10],
-            title="رادار المراقبة الجوية المحلية والمحيطة بالمحطة"
-        )
-        fig_radar.update_layout(height=450, plot_bgcolor="#080812", paper_bgcolor="#06060c")
-        st.plotly_chart(fig_radar, use_container_width=True)
-         
+            st.subheader("📡 البصمة الترددية (RF)")
+            selected_drone = st.selectbox("اختر الكيان للتحليل:", targets_df['ID'])
+            drone_data = targets_df[targets_df['ID'] == selected_drone].iloc[0]
+            st.write(f"مستوى الثقة: {drone_data['Confidence']:.2%}")
+            
+            # محاكاة بصمة ترددية
+            freq_data = np.random.normal(0, 0.2, 50) + (np.sin(np.linspace(0, 10, 50)) if drone_data['Type'] == 'HOSTILE' else 0)
+            st.line_chart(freq_data)
+            
+            if drone_data['Type'] == 'HOSTILE':
+                st.error("⚠️ البصمة: غير نظامية (قفز ترددات تكتيكي).")
+            else:
+                st.success("✅ البصمة: نظامية (إشارة مدنية مستقرة).")
+
         col_act1, col_act2 = st.columns(2)
         with col_act1:
-            if st.button("🚫 تفعيل منظومة التشويش الإلكتروني الموجه (RF Jamming)"):
-                with st.spinner("جاري بث حزم التداخل الكهرومغناطيسي على ترددات التحكم للمسيرات..."):
+            if st.button("🚫 تفعيل بروتوكول الاعتراض الرقمي (Digital Interception)"):
+                with st.spinner("جاري إرسال حزم التداخل الكهرومغناطيسي الموجه..."):
                     time.sleep(1.5)
-                st.success("✅ تم قطع الاتصال بين المسيرات المعادية ووحدات التوجيه بنجاح!")
-                sov_db.log_immutable_audit("COUNTER_UAV", "Directed RF Jamming executed successfully against hostile drones.", "SECURE")
+                st.success("✅ تم تحييد المسيرات المعادية بنجاح!")
+                sov_db.log_immutable_audit("COUNTER_UAV", "Digital Interception executed against hostile threats.", "SECURE")
         with col_act2:
             if st.button("⚡ إطلاق بروتوكول العزل الجوي الطارئ"):
                 st.error("⚠️ تم تفعيل طوق الحماية الجوية الإلكترونية وعزل المجال الجوي للمحطة.")
@@ -651,7 +685,7 @@ def main():
 
     st.markdown("""
     <div style="text-align: center; color: #556677; font-size: 0.85em; padding: 25px 0; border-top: 1px solid #16162c; margin-top: 30px;">
-        © 2026 COSMIC-324: Absolute Sovereign Physical System (V16.0). النظام الميداني المعتمد للتحكم الفضائي الحي والأمان السيادي والدفاع التكتيكي.
+        © 2026 COSMIC-324: Absolute Sovereign Active Physical System (V17.0). النظام الميداني المعتمد للتحكم الفضائي الحي والأمان السيادي والدفاع التكتيكي النشط.
     </div>
     """, unsafe_allow_html=True)
 
