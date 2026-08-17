@@ -70,7 +70,7 @@ class SovereignEnterpriseDB:
     def __init__(self, db_path: str = "sovereign_enterprise.db"):
         self.db_path = db_path
         self._init_db()
-    
+     
     def _init_db(self):
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -97,13 +97,13 @@ class SovereignEnterpriseDB:
                 """)
         except Exception as e:
             logger.error(f"Database Initialization Error: {e}")
-    
+     
     def generate_license(self, client_name: str, tier: str, days: int = 365) -> Tuple[str, str]:
         expiry = (datetime.utcnow() + timedelta(days=days)).strftime('%Y-%m-%d')
         token = secrets.token_hex(16)
         sig = hmac.new(SECRET_KEY.encode(), f"{token}:{client_name}".encode(), hashlib.sha256).hexdigest()[:16].upper()
         key = f"CSM324-SOV-{token[:8].upper()}-{sig}"
-        
+         
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO licenses (license_key, client_name, tier, expiry_date, created_at) VALUES (?, ?, ?, ?, ?)",
@@ -124,7 +124,7 @@ class SovereignEnterpriseDB:
         timestamp = datetime.utcnow().isoformat()
         raw_data = f"{timestamp}:{event_type}:{desc}:{status}:{SECRET_KEY}"
         crypto_hash = hashlib.sha256(raw_data.encode()).hexdigest()
-        
+         
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
@@ -287,7 +287,7 @@ def fetch_live_ephemeris(group: str, limit: int, version: int) -> List[Dict]:
 def build_live_orbit_map(group: str, limit: int) -> Dict:
     orbit_map = {}
     raw = fetch_live_ephemeris(group, limit, st.session_state.cache_ver)
-    
+     
     ts = load.timescale() if SKYFIELD_AVAILABLE else None
     t_now = ts.now() if ts else None
 
@@ -306,11 +306,11 @@ def build_live_orbit_map(group: str, limit: int) -> Dict:
                     mm = float(entry.get('MEAN_MOTION', 14.0))
                     incl = float(entry.get('INCLINATION', 53.0))
                     epoch_days = float(entry.get('EPOCH_REV', 0))
-                    
+                     
                     now_utc = datetime.utcnow()
                     sec_fraction = (now_utc.hour * 3600 + now_utc.minute * 60 + now_utc.second) / 86400.0
                     phase = (epoch_days + sec_fraction * mm) * 2 * math.pi
-                    
+                     
                     lat = incl * math.sin(phase)
                     lon = (math.degrees(phase) % 360) - 180
                     alt = 550.0
@@ -344,7 +344,7 @@ def build_live_orbit_map(group: str, limit: int) -> Dict:
 # ============================================================
 def main():
     st.sidebar.title("🚀 COSMIC-324 V16.0")
-    
+     
     crisis_label = "🔴 إيقاف حالة الطوارئ" if st.session_state.crisis_mode else "🚨 تفعيل وضع الطوارئ الحرج (Red Alert)"
     if st.sidebar.button(crisis_label):
         st.session_state.crisis_mode = not st.session_state.crisis_mode
@@ -356,16 +356,16 @@ def main():
     if lang_choice != st.session_state.language:
         st.session_state.language = lang_choice
         st.rerun()
-        
+         
     st.sidebar.markdown("---")
     st.sidebar.markdown("### اختيار المحطة السيادية المستهدفة:")
     country_names = [c["name"] for c in ALL_COUNTRIES]
     selected_country_name = st.sidebar.selectbox("المحطة:", country_names)
     selected_country = next(c for c in ALL_COUNTRIES if c["name"] == selected_country_name)
-    
+     
     view_mode_choice = st.sidebar.radio("طريقة العرض الجغرافي:", ["عرض كامل الأوكتاف العالمي", "تصفية الأقمار في خط الرؤية المباشر (LoS)"], index=0)
     strict_los = ("LoS" in view_mode_choice)
-    
+     
     st.sidebar.markdown("---")
     nav = st.sidebar.radio("📌 القائمة المركزية", [
         t('dashboard'),
@@ -382,10 +382,10 @@ def main():
         t('health_panel'),
         t('settings_panel')
     ])
-    
+     
     st.title(t('title'))
     st.markdown(f"*{t('subtitle')}*")
-    
+     
     if st.session_state.crisis_mode:
         st.error("🚨 تنبيه قصوى: نظام الطوارئ الفيزيائي السيادي (Red Alert) مفعل! تم عزل العقد وتحويل مسارات الحزم طارئاً.")
 
@@ -395,7 +395,7 @@ def main():
         <p>المحطة الميدانية النشطة: <b>{selected_country['name']}</b> (خط العرض: {selected_country['lat']}°, خط الطول: {selected_country['lon']}°) | التوقيت العالمي الحقيقي (UTC): <b>{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}</b></p>
     </div>
     """, unsafe_allow_html=True)
-    
+     
     # 1️⃣ لوحة التتبع الفضائي الحقيقي
     if nav == t('dashboard'):
         col1, col2 = st.columns([2, 1])
@@ -403,25 +403,25 @@ def main():
             sat_slider = st.slider("عدد الأقمار المرصودة حياً", 50, 2000, 500, 50)
         with col2:
             group_sel = st.selectbox("المجموعة الفضائية الحية:", DATA_CONTRACT["celestrak"]["groups"])
-            
+             
         if st.button("🔄 جلب وتحديث الإحداثيات الحية الفورية (Live Ephemeris)"):
             st.session_state.cache_ver += 1
             sov_db.log_immutable_audit("REFRESH_TLE", f"Fetched fresh Ephemeris for group: {group_sel}", "SUCCESS")
             st.rerun()
-            
+             
         with st.spinner("جاري الاتصال بقواعد بيانات الإحداثيات الفلكية الحية..."):
             orbit_map = build_live_orbit_map(group_sel, sat_slider)
-            
+             
             records = []
             for name, sat in orbit_map.items():
                 try:
                     lat, lon, alt = sat.lat, sat.lon, sat.altitude
                     dist_to_station = haversine(selected_country['lat'], selected_country['lon'], lat, lon)
                     horizon = math.acos(DATA_CONTRACT["model"]["earthRadiusKm"] / (DATA_CONTRACT["model"]["earthRadiusKm"] + alt)) * DATA_CONTRACT["model"]["earthRadiusKm"]
-                    
+                     
                     if strict_los and dist_to_station > (horizon + 1200):
                         continue
-                        
+                         
                     records.append({
                         "اسم القمر": name[:28],
                         "الحالة الحية": "متصل ومزامن لحظياً",
@@ -433,11 +433,11 @@ def main():
                 except:
                     continue
             df_res = pd.DataFrame(records)
-            
+             
         if not df_res.empty:
             st.success(f"✅ إجمالي الأقمار المرصودة حياً في النطاق السيادي: {len(df_res)} قمر صناعي.")
             st.dataframe(df_res, use_container_width=True)
-            
+             
             fig = px.scatter_geo(
                 df_res,
                 lat="خط العرض",
@@ -465,7 +465,7 @@ def main():
     elif nav == t('counter_uav'):
         st.subheader("🛡️ وحدة الدفاع التكتيكي والتحييد الإلكتروني ضد المسيرات (Counter-UAV)")
         st.write("نظام رصد الكيانات الجوية المنخفضة، تحليل ترددات التحكم (2.4GHz / 5.8GHz)، وتنفيذ التشويش الموجه.")
-        
+         
         c1, c2, c3 = st.columns(3)
         with c1:
             st.metric("حالة الرادار المحلي", "نشط (Active)", "مسح 360 درجة")
@@ -473,8 +473,7 @@ def main():
             st.metric("نطاق التغطية الرادارية", "5.2 كم", "عالي الدقة")
         with c3:
             st.metric("التهديدات المرصودة", "1 (تسلل مشبوه)", "تحذير تكتيكي")
-            
-        # رادار محلي تجريبي للمسيرات
+             
         radar_targets = pd.DataFrame({
             'المحور X (كم)': [0.0, 1.8, -2.1, 0.9],
             'المحور Y (كم)': [0.0, 2.5, -1.4, -3.2],
@@ -488,7 +487,7 @@ def main():
         )
         fig_radar.update_layout(height=450, plot_bgcolor="#080812", paper_bgcolor="#06060c")
         st.plotly_chart(fig_radar, use_container_width=True)
-        
+         
         col_act1, col_act2 = st.columns(2)
         with col_act1:
             if st.button("🚫 تفعيل منظومة التشويش الإلكتروني الموجه (RF Jamming)"):
@@ -505,7 +504,7 @@ def main():
     elif nav == t('sdr_spectrum'):
         st.subheader("📡 محاكاة الطيف الراديوي ومستقبلات SDR الفيزيائية")
         st.write("رصد وتحليل طيف الترددات الكهرومغناطيسية لنطاقات Ka-Band و Ku-Band عبر مستقبلات البرمجيات الراديوية الميدانية.")
-        
+         
         freqs = np.linspace(26.0, 30.0, 100)
         power_spectrum = -50 + 15 * np.sin(freqs * 2) + np.random.normal(0, 1.5, 100)
         df_spec = pd.DataFrame({"التردد (GHz)": freqs, "قدرة الإشارة (dBm)": power_spectrum})
@@ -527,10 +526,10 @@ def main():
         with c1: sat_alt_input = st.number_input("متوسط ارتفاع القمر (كم)", value=550.0, step=10.0)
         with c2: freq_input = st.number_input("التردد التشغيلي 6G (GHz)", value=28.0, step=1.0)
         with c3: power_input = st.number_input("قدرة الإرسال (Watt)", value=40.0, step=5.0)
-            
+             
         fspl = 20 * math.log10(sat_alt_input) + 20 * math.log10(freq_input) + 92.45
         snr_estimated = 45.0 - (fspl * 0.12) + (power_input * 0.05)
-        
+         
         col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1: st.metric("فقد المسار الحر (FSPL)", f"{round(fspl, 2)} dB")
         with col_m2: st.metric("نسبة الإشارة للتشويش (SNR)", f"{round(snr_estimated, 2)} dB", "مستقر حياً")
@@ -632,7 +631,7 @@ def main():
         with c2: st.metric("زمن الاستجابة (API Latency)", "8.9 ms", "-2.1 ms")
         with c3: st.metric("معدل فقد الحزم", "0.000%", "مثالي")
         with c4: st.metric("حالة وحدة الأمان (HSM)", "AES-256 / Quantum", "مؤمن")
-        
+         
         perf_data = pd.DataFrame({
             "الوقت": [datetime.utcnow() - timedelta(minutes=i) for i in range(15, 0, -1)],
             "استهلاك العتاد (%)": np.random.uniform(18, 30, 15),
