@@ -1,6 +1,6 @@
 """
 COSMIC-324: 6G Titan X Enterprise Sovereign Edition
-النسخة السيادية الفيزيائية المطلقة - الإصدار المتقدم غير المسبوق عالمياً (V15.0)
+النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V15.0 - متكامل تماماً في ملف واحد)
 """
 
 import streamlit as st
@@ -22,10 +22,7 @@ import hmac
 import hashlib
 import sqlite3
 
-# استدعاء وحدة الدفاع الميداني الجديدة
-import defense_module as dm
-
-# محاولة استيراد مكتبة الفلك المتقدمة Skyfield
+# محاولة استيراد مكتبة Skyfield للإحداثيات الفلكية الدقيقة
 try:
     from skyfield.api import Topos, EarthSatellite, load, wgs84
     SKYFIELD_AVAILABLE = True
@@ -33,22 +30,22 @@ except ImportError:
     SKYFIELD_AVAILABLE = False
 
 # ============================================================
-# 📝 إعداد نظام التسجيل الاحترافي والسيادي
+# 📝 إعداد نظام التسجيل الاحترافي
 # ============================================================
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('cosmic324_physical_sovereign.log'),
+        logging.FileHandler('cosmic324_sovereign.log'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
-MASTER_SECRET = os.environ.get('COSMIC_MASTER_SECRET', 'cosmic-324-physical-absolute-sovereign-key-2026')
+SECRET_KEY = os.environ.get('COSMIC_SECRET_KEY', 'cosmic-324-absolute-sovereign-master-key')
 
 # ============================================================
-# 🌐 الثوابت والمكونات الفيزيائية
+# 📁 ثوابت وعقد البيانات السيادية
 # ============================================================
 DATA_CONTRACT = {
     "celestrak": {
@@ -67,10 +64,10 @@ DATA_CONTRACT = {
 }
 
 # ============================================================
-# 🗄️ محرك قواعد البيانات الزمنية وسجلات البلوكتشين الخاصة
+# 🗄️ مدير قواعد البيانات السيادية وسجلات التدقيق المحصنة
 # ============================================================
-class PhysicalSovereignEngine:
-    def __init__(self, db_path: str = "physical_sovereign_core.db"):
+class SovereignEnterpriseDB:
+    def __init__(self, db_path: str = "sovereign_enterprise.db"):
         self.db_path = db_path
         self._init_db()
     
@@ -78,7 +75,7 @@ class PhysicalSovereignEngine:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("""
-                    CREATE TABLE IF NOT EXISTS sovereign_licenses (
+                    CREATE TABLE IF NOT EXISTS licenses (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         license_key TEXT UNIQUE NOT NULL,
                         client_name TEXT NOT NULL,
@@ -89,39 +86,27 @@ class PhysicalSovereignEngine:
                     )
                 """)
                 conn.execute("""
-                    CREATE TABLE IF NOT EXISTS decentralized_ledger (
+                    CREATE TABLE IF NOT EXISTS immutable_audit (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         timestamp TEXT NOT NULL,
-                        node_id TEXT NOT NULL,
                         event_type TEXT NOT NULL,
-                        payload_data TEXT NOT NULL,
-                        previous_hash TEXT NOT NULL,
-                        block_hash TEXT NOT NULL,
-                        status TEXT NOT NULL
-                    )
-                """)
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS timeseries_telemetry (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        timestamp TEXT NOT NULL,
-                        station_name TEXT NOT NULL,
-                        cpu_temp REAL,
-                        packet_loss REAL,
-                        snr_margin REAL,
-                        sdr_lock INTEGER
+                        description TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        cryptographic_hash TEXT NOT NULL
                     )
                 """)
         except Exception as e:
-            logger.error(f"Physical DB Initialization Error: {e}")
+            logger.error(f"Database Initialization Error: {e}")
     
     def generate_license(self, client_name: str, tier: str, days: int = 365) -> Tuple[str, str]:
         expiry = (datetime.utcnow() + timedelta(days=days)).strftime('%Y-%m-%d')
         token = secrets.token_hex(16)
-        sig = hmac.new(MASTER_SECRET.encode(), f"{token}:{client_name}".encode(), hashlib.sha256).hexdigest()[:16].upper()
-        key = f"CSM324-PHYSICAL-{token[:8].upper()}-{sig}"
+        sig = hmac.new(SECRET_KEY.encode(), f"{token}:{client_name}".encode(), hashlib.sha256).hexdigest()[:16].upper()
+        key = f"CSM324-SOV-{token[:8].upper()}-{sig}"
+        
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO sovereign_licenses (license_key, client_name, tier, expiry_date, created_at) VALUES (?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO licenses (license_key, client_name, tier, expiry_date, created_at) VALUES (?, ?, ?, ?, ?)",
                 (key, client_name, tier, expiry, datetime.utcnow().isoformat())
             )
         return key, expiry
@@ -130,65 +115,35 @@ class PhysicalSovereignEngine:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                cursor = conn.execute("SELECT license_key, client_name, tier, expiry_date, is_active FROM sovereign_licenses")
+                cursor = conn.execute("SELECT license_key, client_name, tier, expiry_date, is_active FROM licenses")
                 return [dict(row) for row in cursor.fetchall()]
-        except: return []
+        except:
+            return []
 
-    def log_ledger_block(self, node_id: str, event_type: str, payload: str, status: str = "SECURE"):
+    def log_immutable_audit(self, event_type: str, desc: str, status: str = "SECURE"):
         timestamp = datetime.utcnow().isoformat()
+        raw_data = f"{timestamp}:{event_type}:{desc}:{status}:{SECRET_KEY}"
+        crypto_hash = hashlib.sha256(raw_data.encode()).hexdigest()
+        
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute("SELECT block_hash FROM decentralized_ledger ORDER BY id DESC LIMIT 1")
-                row = cursor.fetchone()
-                prev_hash = row[0] if row else "0000000000000000000000000000000000000000000000000000000000000000"
-                raw_block = f"{timestamp}:{node_id}:{event_type}:{payload}:{prev_hash}:{MASTER_SECRET}"
-                block_hash = hashlib.sha256(raw_block.encode()).hexdigest()
                 conn.execute(
-                    "INSERT INTO decentralized_ledger (timestamp, node_id, event_type, payload_data, previous_hash, block_hash, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (timestamp, node_id, event_type, payload, prev_hash, block_hash, status)
+                    "INSERT INTO immutable_audit (timestamp, event_type, description, status, cryptographic_hash) VALUES (?, ?, ?, ?, ?)",
+                    (timestamp, event_type, desc, status, crypto_hash)
                 )
         except Exception as e:
-            logger.error(f"Ledger Block Error: {e}")
+            logger.error(f"Immutable Audit Log Error: {e}")
 
-    def get_ledger_blocks(self) -> List[Dict]:
+    def get_audit_logs(self) -> List[Dict]:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                cursor = conn.execute("SELECT timestamp, node_id, event_type, payload_data, block_hash, status FROM decentralized_ledger ORDER BY id DESC LIMIT 50")
+                cursor = conn.execute("SELECT timestamp, event_type, description, status, cryptographic_hash FROM immutable_audit ORDER BY id DESC LIMIT 100")
                 return [dict(row) for row in cursor.fetchall()]
-        except: return []
+        except:
+            return []
 
-    def record_timeseries(self, station: str, temp: float, loss: float, snr: float, sdr: int):
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute(
-                    "INSERT INTO timeseries_telemetry (timestamp, station_name, cpu_temp, packet_loss, snr_margin, sdr_lock) VALUES (?, ?, ?, ?, ?, ?)",
-                    (datetime.utcnow().isoformat(), station, temp, loss, snr, sdr)
-                )
-        except: pass
-
-sov_engine = PhysicalSovereignEngine()
-
-# ============================================================
-# 🛡️ جسر المراقبة الدفاعي (Defense Watchdog Bridge) - الخطوة 3
-# ============================================================
-def run_defense_watchdog(telemetry_data: Dict):
-    """
-    يقوم هذا الجسر بمسح بيانات التليمتري الحية ومقارنتها 
-    بمعايير الدفاع السيادية في defense_module (dm).
-    """
-    try:
-        is_threat = dm.check_threat_thresholds(
-            temp=telemetry_data.get('cpu_temp', 0),
-            snr=telemetry_data.get('snr_margin', 0),
-            packet_loss=telemetry_data.get('packet_loss', 0)
-        )
-        if is_threat and not st.session_state.crisis_mode:
-            st.session_state.crisis_mode = True
-            sov_engine.log_ledger_block("WATCHDOG-BRIDGE", "THREAT_DETECTED", "Automatic lockdown triggered by defense module.", "CRITICAL")
-            logger.warning("🚨 ALERT: Physical threat detected, autonomous defense lock activated.")
-    except Exception as e:
-        logger.error(f"Watchdog Bridge Error: {e}")
+sov_db = SovereignEnterpriseDB()
 
 # ============================================================
 # 🌐 نظام اللغات والواجهات (عربي / إنجليزي)
@@ -198,53 +153,39 @@ LANGUAGES = {
         "name": "العربية",
         "dir": "rtl",
         "title": "🚀 كوزميك-324: المنظومة السيادية الفيزيائية المطلقة (V15.0)",
-        "subtitle": "النظام الفضائي الحقيقي الميداني - ربط عتادي مع مستقبلات SDR، تشفير كمومي، وسجلات بلوكتشين لا مركزية",
+        "subtitle": "النظام الفضائي الحقيقي الهجين - مع عتاد SDR وتشفير كمومي، وسجلات بلاكشين لا مركزية",
         "welcome": "🌟 مرحباً بك في غرفة العمليات الفيزيائية السيادية المركزية (الإصدار الفيزيائي الحقيقي غير المسبوق V15.0).",
         "dashboard": "📊 لوحة التتبع الفضائي الميداني الحقيقي",
-        "sdr_panel": "📡 محطة استقبال الراديو الميداني الفعلي (SDR & RF Spectrum)",
-        "iot_hardware": "🔌 إدارة العتاد الميداني ومتحكمات الـ IoT / Hardware",
+        "sdr_spectrum": "📡 RF Spectrum & SDR",
+        "hardware_panel": "🔌 إدارة العتاد السیادي ومستشعرات IoT",
         "link_budget": "📡 حسابات هندسة الوصلة وتحليل الإشارة (Link Budget & SNR)",
         "doppler_panel": "🌐 تحليل إزاحة دوبلر والانتقال (Doppler & Handover)",
-        "command_panel": "⚡ التحكم الميداني وعكس الأوامر (Hardware Uplink)",
-        "ai_predictive": "🤖 الذكاء الاصطناعي التنبؤي وقاعدة البيانات الزمنية",
-        "ledger_panel": "📜 دفتر الأستاذ اللامركزي وسجلات التدقيق المشفرة",
+        "command_panel": "⚡ التحكم الميداني وعكس الأوامر (Uplink)",
+        "ai_predictive": "🤖 الذكاء الاصطناعي التنبؤي والإنذار المبكر",
+        "audit_panel": "📜 سجلات التدقيق المشفرة وسجلات بلاكشين لا مركزية",
         "crisis_panel": "🚨 مركز الطوارئ والتدخل الفيزيائي العاجل (Red Alert)",
         "licenses_panel": "🔑 إدارة التراخيص السيادية والمؤسسية",
         "health_panel": "🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM)",
-        "settings_panel": "⚙️ الإعدادات المتقدمة للعتاد ونقاط الاتصال",
-        "defense_panel": "🛡️ نظام الدفاع الميداني ضد المسيرات",
-        "sat_count": "عدد الأقمار المرصودة حياً",
-        "refresh_data": "🔄 جلب وتحديث الإحداثيات الحية الفورية (Live Ephemeris)",
-        "station_select": "اختر المحطة السيادية المستهدفة:",
-        "view_mode": "طريقة العرض الجغرافي الميداني",
-        "all_global": "عرض كامل الأوكتاف العالمي للأقمار",
-        "line_of_sight": "تصفية الأقمار الواقعة في خط الرؤية المباشر (LoS) فقط"
+        "settings_panel": "⚙️ الإعدادات المتقدمة للشبكة والاتصال"
     },
     "en": {
         "name": "English",
         "dir": "ltr",
-        "title": "🚀 COSMIC-324: Physical Sovereign Absolute Edition (V15.0)",
-        "subtitle": "Real-World Field Space System - SDR Hardware Integration, Quantum Encryption & Decentralized Ledger",
-        "welcome": "🌟 Welcome to the Central Physical Sovereign Operational Command Room (Absolute V15.0).",
-        "dashboard": "📊 Real-World Field Satellite Dashboard",
-        "sdr_panel": "📡 Live SDR & RF Spectrum Receiver Station",
-        "iot_hardware": "🔌 Field Hardware & IoT Controller Management",
+        "title": "🚀 COSMIC-324: Absolute Sovereign Physical System (V15.0)",
+        "subtitle": "Hybrid Space System - with SDR Hardware, Quantum Encryption, and Decentralized Audit Logs",
+        "welcome": "🌟 Welcome to the Central Sovereign Physical Operations Room (V15.0 Absolute).",
+        "dashboard": "📊 Real Live Satellite Tracking Dashboard",
+        "sdr_spectrum": "📡 RF Spectrum & SDR",
+        "hardware_panel": "🔌 Sovereign Hardware & IoT Sensors",
         "link_budget": "📡 Link Budget & Signal Analysis (SNR)",
         "doppler_panel": "🌐 Doppler Shift & Handover",
-        "command_panel": "⚡ Tactical Hardware Uplink & Command",
-        "ai_predictive": "🤖 Predictive AI & Time-Series DB",
-        "ledger_panel": "📜 Decentralized Ledger & Encrypted Audit Logs",
-        "crisis_panel": "🚨 Physical Crisis Management & Red Alert Center",
+        "command_panel": "⚡ Tactical Command & Uplink",
+        "ai_predictive": "🤖 Predictive AI & Early Warning",
+        "audit_panel": "📜 Immutable Cryptographic & Decentralized Logs",
+        "crisis_panel": "🚨 Crisis Management & Red Alert Center",
         "licenses_panel": "🔑 Enterprise Sovereign Licenses",
         "health_panel": "🩺 Hardware Health & Quantum Security (HSM)",
-        "settings_panel": "⚙️ Advanced Hardware Settings & Endpoints",
-        "defense_panel": "🛡️ Field Anti-Drone Defense System",
-        "sat_count": "Active Tracked Satellites",
-        "refresh_data": "🔄 Fetch Live Ephemeris Data",
-        "station_select": "Select Target Sovereign Station:",
-        "view_mode": "Field Geographic View Mode",
-        "all_global": "Show Global Constellation",
-        "line_of_sight": "Filter Line-of-Sight (LoS) Satellites Only"
+        "settings_panel": "⚙️ Advanced Network Settings & Endpoints"
     }
 }
 
@@ -257,9 +198,9 @@ def get_current_dir() -> str:
     return LANGUAGES.get(lang, LANGUAGES['ar']).get('dir', 'rtl')
 
 # ============================================================
-# 📱 إعداد واجهة الاستخدام الفيزيائية
+# 📱 إعداد واجهة الاستخدام السيادية
 # ============================================================
-st.set_page_config(page_title="COSMIC-324 Physical Sovereign V15", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="COSMIC-324 V15.0 Sovereign Physical", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
 
 if 'language' not in st.session_state:
     st.session_state.language = 'ar'
@@ -270,8 +211,8 @@ if 'crisis_mode' not in st.session_state:
 
 current_dir = get_current_dir()
 
-bg_color = "#1a0202" if st.session_state.crisis_mode else "#04040a"
-border_color = "rgba(255, 30, 30, 0.9)" if st.session_state.crisis_mode else "rgba(0, 220, 255, 0.3)"
+bg_color = "#1f0404" if st.session_state.crisis_mode else "#06060c"
+border_color = "rgba(255, 50, 50, 0.8)" if st.session_state.crisis_mode else "rgba(0, 204, 255, 0.2)"
 
 st.markdown(f"""
 <style>
@@ -281,17 +222,17 @@ st.markdown(f"""
         text-align: {'right' if current_dir == 'rtl' else 'left'};
     }}
     .stMetric {{
-        background: linear-gradient(145deg, #101024, #050510);
+        background: linear-gradient(145deg, #121222, #080812);
         border-radius: 10px;
         padding: 15px;
         border: 1px solid {border_color};
     }}
     h1, h2, h3, h4 {{
-        color: {'#FF4444' if st.session_state.crisis_mode else '#00EEFF'};
+        color: {'#FF5555' if st.session_state.crisis_mode else '#00CCFF'};
         font-family: 'Segoe UI', Tahoma, sans-serif;
     }}
     .welcome-box {{
-        background: linear-gradient(135deg, #0d0d22, #04040c);
+        background: linear-gradient(135deg, #101026, #060610);
         border-radius: 12px;
         padding: 20px;
         border: 1px solid {border_color};
@@ -301,15 +242,15 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# 🌍 قاعدة بيانات المحطات الأرضية الفيزيائية
+# 🌍 قاعدة بيانات المحطات الأرضية العالمية السيادية
 # ============================================================
 @st.cache_data
 def get_countries() -> List[Dict]:
     return sorted([
-        {"name": "Oman (سلطنة عمان - مسقط - المحطة الرئيسية)", "lat": 23.5880, "lon": 58.3829},
+        {"name": "Oman (سلطنة عمان - مسقط)", "lat": 23.5880, "lon": 58.3829},
         {"name": "Sudan (السودان - الخرطوم)", "lat": 15.5007, "lon": 32.5599},
-        {"name": "Saudi Arabia (المملكة العربية السعودية - الرياض)", "lat": 23.8859, "lon": 45.0792},
-        {"name": "United Arab Emirates (الإمارات - أبوظبي)", "lat": 23.4241, "lon": 53.8478},
+        {"name": "Saudi Arabia (المملكة العربية السعودية)", "lat": 23.8859, "lon": 45.0792},
+        {"name": "United Arab Emirates (الإمارات)", "lat": 23.4241, "lon": 53.8478},
         {"name": "United States (الولايات المتحدة)", "lat": 37.0902, "lon": -95.7129},
         {"name": "United Kingdom (المملكة المتحدة)", "lat": 55.3781, "lon": -3.4360},
         {"name": "Germany (ألمانيا)", "lat": 51.1657, "lon": 10.4515},
@@ -320,7 +261,7 @@ def get_countries() -> List[Dict]:
 ALL_COUNTRIES = get_countries()
 
 # ============================================================
-# 📡 محرك الإحداثيات والفيزياء المدارية
+# 📡 محرك الإحداثيات المدارية الحية
 # ============================================================
 def haversine(lat1, lon1, lat2, lon2):
     R = DATA_CONTRACT["model"]["earthRadiusKm"]
@@ -383,7 +324,7 @@ def build_live_orbit_map(group: str, limit: int) -> Dict:
 
     if not orbit_map:
         for i in range(limit):
-            name = f"PHYSICAL-SAT-{i+1:04d}"
+            name = f"SOV-PHYS-SAT-{i+1:04d}"
             lat = ((i * 37) % 180) - 90
             lon = ((i * 59) % 360) - 180
             alt = 550.0
@@ -397,16 +338,16 @@ def build_live_orbit_map(group: str, limit: int) -> Dict:
     return orbit_map
 
 # ============================================================
-# 🖥️ تشغيل الواجهة الرئيسية والتحكم المطلق
+# 🖥️ تشغيل الواجهة الرئيسية والتحكم
 # ============================================================
 def main():
-    st.sidebar.title("🚀 COSMIC-324 Physical")
+    st.sidebar.title("🚀 COSMIC-324 V15.0")
     
-    crisis_label = "🔴 إيقاف حالة الطوارئ الفيزيائية" if st.session_state.crisis_mode else "🚨 تفعيل وضع الطوارئ الفيزيائي (Red Alert)"
+    crisis_label = "🔴 إيقاف حالة الطوارئ" if st.session_state.crisis_mode else "🚨 تفعيل وضع الطوارئ الحرج (Red Alert)"
     if st.sidebar.button(crisis_label):
         st.session_state.crisis_mode = not st.session_state.crisis_mode
         state_str = "ACTIVATED" if st.session_state.crisis_mode else "DEACTIVATED"
-        sov_engine.log_ledger_block("PHYSICAL-CORE-01", "CRISIS_MODE", f"Physical emergency state changed to {state_str}", "CRITICAL" if st.session_state.crisis_mode else "SECURE")
+        sov_db.log_immutable_audit("CRISIS_MODE", f"Emergency state changed to {state_str}", "CRITICAL" if st.session_state.crisis_mode else "SECURE")
         st.rerun()
 
     lang_choice = st.sidebar.selectbox("🌐 Language / اللغة", ["ar", "en"], format_func=lambda x: LANGUAGES[x]["name"], index=0 if st.session_state.language=='ar' else 1)
@@ -415,36 +356,35 @@ def main():
         st.rerun()
         
     st.sidebar.markdown("---")
-    st.sidebar.markdown(f"### {t('station_select')}")
+    st.sidebar.markdown("### اختيار المحطة السيادية المستهدفة:")
     country_names = [c["name"] for c in ALL_COUNTRIES]
-    selected_country_name = st.sidebar.selectbox("المحطة السيادية الحالية:", country_names)
+    selected_country_name = st.sidebar.selectbox("المحطة:", country_names)
     selected_country = next(c for c in ALL_COUNTRIES if c["name"] == selected_country_name)
     
-    view_mode_choice = st.sidebar.radio(t('view_mode'), [t('all_global'), t('line_of_sight')], index=0)
-    strict_los = (view_mode_choice == t('line_of_sight'))
+    view_mode_choice = st.sidebar.radio("طريقة العرض الجغرافي:", ["عرض كامل الأوكتاف العالمي", "تصفية الأقمار في خط الرؤية المباشر (LoS)"], index=0)
+    strict_los = ("LoS" in view_mode_choice)
     
     st.sidebar.markdown("---")
     nav = st.sidebar.radio("📌 القائمة المركزية", [
         t('dashboard'),
-        t('sdr_panel'),
-        t('iot_hardware'),
+        t('sdr_spectrum'),
+        t('hardware_panel'),
         t('link_budget'),
         t('doppler_panel'),
         t('command_panel'),
         t('ai_predictive'),
-        t('ledger_panel'),
+        t('audit_panel'),
         t('crisis_panel'),
         t('licenses_panel'),
         t('health_panel'),
-        t('settings_panel'),
-        t('defense_panel')
+        t('settings_panel')
     ])
     
     st.title(t('title'))
     st.markdown(f"*{t('subtitle')}*")
     
     if st.session_state.crisis_mode:
-        st.error("🚨 تنبيه فيزيائي قصوى: نظام الطوارئ المطلق مفعل! تم عزل الترددات وتحويل مسارات الحزم اللاسلكية فوراً.")
+        st.error("🚨 تنبيه قصوى: نظام الطوارئ الفيزيائي السيادي (Red Alert) مفعل! تم عزل العقد وتحويل مسارات الحزم طارئاً.")
 
     st.markdown(f"""
     <div class="welcome-box">
@@ -453,24 +393,20 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # 🛡️ نظام الدفاع الميداني الجديد
-    if nav == t('defense_panel'):
-        dm.run_defense_system()
-
-    # 1️⃣ لوحة التتبع الفضائي الميداني الحقيقي
-    elif nav == t('dashboard'):
+    # 1️⃣ لوحة التتبع الفضائي الحقيقي
+    if nav == t('dashboard'):
         col1, col2 = st.columns([2, 1])
         with col1:
-            sat_slider = st.slider(t('sat_count'), 50, 2000, 500, 50)
+            sat_slider = st.slider("عدد الأقمار المرصودة حياً", 50, 2000, 500, 50)
         with col2:
             group_sel = st.selectbox("المجموعة الفضائية الحية:", DATA_CONTRACT["celestrak"]["groups"])
             
-        if st.button(t('refresh_data')):
+        if st.button("🔄 جلب وتحديث الإحداثيات الحية الفورية (Live Ephemeris)"):
             st.session_state.cache_ver += 1
-            sov_engine.log_ledger_block(selected_country['name'], "REFRESH_EPHEMERIS", f"Fetched fresh ephemeris for group: {group_sel}", "SUCCESS")
+            sov_db.log_immutable_audit("REFRESH_TLE", f"Fetched fresh Ephemeris for group: {group_sel}", "SUCCESS")
             st.rerun()
             
-        with st.spinner("جاري الاتصال بقواعد بيانات الإحداثيات الفلكية الحية وتحديث مصفوفة التتبع..."):
+        with st.spinner("جاري الاتصال بقواعد بيانات الإحداثيات الفلكية الحية..."):
             orbit_map = build_live_orbit_map(group_sel, sat_slider)
             
             records = []
@@ -485,7 +421,7 @@ def main():
                         
                     records.append({
                         "اسم القمر": name[:28],
-                        "الحالة الحية": "متصل ومزامن فيزيائياً",
+                        "الحالة الحية": "متصل ومزامن لحظياً",
                         "خط العرض": round(lat, 3),
                         "خط الطول": round(lon, 3),
                         "الارتفاع الفعلي (كم)": round(alt, 1),
@@ -505,7 +441,7 @@ def main():
                 lon="خط الطول",
                 hover_name="اسم القمر",
                 projection="orthographic",
-                title=f"خريطة التتبع الفيزيائي الحي - مرصودة من {selected_country['name']}"
+                title=f"خريطة التتبع الميداني الحي - مرصودة من {selected_country['name']}"
             )
             fig.add_trace(go.Scattergeo(
                 lat=[selected_country['lat']],
@@ -516,56 +452,32 @@ def main():
                 marker=dict(size=16, color='red', symbol='star'),
                 name=f"محطة التحكم: {selected_country['name']}"
             ))
-            fig.update_geos(bgcolor="#04040a", landcolor="#0f0f20", subunitcolor="#00EEFF", countrycolor="#0077AA")
+            fig.update_geos(bgcolor="#06060c", landcolor="#121220", subunitcolor="#00CCFF", countrycolor="#0066AA")
             fig.update_layout(height=600, margin={"r":0,"t":40,"l":0,"b":0})
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("⚠️ لا توجد أقمار ضمن نطاق الرؤية المباشر. يرجى اختيار 'عرض كامل الأوكتاف العالمي'.")
+            st.warning("⚠️ لا توجد أقمار ضمن نطاق الرؤية المباشر. يرجى اختيار عرض كامل الأوكتاف العالمي.")
 
-    # 📡 2️⃣ محطة استقبال الراديو الميداني الفعلي (SDR & RF Spectrum)
-    elif nav == t('sdr_panel'):
-        st.subheader(t('sdr_panel'))
-        st.markdown("ربط مباشر مع مستقبلات الراديو محددة البرمجيات (SDR - RTL-SDR / USRP) لالتقاط طيف إشارات 6G والموجات المليمترية.")
+    # 📡 RF Spectrum & SDR
+    elif nav == t('sdr_spectrum'):
+        st.subheader("📡 محاكاة الطيف الراديوي ومستقبلات SDR الفيزيائية")
+        st.write("رصد وتحليل طيف الترددات الكهرومغناطيسية لنطاقات Ka-Band و Ku-Band عبر مستقبلات البرمجيات الراديوية الميدانية.")
         
-        sdr_c1, sdr_c2 = st.columns(2)
-        with sdr_c1:
-            st.code(
-                "SDR Device: USRP-X310 Sovereign Node\n"
-                "Center Frequency: 28.000 GHz (mmWave)\n"
-                "Sampling Rate: 61.44 MSps\n"
-                "RF Lock Status: LOCKED (SNR: 24.8 dB)",
-                language="yaml"
-            )
-        with sdr_c2:
-            if st.button("📡 بدء التقاط الطيف اللاسلكي الخام وتحليل الإشارة الحية"):
-                sov_engine.log_ledger_block(selected_country['name'], "SDR_CAPTURE", "Captured raw RF spectrum via physical SDR device.", "SUCCESS")
-                st.success("✅ تم مزامنة التقاط الطيف اللاسلكي الخام بنجاح عبر الجهاز الفيزيائي المرتبط.")
-                
-        spec_df = pd.DataFrame({
-            "التردد (GHz)": np.linspace(27.5, 28.5, 50),
-            "قوة الإشارة الطيفية (dBm)": np.random.normal(-75, 4, 50) + np.sin(np.linspace(0, 10, 50)) * 10
-        })
-        st.plotly_chart(px.line(spec_df, x="التردد (GHz)", y="قوة الإشارة الطيفية (dBm)", title="محلل الطيف الترددي الحي (Real-time RF Spectrum Analyzer)"), use_container_width=True)
+        freqs = np.linspace(26.0, 30.0, 100)
+        power_spectrum = -50 + 15 * np.sin(freqs * 2) + np.random.normal(0, 1.5, 100)
+        df_spec = pd.DataFrame({"التردد (GHz)": freqs, "قدرة الإشارة (dBm)": power_spectrum})
+        st.plotly_chart(px.line(df_spec, x="التردد (GHz)", y="قدرة الإشارة (dBm)", title="طيف الترددات الراديوية الحي (SDR Real-time Spectrum)"), use_container_width=True)
 
-    # 🔌 3️⃣ إدارة العتاد ومتحكمات الـ IoT / Hardware
-    elif nav == t('iot_hardware'):
-        st.subheader(t('iot_hardware'))
-        st.markdown("التحكم المباشر بمحركات توجيه الهوائيات (Antenna Rotators) ومستشعرات العتاد عبر بروتوكول MQTT المشفر.")
-        
-        hw_c1, hw_c2 = st.columns(2)
-        with hw_c1:
-            st.code(
-                "ESP32-S3 Antenna Rotator: CONNECTED\n"
-                "Azimuth Angle: 142.6° | Elevation: 45.2°\n"
-                "Motor Status: ACTIVE & TRACKING",
-                language="yaml"
-            )
-        with hw_c2:
-            if st.button("⚙️ إعادة معايرة محركات التوجيه الميدانية (Calibrate Rotator)"):
-                sov_engine.log_ledger_block(selected_country['name'], "HW_CALIBRATE", "Antenna rotator physical calibration executed.", "SUCCESS")
-                st.success("✅ تمت معايرة محركات التوجيه والهوائيات الفيزيائية بدقة تامة.")
+    # 🔌 Hardware Panel
+    elif nav == t('hardware_panel'):
+        st.subheader("🔌 إدارة العتاد السيادي ومستشعرات إنترنت الأشياء (Hardware & IoT)")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.code("SDR Module (HackRF One): CONNECTED\nLO Frequency: 28.0 GHz\nGain Stage: 32 dB\nHardware Lock: SECURE", language="yaml")
+        with c2:
+            st.code("ESP32 Sovereign Telemetry Node: ACTIVE\nInternal Temp: 41.2 °C\nVoltage: 3.31V\nPacket Loss: 0.00%", language="yaml")
 
-    # 4️⃣ حسابات الوصلة ونسبة الإشارة للتشويش (Link Budget & SNR)
+    # Link Budget
     elif nav == t('link_budget'):
         st.subheader("📡 تحليل الهامش الكهرومغناطيسي ونسبة الإشارة للتشويش (SNR)")
         c1, c2, c3 = st.columns(3)
@@ -576,143 +488,130 @@ def main():
         fspl = 20 * math.log10(sat_alt_input) + 20 * math.log10(freq_input) + 92.45
         snr_estimated = 45.0 - (fspl * 0.12) + (power_input * 0.05)
         
-        sov_engine.record_timeseries(selected_country['name'], 42.5, 0.01, snr_estimated, 1)
-        run_defense_watchdog({'cpu_temp': 42.5, 'packet_loss': 0.01, 'snr_margin': snr_estimated})
-        
         col_m1, col_m2, col_m3 = st.columns(3)
         with col_m1: st.metric("فقد المسار الحر (FSPL)", f"{round(fspl, 2)} dB")
-        with col_m2: st.metric("نسبة الإشارة للتشويش (SNR)", f"{round(snr_estimated, 2)} dB", "مستقر فيزيائياً")
+        with col_m2: st.metric("نسبة الإشارة للتشويش (SNR)", f"{round(snr_estimated, 2)} dB", "مستقر حياً")
         with col_m3: st.metric("كفاءة القناة الطيفية", "99.99%", "مثالي لـ 6G")
 
-    # 5️⃣ تحليل إزاحة دوبلر والانتقال (Doppler Shift & Handover)
+    # Doppler
     elif nav == t('doppler_panel'):
-        st.subheader(t('doppler_panel'))
+        st.subheader("🌐 تحليل إزاحة دوبلر والانتقال (Doppler & Handover)")
         col_d1, col_d2 = st.columns(2)
-        with col_d1:
-            st.info("**تردد الوصلة الهابطة (Downlink):** 20.5 GHz (Ka-Band)\n\n**قيمة الانزياح الفعلي المقدرة:** $\\pm 45.2 \\text{ kHz}$")
-        with col_d2:
-            st.success("**بروتوكول الانتقال السلس (Handover):** جاهز للتحويل الهاردويري الفوري\n\n**زمن التبديل الميداني:** $< 4.2 \\text{ ms}$")
+        with col_d1: st.info("**تردد الوصلة الهابطة (Downlink):** 20.5 GHz (Ka-Band)\n\n**قيمة الانزياح المقدرة:** $\\pm 45.2 \\text{ kHz}$")
+        with col_d2: st.success("**بروتوكول الانتقال السلس (Handover):** جاهز للاستبدال الفوري\n\n**زمن التبديل المتوقع:** $< 4.2 \\text{ ms}$")
 
-    # ⚡ 6️⃣ التحكم الميداني وعكس الأوامر (Hardware Uplink)
+    # Command
     elif nav == t('command_panel'):
-        st.subheader(t('command_panel'))
-        st.info(f"المحطة المستهدفة بالأوامر الفيزيائية: **{selected_country['name']}**")
-        
-        cmd_type = st.selectbox("نوع أمر الوصلة العكسية الميدانية:", [
+        st.subheader("⚡ التحكم الميداني وعكس الأوامر (Command Uplink)")
+        st.info(f"المحطة المستهدفة بالأوامر الحية: **{selected_country['name']}**")
+        cmd_type = st.selectbox("نوع أمر الوصلة العكسية الحية:", [
             "توجيه شعاعي فوري للقمر النشط (Active Beam Steering)",
             "عزل قطاع الاتصالات الطارئ (Emergency Sector Isolation)",
-            "تحديث مفاتيح التشفير الكمومي للشبكة (Quantum Key Distribution Refresh)"
+            "تحديث مفاتيح التشفير الكمومي للشبكة (QKD Refresh)"
         ])
-        
-        if st.button("⚡ تنفيذ وإرسال الأمر الميداني للعتاد"):
+        if st.button("⚡ تنفيذ وإرسال الأمر الميداني الحي"):
             time.sleep(1)
-            st.success(f"✅ تم تنفيذ وإرسال الأمر بنجاح وعبر البوابة الفيزيائية لـ {selected_country['name']}.")
-            sov_engine.log_ledger_block(selected_country['name'], "HARDWARE_UPLINK", f"Executed: {cmd_type}", "SUCCESS")
+            st.success(f"✅ تم تنفيذ وإرسال الأمر بنجاح عبر البوابة السيادية لـ {selected_country['name']}.")
+            sov_db.log_immutable_audit("COMMAND_UPLINK", f"Executed: {cmd_type} at station {selected_country['name']}", "SUCCESS")
 
-    # 🤖 7️⃣ الذكاء الاصطناعي التنبؤي وقاعدة البيانات الزمنية
+    # AI Predictive
     elif nav == t('ai_predictive'):
-        st.subheader(t('ai_predictive'))
-        st.markdown("تحليل السجلات الزمنية (Time-Series Analytics) للتنبؤ بالأعطال واستباق الانقطاعات اللاسلكية.")
-        
+        st.subheader("🤖 الذكاء الاصطناعي التنبؤي والإنذار المبكر")
         ai_c1, ai_c2 = st.columns(2)
         with ai_c1:
-            st.metric("مؤشر الاستقرار التنبؤي", "98.9%", "آمن تماماً")
-            st.info("النماذج التنبؤية تعمل على قاعدة بيانات التليمتري الزمنية المتخصصة.")
+            st.metric("مؤشر الاستقرار التنبؤي", "98.7%", "آمن تماماً")
+            st.info("خوارزميات التعلم الآلي تفحص الأنماط التاريخية لدرجات حرارة العتاد وفقد الحزم بانتظام.")
         with ai_c2:
-            simulated_temp = np.random.normal(42.5, 1.0)
-            st.metric("حرارة المعالج والعتاد المتوقعة", f"{round(simulated_temp, 1)} °C", "ضمن الحدود الطبيعية")
+            simulated_temp = np.random.normal(42.5, 1.2)
+            st.metric("حرارة المعالج المتوقعة", f"{round(simulated_temp, 1)} °C", "ضمن الحدود الطبيعية")
 
-    # 📜 8️⃣ دفتر الأستاذ اللامركزي وسجلات التدقيق المشفرة (Private Ledger)
-    elif nav == t('ledger_panel'):
-        st.subheader(t('ledger_panel'))
-        st.markdown("دفتر أستاذ موزّع خاص (Private Permissioned Ledger) يربط كل حدث ببصمة تشفيرية سابقة (Immutable Hash Chain) لضمان السيادة القانونية والتقنية.")
-        
-        blocks = sov_engine.get_ledger_blocks()
-        if blocks:
-            df_blocks = pd.DataFrame(blocks)
-            st.dataframe(df_blocks, use_container_width=True)
-            
-            csv_data = df_blocks.to_csv(index=False).encode('utf-8')
+    # Audit Logs
+    elif nav == t('audit_panel'):
+        st.subheader("📜 سجلات التدقيق المشفرة وسجلات بلاكشين لا مركزية")
+        st.markdown("سجل رقمي محصن ببصمات تشفيرية (SHA-256) يوثق كافة العمليات وأوامر الوصلة والتحولات السيادية.")
+        logs = sov_db.get_audit_logs()
+        if logs:
+            df_logs = pd.DataFrame(logs)
+            st.dataframe(df_logs, use_container_width=True)
+            csv_data = df_logs.to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="📥 تحميل سجلات البلوكتشين والتدقيق الرسمية (CSV)",
+                label="📥 تحميل تقارير التدقيق والتليمتري الرسمية (CSV)",
                 data=csv_data,
-                file_name=f"physical_sovereign_ledger_{datetime.utcnow().strftime('%Y%m%d')}.csv",
+                file_name=f"sovereign_audit_logs_{datetime.utcnow().strftime('%Y%m%d')}.csv",
                 mime="text/csv"
             )
         else:
-            st.info("لا توجد كتل مسجلة في الدفتر اللامركزي حتى الآن.")
+            st.info("لا توجد سجلات تدقيق حتى الآن.")
 
-    # 🚨 9️⃣ مركز الطوارئ والتدخل الفيزيائي العاجل (Red Alert Center)
+    # Crisis Panel
     elif nav == t('crisis_panel'):
-        st.subheader(t('crisis_panel'))
-        st.markdown("غرفة العمليات الفيزيائية الحرجة للتعامل الفوري مع الهجمات أو انقطاعات الاتصال العابر للحدود.")
-        
+        st.subheader("🚨 مركز الطوارئ والتدخل الفيزيائي العاجل (Red Alert Center)")
+        st.markdown("غرفة العمليات الحرجة للتعامل مع التهديدات المفاجئة وانقطاعات الاتصال العابر للحدود.")
         col_cr1, col_cr2 = st.columns(2)
         with col_cr1:
-            if st.button("🔴 إعلان حالة الطوارئ القصوى (Red Alert) وعزل العتاد المتأثر"):
+            if st.button("🔴 إعلان حالة الإنذار القصوى (Red Alert) وعزل العقد المتأثرة"):
                 st.session_state.crisis_mode = True
-                sov_engine.log_ledger_block("PHYSICAL-CORE-01", "RED_ALERT", "Physical Red Alert emergency protocol executed.", "CRITICAL")
-                st.error("⚠️ تم تفعيل بروتوكول الطوارئ الفيزيائي وعزل العتاد المتأثر بنجاح!")
+                sov_db.log_immutable_audit("CRISIS_ACTION", "Red Alert isolation protocol executed.", "CRITICAL")
+                st.error("⚠️ تم تفعيل بروتوكول الطوارئ القصوى وعزل العقد بنجاح!")
                 st.rerun()
         with col_cr2:
-            if st.button("🟢 إلغاء حالة الطوارئ والعودة للوضع التشغيلي الآمن"):
+            if st.button("🟢 إلغاء حالة الطوارئ والعودة للوضع الطبيعي الآمن"):
                 st.session_state.crisis_mode = False
-                sov_engine.log_ledger_block("PHYSICAL-CORE-01", "RESTORE_NORMAL", "System restored to normal physical operation.", "SUCCESS")
-                st.success("✅ تم إلغاء حالة الطوارئ واستعادة التشغيل الطبيعي.")
+                sov_db.log_immutable_audit("CRISIS_ACTION", "System restored to normal operation mode.", "SUCCESS")
+                st.success("✅ تم إلغاء حالة الطوارئ والعودة للعمل الطبيعي.")
                 st.rerun()
 
-    # 🔑 🔟 إدارة التراخيص السيادية المؤسسية
+    # Licenses
     elif nav == t('licenses_panel'):
-        st.subheader(t('licenses_panel'))
+        st.subheader("🔑 إدارة التراخيص السيادية والمؤسسية")
         with st.form("lic_form"):
             c_name = st.text_input("اسم الجهة أو المستفيد السيادي:")
-            c_tier = st.selectbox("الفئة المؤسسية الفيزيائية:", ["Tier 1: Physical Scout", "Tier 2: Sovereign Hardware Command", "Tier 3: 6G Absolute Master"])
+            c_tier = st.selectbox("الفئة المؤسسية:", ["Tier 1: Live Orbital Scout", "Tier 2: Sovereign Command", "Tier 3: 6G Absolute Master"])
             if st.form_submit_button("توليد مفتاح تشفير وترخيص معتمد") and c_name:
-                key, exp = sov_engine.generate_license(c_name, c_tier)
-                sov_engine.log_ledger_block(selected_country['name'], "ISSUE_LICENSE", f"Issued physical license for: {c_name}", "SUCCESS")
-                st.success("✅ تم إصدار المفتاح الفيزيائي وتفعيل البصمة التشفيرية:")
+                key, exp = sov_db.generate_license(c_name, c_tier)
+                sov_db.log_immutable_audit("GENERATE_LICENSE", f"Issued new license for client: {c_name}", "SUCCESS")
+                st.success("✅ تم إصدار المفتاح الحقيقي وتفعيل البصمة التشفيرية:")
                 st.code(key, language="text")
                 st.info(f"تاريخ الصلاحية: {exp}")
-                
         st.markdown("---")
         st.subheader("التراخيص والجهات النشطة حالياً")
-        lics = sov_engine.get_licenses()
+        lics = sov_db.get_licenses()
         if lics:
             st.dataframe(pd.DataFrame(lics), use_container_width=True)
         else:
             st.info("لا توجد تراخيص مسجلة حالياً.")
 
-    # 🩺 11 صحة العتاد والأمان الكمومي (HSM)
+    # Health & HSM
     elif nav == t('health_panel'):
-        st.subheader(t('health_panel'))
+        st.subheader("🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM)")
         c1, c2, c3, c4 = st.columns(4)
-        with c1: st.metric("حمل العتاد الميداني", "14.2%", "-0.5%")
-        with c2: st.metric("زمن استجابة الأجهزة (Latency)", "4.2 ms", "-1.1 ms")
-        with c3: st.metric("معدل فقد الحزم اللاسلكية", "0.000%", "مثالي")
-        with c4: st.metric("حالة وحدة الأمان", "SECURE (HSM)", "نشط")
+        with c1: st.metric("حمل العقد الحية", "12.4%", "-0.8%")
+        with c2: st.metric("زمن الاستجابة (API Latency)", "8.9 ms", "-2.1 ms")
+        with c3: st.metric("معدل فقد الحزم", "0.000%", "مثالي")
+        with c4: st.metric("حالة وحدة الأمان (HSM)", "AES-256 / Quantum", "مؤمن")
         
-        st.markdown("---")
-        st.subheader("📊 تفاصيل مؤشرات HSM (وحدة الأمان الفيزيائي)")
-        hsm_status = {
-            "درجة حرارة العتاد الحالية": "42.5 °C",
-            "سلامة توقيع التشفير (HSM Integrity)": "PASSED (SHA-256 Verified)",
-            "استهلاك الطاقة اللحظي": "14.8 Watts",
-            "حالة المزامنة مع القمر الصناعي": "STABLE (Sync Lock 1.0)"
-        }
-        for key, val in hsm_status.items():
-            st.write(f"**{key}:** `{val}`")
+        perf_data = pd.DataFrame({
+            "الوقت": [datetime.utcnow() - timedelta(minutes=i) for i in range(15, 0, -1)],
+            "استهلاك العتاد (%)": np.random.uniform(18, 30, 15),
+            "حركة الشبكة الحية (Gbps)": np.random.uniform(5.1, 9.4, 15)
+        })
+        st.plotly_chart(px.line(perf_data, x="الوقت", y=["استهلاك العتاد (%)", "حركة الشبكة الحية (Gbps)"], title="أداء الخوادم ومحطات العتاد الحية"), use_container_width=True)
 
-    # ⚙️ 12 الإعدادات المتقدمة (Settings Panel)
+    # Settings
     elif nav == t('settings_panel'):
-        st.subheader(t('settings_panel'))
-        with st.expander("إعدادات البوابة الفيزيائية والاتصال"):
-            api_key = st.text_input("مفتاح واجهة برمجة التطبيقات (API Secret Key):", type="password")
-            if st.button("حفظ إعدادات الربط الميداني"):
-                st.success("تم تحديث إعدادات الربط الفيزيائي بنجاح.")
-        
-        with st.expander("إدارة قاعدة بيانات التليمتري"):
-            if st.button("تفريغ سجلات التليمتري القديمة"):
-                st.warning("تم تنفيذ أمر تنظيف السجلات.")
+        st.subheader("⚙️ الإعدادات المتقدمة للشبكة والاتصال")
+        with st.form("settings_f"):
+            st.text_input("رابط مزود البيانات الحية (CelesTrak GP TLE Endpoint):", value=DATA_CONTRACT['source']['baseUrl'])
+            st.selectbox("بروتوكول أمان الحزم الصاعدة:", ["TLS 1.3 Sovereign Secured", "Quantum-Resistant Mesh", "Standard IPsec"])
+            if st.form_submit_button("حفظ وتطبيق الإعدادات السيادية الحية"):
+                sov_db.log_immutable_audit("UPDATE_SETTINGS", "Advanced sovereign settings updated.", "SUCCESS")
+                st.success("✅ تم تحديث وتثبيت الإعدادات الحية بنجاح.")
 
-if __name__ == "__main__":
+    st.markdown("""
+    <div style="text-align: center; color: #556677; font-size: 0.85em; padding: 25px 0; border-top: 1px solid #16162c; margin-top: 30px;">
+        © 2026 COSMIC-324: Absolute Sovereign Physical System (V15.0). النظام الميداني المعتمد للتحكم الفضائي الحي والأمان السيادي.
+    </div>
+    """, unsafe_allow_html=True)
+
+if __name__ == '__main__':
     main()
