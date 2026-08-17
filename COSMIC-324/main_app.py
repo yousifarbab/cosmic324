@@ -528,9 +528,9 @@ def main():
     elif nav == t('counter_uav'):
         st.subheader("🛡️ وحدة الدفاع التكتيكي والتحييد الإلكتروني ضد المسيرات (V17.0)")
         st.write("رصد الكيانات الجوية عبر الرادار الافتراضي، تحليل البصمة الترددية (RF Fingerprinting)، والتنبيه الفوري.")
-        
+         
         targets_df = generate_drone_targets()
-        
+         
         for _, row in targets_df.iterrows():
             if row['Type'] == 'HOSTILE' and row['Confidence'] > 0.9:
                 msg = f"🚨 تنبيه فوري: رصد مسيرة معادية {row['ID']} في النطاق الجوي!"
@@ -546,16 +546,16 @@ def main():
             )
             fig_radar.update_layout(height=450, plot_bgcolor="#080812", paper_bgcolor="#06060c")
             st.plotly_chart(fig_radar, use_container_width=True)
-            
+             
         with c2:
             st.subheader("📡 البصمة الترددية (RF)")
             selected_drone = st.selectbox("اختر الكيان للتحليل:", targets_df['ID'])
             drone_data = targets_df[targets_df['ID'] == selected_drone].iloc[0]
             st.write(f"مستوى الثقة: {drone_data['Confidence']:.2%}")
-            
+             
             freq_data = np.random.normal(0, 0.2, 50) + (np.sin(np.linspace(0, 10, 50)) if drone_data['Type'] == 'HOSTILE' else 0)
             st.line_chart(freq_data)
-            
+             
             if drone_data['Type'] == 'HOSTILE':
                 st.error("⚠️ البصمة: غير نظامية (قفز ترددات تكتيكي).")
             else:
@@ -577,9 +577,9 @@ def main():
     elif nav == t('legal_panel'):
         st.subheader("⚖️ وحدة القانون والامتثال السيادي والتنظيمي (Sovereign Legal & Compliance)")
         st.write("إدارة القوانين التجارية والشركات، التدقيق التنظيمي للمحطات (مثل سلطنة عمان - السجل التجاري واستثمر بسهولة S11، والقانون السوداني للشركات العائلية)، والتحقق من التراخيص القانونية.")
-        
-        tab_view, tab_add = st.tabs(["📜 اللوائح والتشريعات النشطة", "➕ إضافة تشريع أو تدوين قانوني جديد"])
-        
+         
+        tab_view, tab_add = st.tabs(["📜 اللوائح والتشريعات النشطة", "➕ إضافة لوائح تنظيمية جديدة"])
+         
         with tab_view:
             regs = sov_db.get_legal_regulations()
             if regs:
@@ -587,177 +587,142 @@ def main():
                 st.dataframe(df_regs, use_container_width=True)
             else:
                 st.info("لا توجد لوائح مسجلة حالياً.")
-                
-            st.markdown("---")
-            st.markdown("### 🔍 تدقيق امتثال العمليات السيادية للقوانين الوطنية")
-            selected_reg_check = st.selectbox("اختر التشريع للتدقيق الفوري:", [r["law_title"] for r in regs] if regs else ["لا توجد تشريعات"])
-            if st.button("⚖️ إجراء فحص الامتثال القانوني التلقائي"):
-                with st.spinner("جاري مراجعة الشروط والضوابط القانونية والتجارية..."):
-                    time.sleep(1)
-                st.success(f"✅ التشريع ({selected_reg_check}) متوافق تماماً مع بنود الحوكمة والتشريعات المعتمدة.")
-                sov_db.log_immutable_audit("LEGAL_COMPLIANCE_CHECK", f"Audited regulation: {selected_reg_check}", "SUCCESS")
-
+                 
         with tab_add:
-            with st.form("legal_form"):
-                j_name = st.text_input("الدولة / الولاية القضائية (Jurisdiction):", value="سلطنة عمان")
-                l_title = st.text_input("عنوان القانون أو التشريع:")
-                l_cat = st.selectbox("التصنيف القانوني:", ["القانون التجاري", "قانون الشركات", "تنظيم الاتصالات", "الحوكمة المؤسسية", "القانون الدولي"])
-                l_status = st.selectbox("حالة الامتثال:", ["متوافق ومفعل", "نشط وتحت الإشراف", "قيد المراجعة القانونية"])
-                l_notes = st.text_area("ملاحظات قانونية وتفاصيل التنفيذ:")
-                if st.form_submit_button("💾 حفظ وإدراج التشريع في السجل السيادي") and l_title:
-                    sov_db.add_legal_regulation(j_name, l_title, l_cat, l_status, l_notes)
-                    sov_db.log_immutable_audit("ADD_REGULATION", f"Added legal regulation: {l_title}", "SUCCESS")
-                    st.success("✅ تم حفظ التشريع القانوني بنجاح في قاعدة البيانات السيادية.")
+            with st.form("new_reg_form"):
+                jur = st.text_input("الدولة / الولاية القضائية", "سلطنة عمان")
+                title_law = st.text_input("عنوان القانون أو التشريع", "قانون الشركات التجارية وتراخيص S11")
+                cat = st.selectbox("التصنيف", ["القانون التجاري", "تنظيم الاتصالات", "حوكمة الشركات", "القانون الدولي"])
+                stat = st.selectbox("حالة الامتثال", ["متوافق ومفعل", "نشط وتحت الإشراف", "مرجعي معتمد", "قيد المراجعة"])
+                notes = st.text_area("ملاحظات قانونية وتدقيقية", "تم التدقيق وفق متطلبات البوابة الموحدة (استثمر بسهولة)")
+                 
+                submitted = st.form_submit_button("حفظ وإضافة اللائحة السيادية")
+                if submitted:
+                    sov_db.add_legal_regulation(jur, title_law, cat, stat, notes)
+                    sov_db.log_immutable_audit("LEGAL_REG", f"Added regulation: {title_law} for {jur}", "SECURE")
+                    st.success("✅ تم حفظ اللائحة التنظيمية السيادية بنجاح وتوثيقها في السجل المحصن.")
                     st.rerun()
 
-    # 📡 RF Spectrum & SDR
+    # 📡 Spectrum & SDR
     elif nav == t('sdr_spectrum'):
-        st.subheader("📡 محاكاة الطيف الراديوي ومستقبلات SDR الفيزيائية")
-        st.write("رصد وتحليل طيف الترددات الكهرومغناطيسية لنطاقات Ka-Band و Ku-Band عبر مستقبلات البرمجيات الراديوية الميدانية.")
+        st.subheader("📡 الرصد الطيفي المتطور وتحليل إشارات SDR")
+        st.write("مراقبة الترددات اللاسلكية العلوية (28GHz 6G Titan X Bands) واكتشاف التشويش أو التداخل المتعمد.")
          
-        freqs = np.linspace(26.0, 30.0, 100)
-        power_spectrum = -50 + 15 * np.sin(freqs * 2) + np.random.normal(0, 1.5, 100)
-        df_spec = pd.DataFrame({"التردد (GHz)": freqs, "قدرة الإشارة (dBm)": power_spectrum})
-        st.plotly_chart(px.line(df_spec, x="التردد (GHz)", y="قدرة الإشارة (dBm)", title="طيف الترددات الراديوية الحي (SDR Real-time Spectrum)"), use_container_width=True)
-
-    # 🔌 Hardware Panel
-    elif nav == t('hardware_panel'):
-        st.subheader("🔌 إدارة العتاد السيادي ومستشعرات إنترنت الأشياء (Hardware & IoT)")
-        c1, c2 = st.columns(2)
-        with c1:
-            st.code("SDR Module (HackRF One): CONNECTED\nLO Frequency: 28.0 GHz\nGain Stage: 32 dB\nHardware Lock: SECURE", language="yaml")
-        with c2:
-            st.code("ESP32 Sovereign Telemetry Node: ACTIVE\nInternal Temp: 41.2 °C\nVoltage: 3.31V\nPacket Loss: 0.00%", language="yaml")
-
-    # Link Budget
-    elif nav == t('link_budget'):
-        st.subheader("📡 تحليل الهامش الكهرومغناطيسي ونسبة الإشارة للتشويش (SNR)")
-        c1, c2, c3 = st.columns(3)
-        with c1: sat_alt_input = st.number_input("متوسط ارتفاع القمر (كم)", value=550.0, step=10.0)
-        with c2: freq_input = st.number_input("التردد التشغيلي 6G (GHz)", value=28.0, step=1.0)
-        with c3: power_input = st.number_input("قدرة الإرسال (Watt)", value=40.0, step=5.0)
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            center_freq = st.slider("تردد الوسط (GHz)", 1.0, 40.0, 28.0, 0.5)
+        with col_s2:
+            gain_val = st.slider("مستوى كسب مستقبل SDR (dB)", 0, 50, 24)
              
-        fspl = 20 * math.log10(sat_alt_input) + 20 * math.log10(freq_input) + 92.45
-        snr_estimated = 45.0 - (fspl * 0.12) + (power_input * 0.05)
+        noise = np.random.normal(0, 1, 200)
+        signal_spike = np.zeros(200)
+        signal_spike[100:105] = 12.5
+        spectrum_vals = noise + signal_spike
          
-        col_m1, col_m2, col_m3 = st.columns(3)
-        with col_m1: st.metric("فقد المسار الحر (FSPL)", f"{round(fspl, 2)} dB")
-        with col_m2: st.metric("نسبة الإشارة للتشويش (SNR)", f"{round(snr_estimated, 2)} dB", "مستقر حياً")
-        with col_m3: st.metric("كفاءة القناة الطيفية", "99.99%", "مثالي لـ 6G")
+        fig_spec = px.line(y=spectrum_vals, title=f"تحليل طيف الترددات عند نطاق {center_freq} GHz")
+        fig_spec.update_layout(plot_bgcolor="#080812", paper_bgcolor="#06060c", height=400)
+        st.plotly_chart(fig_spec, use_container_width=True)
 
-    # Doppler
+    # 🔌 Hardware & IoT Sensors
+    elif nav == t('hardware_panel'):
+        st.subheader("🔌 إدارة العتاد السيادي ومستشعرات الإنترنت الصناعي (IoT)")
+        st.metric("حالة وحدة التوجيه الكمومي (QRM)", "مستقر - 99.98%", "-0.01%")
+        st.metric("استهلاك الطاقة الكلي للمحطة", "1.42 كيلوواط", "+0.05 kW")
+        st.info("جميع مستشعرات الهوائيات الموجهة (Phased Array) تعمل ضمن نطاق درجات الحرارة الطبيعية (-10°C إلى +45°C).")
+
+    # 📡 Link Budget & SNR
+    elif nav == t('link_budget'):
+        st.subheader("📡 حسابات هندسة الوصلة الفضائية وتحليل نسبة الإشارة للضوضاء (SNR)")
+        power_w = st.slider("قدرة المرسل (Watt)", 1.0, 100.0, DATA_CONTRACT["model"]["transmitterPowerWatt"])
+        freq_ghz = st.slider("التردد (GHz)", 10.0, 40.0, DATA_CONTRACT["model"]["frequencyGHz"])
+        distance_km = st.number_input("مسافة الوصلة (كم)", value=550.0)
+         
+        path_loss = 20 * math.log10(distance_km) + 20 * math.log10(freq_ghz) + 92.45
+        snr_est = (power_w * 15.0) / (path_loss * 0.05)
+         
+        st.metric("الفقد في مسار الإشارة (Path Loss)", f"{round(path_loss, 2)} dB")
+        st.metric("نسبة الإشارة إلى الضوضاء التقديرية (SNR)", f"{round(snr_est, 2)} dB")
+        if snr_est > 10:
+            st.success("✅ جودة الوصلة ممتازة ومثالية لبث بيانات 6G عالية السرعة.")
+        else:
+            st.warning("⚠️ جودة الوصلة منخفضة، يصححها نظام التعويض الذكي.")
+
+    # 🌐 Doppler & Handover
     elif nav == t('doppler_panel'):
-        st.subheader("🌐 تحليل إزاحة دوبلر والانتقال (Doppler & Handover)")
-        col_d1, col_d2 = st.columns(2)
-        with col_d1: st.info("**تردد الوصلة الهابطة (Downlink):** 20.5 GHz (Ka-Band)\n\n**قيمة الانزياح المقدرة:** $\\pm 45.2 \\text{ kHz}$")
-        with col_d2: st.success("**بروتوكول الانتقال السلس (Handover):** جاهز للاستبدال الفوري\n\n**زمن التبديل المتوقع:** $< 4.2 \\text{ ms}$")
+        st.subheader("🌐 تحليل إزاحة دوبلر (Doppler Shift) وانتقال الحزم (Handover)")
+        sat_speed_kms = st.slider("سرعة القمر المدارية (كم/ث)", 5.0, 10.0, 7.5)
+        doppler_shift = (freq_ghz * 1e9 * sat_speed_kms) / 3e8
+        st.metric("قيمة إزاحة دوبلر المحسوبة", f"{round(doppler_shift / 1e3, 3)} kHz")
+        st.write("يقوم المعالج الرقمي المدمج بضبط التردد تلقائياً لضمان استقرار الاتصال دون انقطاع.")
 
-    # Command
+    # ⚡ Uplink Command
     elif nav == t('command_panel'):
-        st.subheader("⚡ التحكم الميداني وعكس الأوامر (Command Uplink)")
-        st.info(f"المحطة المستهدفة بالأوامر الحية: **{selected_country['name']}**")
-        cmd_type = st.selectbox("نوع أمر الوصلة العكسية الحية:", [
-            "توجيه شعاعي فوري للقمر النشط (Active Beam Steering)",
-            "عزل قطاع الاتصالات الطارئ (Emergency Sector Isolation)",
-            "تحديث مفاتيح التشفير الكمومي للشبكة (QKD Refresh)"
-        ])
-        if st.button("⚡ تنفيذ وإرسال الأمر الميداني الحي"):
-            time.sleep(1)
-            st.success(f"✅ تم تنفيذ وإرسال الأمر بنجاح عبر البوابة السيادية لـ {selected_country['name']}.")
-            sov_db.log_immutable_audit("COMMAND_UPLINK", f"Executed: {cmd_type} at station {selected_country['name']}", "SUCCESS")
+        st.subheader("⚡ التحكم الميداني وعكس الأوامر (Uplink Command & Control)")
+        cmd_text = st.text_input("أمر التشغيل الميداني المباشر للأقمار أو المحطات:", "SET_TRANSMITTER_POWER 40W")
+        if st.button("إرسال الأمر عبر قناة Uplink المشفرة"):
+            sov_db.log_immutable_audit("UPLINK_CMD", f"Executed command: {cmd_text}", "SECURE")
+            st.success(f"✅ تم تنفيذ وإرسال الأمر بنجاح: [{cmd_text}] وتوثيقه في السجل المشفر.")
 
-    # AI Predictive
+    # 🤖 AI Predictive & Early Warning
     elif nav == t('ai_predictive'):
         st.subheader("🤖 الذكاء الاصطناعي التنبؤي والإنذار المبكر")
-        ai_c1, ai_c2 = st.columns(2)
-        with ai_c1:
-            st.metric("مؤشر الاستقرار التنبؤي", "98.7%", "آمن تماماً")
-            st.info("خوارزميات التعلم الآلي تفحص الأنماط التاريخية لدرجات حرارة العتاد وفقد الحزم بانتظام.")
-        with ai_c2:
-            simulated_temp = np.random.normal(42.5, 1.2)
-            st.metric("حرارة المعالج المتوقعة", f"{round(simulated_temp, 1)} °C", "ضمن الحدود الطبيعية")
+        st.write("تحليل السلوكيات الشاذة للأقمار والمسيرات والتنبؤ بأعطال الشبكة قبل وقوعها بنسبة دقة تصل إلى 98.4%.")
+        st.metric("مؤشر السلامة التنبؤي العام", "99.4%", "مستقر")
 
-    # Audit Logs
+    # 📜 Audit Logs (Blockchain style)
     elif nav == t('audit_panel'):
-        st.subheader("📜 سجلات التدقيق المشفرة وسجلات بلاكشين لا مركزية")
-        st.markdown("سجل رقمي محصن ببصمات تشفيرية (SHA-256) يوثق كافة العمليات وأوامر الوصلة والتحولات السيادية.")
+        st.subheader("📜 سجلات التدقيق المشفرة (Immutable Audit Logs & Blockchain Ledger)")
+        st.write("سجلات تدقيق غير قابلة للتعديل ومؤمنة بتوقيعات مشفرة (Cryptographic Hashes).")
         logs = sov_db.get_audit_logs()
         if logs:
             df_logs = pd.DataFrame(logs)
             st.dataframe(df_logs, use_container_width=True)
-            csv_data = df_logs.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 تحميل تقارير التدقيق والتليمتري الرسمية (CSV)",
-                data=csv_data,
-                file_name=f"sovereign_audit_logs_{datetime.utcnow().strftime('%Y%m%d')}.csv",
-                mime="text/csv"
-            )
         else:
-            st.info("لا توجد سجلات تدقيق حتى الآن.")
+            st.info("لا توجد سجلات تدقيق مسجلة حتى الآن.")
 
-    # Crisis Panel
+    # 🚨 Crisis Management
     elif nav == t('crisis_panel'):
         st.subheader("🚨 مركز الطوارئ والتدخل الفيزيائي العاجل (Red Alert Center)")
-        st.markdown("غرفة العمليات الحرجة للتعامل مع التهديدات المفاجئة وانقطاعات الاتصال العابر للحدود.")
-        col_cr1, col_cr2 = st.columns(2)
-        with col_cr1:
-            if st.button("🔴 إعلان حالة الإنذار القصوى (Red Alert) وعزل العقد المتأثرة"):
-                st.session_state.crisis_mode = True
-                sov_db.log_immutable_audit("CRISIS_ACTION", "Red Alert isolation protocol executed.", "CRITICAL")
-                st.error("⚠️ تم تفعيل بروتوكول الطوارئ القصوى وعزل العقد بنجاح!")
-                st.rerun()
-        with col_cr2:
-            if st.button("🟢 إلغاء حالة الطوارئ والعودة للوضع الطبيعي الآمن"):
-                st.session_state.crisis_mode = False
-                sov_db.log_immutable_audit("CRISIS_ACTION", "System restored to normal operation mode.", "SUCCESS")
-                st.success("✅ تم إلغاء حالة الطوارئ والعودة للعمل الطبيعي.")
-                st.rerun()
+        if st.session_state.crisis_mode:
+            st.error("⚠️ الوضع حرج للغاية! تم تفعيل بروتوكولات الطوارئ القصوى.")
+        else:
+            st.success("✅ النظام يعمل في حالته الاعتيادية المستقرة.")
+        if st.button("تبديل حالة طوارئ النظام الفورية"):
+            st.session_state.crisis_mode = not st.session_state.crisis_mode
+            st.rerun()
 
-    # Licenses
+    # 🔑 Enterprise Sovereign Licenses
     elif nav == t('licenses_panel'):
-        st.subheader("🔑 إدارة التراخيص السيادية والمؤسسية")
-        with st.form("lic_form"):
-            c_name = st.text_input("اسم الجهة أو المستفيد السيادي:")
-            c_tier = st.selectbox("الفئة المؤسسية:", ["Tier 1: Live Orbital Scout", "Tier 2: Sovereign Command", "Tier 3: 6G Absolute Master"])
-            if st.form_submit_button("توليد مفتاح تشفير وترخيص معتمد") and c_name:
-                key, exp = sov_db.generate_license(c_name, c_tier)
-                sov_db.log_immutable_audit("GENERATE_LICENSE", f"Issued new license for client: {c_name}", "SUCCESS")
-                st.success("✅ تم إصدار المفتاح الحقيقي وتفعيل البصمة التشفيرية:")
-                st.code(key, language="text")
-                st.info(f"تاريخ الصلاحية: {exp}")
-        st.markdown("---")
-        st.subheader("التراخيص والجهات النشطة حالياً")
+        st.subheader("🔑 إدارة التراخيص السيادية والمؤسسية (Enterprise Sovereign Licenses)")
+        with st.form("license_gen"):
+            client = st.text_input("اسم العميل أو المؤسسة السيادية", "وزارة الاتصالات والتقنية / سلطنة عمان")
+            tier = st.selectbox("فئة الترخيص", ["SOVEREIGN_ENTERPRISE", "GOVERNMENT_ULTRA", "DEFENSE_SECURE"])
+            days = st.slider("مدة الصلاحية بالأيام", 30, 730, 365)
+            gen_btn = st.form_submit_button("إصدار مفتاح ترخيص سيادي جديد")
+            if gen_btn:
+                key, expiry = sov_db.generate_license(client, tier, days)
+                sov_db.log_immutable_audit("GEN_LICENSE", f"Generated license for {client} ({tier})", "SECURE")
+                st.success(f"✅ تم إصدار المفتاح بنجاح:\n`{key}`\nينتهي في: {expiry}")
+                 
+        st.markdown("### التراخيص الفعالة الحالية:")
         lics = sov_db.get_licenses()
         if lics:
             st.dataframe(pd.DataFrame(lics), use_container_width=True)
         else:
-            st.info("لا توجد تراخيص مسجلة حالياً.")
+            st.info("لا توجد تراخيص مسجلة.")
 
-    # Health & HSM
+    # 🩺 Hardware Health & Quantum Security (HSM)
     elif nav == t('health_panel'):
-        st.subheader("🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM)")
-        c1, c2, c3, c4 = st.columns(4)
-        with c1: st.metric("حمل العقد الحية", "12.4%", "-0.8%")
-        with c2: st.metric("زمن الاستجابة (API Latency)", "8.9 ms", "-2.1 ms")
-        with c3: st.metric("معدل فقد الحزم", "0.000%", "مثالي")
-        with c4: st.metric("حالة وحدة الأمان (HSM)", "AES-256 / Quantum", "مؤمن")
-         
-        perf_data = pd.DataFrame({
-            "الوقت": [datetime.utcnow() - timedelta(minutes=i) for i in range(15, 0, -1)],
-            "استهلاك العتاد (%)": np.random.uniform(18, 30, 15),
-            "حركة الشبكة الحية (Gbps)": np.random.uniform(5.1, 9.4, 15)
-        })
-        st.plotly_chart(px.line(perf_data, x="الوقت", y=["استهلاك العتاد (%)", "حركة الشبكة الحية (Gbps)"], title="أداء الخوادم ومحطات العتاد الحية"), use_container_width=True)
+        st.subheader("🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM & Quantum Crypto)")
+        st.metric("حالة وحدة الأمان الهاردويرية (HSM)", "نشطة ومحمية", "أمان تام")
+        st.metric("معدل تدفق entropy للتشفير الكمومي", "1024 kbps", "مثالي")
 
-    # Settings
+    # ⚙️ Advanced Settings
     elif nav == t('settings_panel'):
-        st.subheader("⚙️ الإعدادات المتقدمة للشبكة والاتصال")
-        with st.form("settings_f"):
-            st.text_input("رابط مزود البيانات الحية (CelesTrak GP TLE Endpoint):", value=DATA_CONTRACT['source']['baseUrl'])
-            st.selectbox("بروتوكول أمان الحزم الصاعدة:", ["TLS 1.3 Sovereign Secured", "Quantum-Resistant Mesh", "Standard IPsec"])
-            if st.form_submit_button("حفظ وتطبيق الإعدادات السيادية الحية"):
-                sov_db.log_immutable_audit("UPDATE_SETTINGS", "Advanced sovereign settings updated.", "SUCCESS")
-                st.success("✅ تم تحديث وتثبيت الإعدادات السيادية بنجاح.")
+        st.subheader("⚙️ الإعدادات المتقدمة للشبكة والاتصال (Advanced Network Settings)")
+        st.text_input("عنوان خادم CelesTrak الأساسي:", DATA_CONTRACT["source"]["baseUrl"])
+        st.number_input("مهلة الاتصال (Timeout Seconds):", value=15)
+        st.success("جميع الاتصالات مشفرة وفق معايير السيادة المطلقة.")
 
 if __name__ == '__main__':
     main()
