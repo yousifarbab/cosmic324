@@ -22,6 +22,7 @@ import hmac
 import hashlib
 import sqlite3
 from licensing_module import SovereignLicensing
+from ai_predictive_module import ai_engine
 
 try:
     from skyfield.api import Topos, EarthSatellite, load, wgs84
@@ -536,9 +537,19 @@ def main():
 
     elif nav == t('ai_predictive'):
         st.subheader("🤖 الذكاء الاصطناعي التنبؤي والإنذار المبكر")
-        ai_c1, ai_c2 = st.columns(2)
-        with ai_c1: st.metric("مؤشر الاستقرار التنبؤي", "98.7%", "آمن تماماً")
-        with ai_c2: st.metric("حرارة المعالج المتوقعة", f"{round(np.random.normal(42.5, 1.2), 1)} °C", "ضمن الحدود الطبيعية")
+        st.write("تحليل سلوك المسارات المتوقعة والكشف المبكر عن التداخلات الطيفية بواسطة محرك الذكاء الاصطناعي السيادي.")
+        
+        # استخدام محرك الذكاء الاصطناعي المستورد
+        sample_preds = ai_engine.predict_orbital_trajectory(selected_country['lat'], selected_country['lon'], steps=5)
+        df_preds = pd.DataFrame(sample_preds)
+        st.markdown("### 📈 التنبؤ بالمسار المداري للخطوات القادمة:")
+        st.dataframe(df_preds, use_container_width=True)
+        
+        # تحليل الشذوذ الطيفي
+        dummy_signals = [-50.1, -49.8, -50.2, -48.9, -65.4, -50.0]
+        anomaly_res = ai_engine.analyze_spectrum_anomaly(dummy_signals)
+        st.markdown("### 📡 تقرير فحص الشذوذ الطيفي:")
+        st.json(anomaly_res)
 
     elif nav == t('audit_panel'):
         st.subheader("📜 سجلات التدقيق المشفرة وسجلات بلاكشين لا مركزية")
