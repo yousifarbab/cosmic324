@@ -1,6 +1,6 @@
 """
-COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.0)
-النسخة الهندسية المحدثة وفق المعايير الحقيقية للاتصالات الفضائية (بدون عسكرة أو بيانات وهمية)
+COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.1)
+النسخة المعدلة لضمان خلوها من أخطاء الـ Syntax والترميز النصي
 """
 
 import streamlit as st
@@ -136,18 +136,19 @@ class EngineeringDatabase:
 
     def verify_integrity(self) -> Tuple[bool, str]:
         logs = self.get_audit_logs()
-        # logs are sorted DESC, let's reverse to check chronologically
         logs_sorted = list(reversed(logs))
         expected_prev = "0" * 64
         
         for idx, log in enumerate(logs_sorted):
             if log['prev_hash'] != expected_prev:
-                return False, fعدم تطابق في الـ Hash عند السجل رقم {log['id']} (تلاعب محتمل أو تلف في السسلسل)"
+                err_msg = f"عدم تطابق في الـ Hash عند السجل رقم {log['id']} (تلاعب محتمل أو تلف في السلسل)"
+                return False, err_msg
             
             raw_string = f"{log['timestamp']}:{log['event_type']}:{log['description']}:{log['prev_hash']}"
             recomputed = hashlib.sha256(raw_string.encode()).hexdigest()
             if recomputed != log['current_hash']:
-                return False, f"خطأ في بصمة الـ Hash للسجل رقم {log['id']}!"
+                err_msg = f"خطأ في بصمة الـ Hash للسجل رقم {log['id']}!"
+                return False, err_msg
             expected_prev = log['current_hash']
             
         return True, "سلامة السلسلة مثبتة بنجاح (Hash-Chain Verified): لا يوجد أي تلاعب مكتشف."
@@ -436,28 +437,19 @@ def main():
             system_temp_k = st.number_input("درجة حرارة النظام المكافئة (Kelvin):", value=290.0, step=10.0)
             bandwidth_mhz = st.number_input("عرض النطاق الترددي (MHz):", value=20.0, step=5.0)
 
-        # الحسابات الهندسية الحقيقية
         frequency_hz = frequency_ghz * 1e9
         distance_m = distance_km * 1e3
         wavelength = DATA_CONTRACT["model"]["speedOfLight"] / frequency_hz
         
-        # EIRP = P_tx (dBW) + G_tx (dBi)
         eirp_dbw = tx_power_dbw + tx_gain_dbi
-        
-        # Friis Free Space Path Loss (FSPL) in dB = 20*log10(4 * pi * d / lambda)
         fspl_db = 20 * math.log10(4 * math.pi * distance_m / wavelength)
-        
-        # Received Power Pr (dBW) = EIRP + G_rx - FSPL
         pr_dbw = eirp_dbw + rx_gain_dbi - fspl_db
-        pr_dbm = pr_dbw + 30  # تحويل إلى dBm
+        pr_dbm = pr_dbw + 30
         
-        # Johnson-Nyquist Noise Power N = k * T * B
         bandwidth_hz = bandwidth_mhz * 1e6
         noise_power_watts = DATA_CONTRACT["model"]["boltzmannConstant"] * system_temp_k * bandwidth_hz
         noise_power_dbw = 10 * math.log10(noise_power_watts)
-        noise_power_dbm = noise_power_dbw + 30
         
-        # SNR (Signal-to-Noise Ratio) in dB = Pr (dBW) - Noise (dBW)
         snr_db = pr_dbw - noise_power_dbw
 
         st.markdown("---")
@@ -485,12 +477,10 @@ def main():
         with col_d2:
             max_elevation_deg = st.number_input("زاوية الارتفاع القصوى للمرور (درجات):", value=45.0, step=5.0, min_value=5.0, max_value=90.0)
 
-        # المعادلة الكلاسيكية لدوبلر: Delta_f = (v / c) * f_0 * cos(theta)
         f_0 = carrier_freq_ghz * 1e9
         v = sat_velocity_kms * 1e3
         c = DATA_CONTRACT["model"]["speedOfLight"]
         
-        # أقصى إزاحة تحدث عند الأفق (cos(0) = 1 تقريباً أو أقصى إسقاط شعاعي)
         max_doppler_hz = (v / c) * f_0
         max_doppler_khz = max_doppler_hz / 1e3
 
@@ -499,8 +489,7 @@ def main():
         with dm1: st.metric("أقصى إزاحة ترددية (Max Doppler Shift)", f"± {round(max_doppler_khz, 2)} kHz")
         with dm2: st.metric("سرعة إرسال الموجة النسبية", f"{sat_velocity_kms} كم/ث")
 
-        # رسم بياني لمنحنى دوبلر خلال مرور القمر
-        time_points = np.linspace(-300, 300, 100) # بالثواني حول نقطة التوسط
+        time_points = np.linspace(-300, 300, 100)
         doppler_curve = max_doppler_khz * np.sin(time_points / 150.0)
         df_doppler = pd.DataFrame({"الزمن النسبي (ثواني)": time_points, "الإزاحة الترددية (kHz)": doppler_curve})
         
@@ -531,7 +520,7 @@ def main():
                 jur = st.text_input("النطاق أو الجهة (مثل: داخلي / مؤسسي، تنظيم محلي):")
                 title = st.text_input("عنوان المذكرة أو التشريع:")
                 cat = st.selectbox("التصنيف:", ["القانون التجاري", "حوكمة الشركات", "تنظيم الاتصالات", "عقود وعمليات"])
-                status = st.selectbox("حالة المراجعة:", ["مسودة توثيق داخلي", "قيد المراجعة الفنية", "معتمد للنarchived"])
+                status = st.selectbox("حالة المراجعة:", ["مسودة توثيق داخلي", "قيد المراجعة الفنية", "معتمد للأرشيف"])
                 notes = st.text_area("ملاحظات تفصيلية أو إضافية:")
                 
                 if st.form_submit_button("حفظ المستند في الأرشيف الداخلي") and jur and title:
@@ -568,7 +557,7 @@ def main():
 
     st.markdown("""
     <div style="text-align: center; color: #6b7280; font-size: 0.85em; padding: 25px 0; border-top: 1px solid #1f2937; margin-top: 30px;">
-        © 2026 COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.0). جميع الحقوق محفوظة للأدوات الهندسية والتحليلية.
+        © 2026 COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.1). جميع الحقوق محفوظة للأدوات الهندسية والتحليلية.
     </div>
     """, unsafe_allow_html=True)
 
