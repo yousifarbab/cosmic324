@@ -336,7 +336,6 @@ def build_live_orbit_map(group: str, limit: int) -> Dict:
 def main():
     st.sidebar.title("🚀 COSMIC-324 V17.0")
     
-    # التحقق من الرخصة في الشريط الجانبي
     if not SovereignLicensing.is_valid():
         st.sidebar.error("⚠️ الترخيص غير مفعل. يرجى الاتصال بالدعم.")
         st.stop()
@@ -393,7 +392,6 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # 1️⃣ لوحة التتبع الفضائي
     if nav == t('dashboard'):
         col1, col2 = st.columns([2, 1])
         with col1: sat_slider = st.slider("عدد الأقمار المرصودة حياً", 50, 2000, 500, 50)
@@ -453,7 +451,6 @@ def main():
         else:
             st.warning("⚠️ لا توجد أقمار ضمن نطاق الرؤية المباشر. يرجى اختيار عرض كامل الأوكتاف العالمي.")
 
-    # 🛡️ نظام الدفاع ضد المسيرات (Counter-UAV)
     elif nav == t('counter_uav'):
         st.subheader("🛡️ نظام الدفاع النشط ضد المسيرات ورصد الأهداف الجوية (Counter-UAV)")
         st.write("مراقبة الترددات الكهرومغناطيسية والبصمات الراديوية لكشف الطائرات المسيرة غير المصرح بها وتعطيل إشارات توجيهها.")
@@ -471,7 +468,6 @@ def main():
             sov_db.log_immutable_audit("COUNTER_UAV_SCAN", f"Performed tactical airspace scan around {selected_country['name']}", "SUCCESS")
             st.success("✅ تم الانتهاء من المسح الطيفي بنجاح. الأجواء آمنة وخالية من أي مسيرات معادية.")
 
-    # ⚖️ وحدة الامتثال التنظيمي والسيادي
     elif nav == t('compliance'):
         st.subheader("⚖️ وحدة الامتثال التنظيمي والسيادي (Global Compliance)")
         st.markdown("إدارة اللوائح والتشريعات الدولية للحماية الفضائية وتنظيم الاتصالات اللاسلكية والتحقق من المعايير السيادية العامة.")
@@ -496,7 +492,6 @@ def main():
                     st.success("✅ تم إضافة اللائحة التنظيمية وتحديث السجل بنجاح.")
                     st.rerun()
 
-    # 📡 RF Spectrum & SDR
     elif nav == t('sdr_spectrum'):
         st.subheader("📡 محاكاة الطيف الراديوي ومستقبلات SDR الفيزيائية")
         freqs = np.linspace(26.0, 30.0, 100)
@@ -504,14 +499,12 @@ def main():
         df_spec = pd.DataFrame({"التردد (GHz)": freqs, "قدرة الإشارة (dBm)": power_spectrum})
         st.plotly_chart(px.line(df_spec, x="التردد (GHz)", y="قدرة الإشارة (dBm)", title="طيف الترددات الراديوية الحي"), use_container_width=True)
 
-    # 🔌 Hardware Panel
     elif nav == t('hardware_panel'):
         st.subheader("🔌 إدارة العتاد السيادي ومستشعرات إنترنت الأشياء (Hardware & IoT)")
         c1, c2 = st.columns(2)
         with c1: st.code("SDR Module (HackRF One): CONNECTED\nLO Frequency: 28.0 GHz\nGain: 32 dB", language="yaml")
         with c2: st.code("ESP32 Sovereign Telemetry: ACTIVE\nInternal Temp: 41.2 °C\nPacket Loss: 0.00%", language="yaml")
 
-    # Link Budget
     elif nav == t('link_budget'):
         st.subheader("📡 تحليل الهامش الكهرومغناطيسي ونسبة الإشارة للتشويش (SNR)")
         c1, c2, c3 = st.columns(3)
@@ -525,7 +518,6 @@ def main():
         with col_m2: st.metric("نسبة الإشارة للتشويش (SNR)", f"{round(snr_estimated, 2)} dB", "مستقر حياً")
         with col_m3: st.metric("كفاءة القناة الطيفية", "99.99%", "مثالي لـ 6G")
 
-    # Doppler
     elif nav == t('doppler_panel'):
         st.subheader("🌐 تحليل إزاحة دوبلر والانتقال (Doppler & Handover)")
         col_d1, col_d2 = st.columns(2)
@@ -534,7 +526,6 @@ def main():
         with col_d2:
             st.success("الانتقال السلس (Handover): جاهز\n\nزمن التبديل: < 4.2 ms")
 
-    # Command
     elif nav == t('command_panel'):
         st.subheader("⚡ التحكم الميداني وعكس الأوامر (Command Uplink)")
         cmd_type = st.selectbox("نوع أمر الوصلة العكسية:", ["توجيه شعاعي فوري للقمر النشط", "عزل قطاع الاتصالات الطارئ", "تحديث مفاتيح التشفير الكمومي"])
@@ -543,14 +534,12 @@ def main():
             st.success(f"✅ تم تنفيذ وإرسال الأمر بنجاح عبر البوابة السيادية لـ {selected_country['name']}.")
             sov_db.log_immutable_audit("COMMAND_UPLINK", f"Executed: {cmd_type} at station {selected_country['name']}", "SUCCESS")
 
-    # AI Predictive
     elif nav == t('ai_predictive'):
         st.subheader("🤖 الذكاء الاصطناعي التنبؤي والإنذار المبكر")
         ai_c1, ai_c2 = st.columns(2)
         with ai_c1: st.metric("مؤشر الاستقرار التنبؤي", "98.7%", "آمن تماماً")
         with ai_c2: st.metric("حرارة المعالج المتوقعة", f"{round(np.random.normal(42.5, 1.2), 1)} °C", "ضمن الحدود الطبيعية")
 
-    # Audit Logs
     elif nav == t('audit_panel'):
         st.subheader("📜 سجلات التدقيق المشفرة وسجلات بلاكشين لا مركزية")
         logs = sov_db.get_audit_logs()
@@ -562,7 +551,6 @@ def main():
         else:
             st.info("لا توجد سجلات تدقيق حتى الآن.")
 
-    # Crisis Panel
     elif nav == t('crisis_panel'):
         st.subheader("🚨 مركز الطوارئ والتدخل الفيزيائي العاجل (Red Alert Center)")
         col_cr1, col_cr2 = st.columns(2)
@@ -579,7 +567,6 @@ def main():
                 st.success("✅ تم إلغاء حالة الطوارئ والعودة للوضع الطبيعي.")
                 st.rerun()
 
-    # Licenses
     elif nav == t('licenses_panel'):
         st.subheader("🔑 إدارة التراخيص السيادية والمؤسسية")
         with st.form("lic_form"):
@@ -598,7 +585,6 @@ def main():
         else:
             st.info("لا توجد تراخيص مسجلة حالياً.")
 
-    # Health & HSM
     elif nav == t('health_panel'):
         st.subheader("🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM)")
         c1, c2, c3, c4 = st.columns(4)
@@ -614,7 +600,6 @@ def main():
         })
         st.plotly_chart(px.line(perf_data, x="الوقت", y=["استهلاك العتاد (%)", "حركة الشبكة الحية (Gbps)"], title="أداء الخوادم ومحطات العتاد الحية"), use_container_width=True)
 
-    # Settings
     elif nav == t('settings_panel'):
         st.subheader("⚙️ الإعدادات المتقدمة للشبكة والاتصال")
         with st.form("settings_f"):
