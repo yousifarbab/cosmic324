@@ -8,3 +8,4 @@ pytest
 cryptography
 psycopg2-binary
 sqlalchemy
+streamlit-gsheets
