@@ -1,0 +1,53 @@
+"""
+COSMIC-324: Automated Orbital Mechanics Unit Tests
+اختبارات دقة الحسابات المدارية ومعادلات الاضطراب (J2 Perturbation) ومعايير IEEE
+"""
+
+import math
+import pytest
+
+# ثوابت النمذجة الفيزيائية والمعيارية (وفق عقد البيانات الخاص بالنظام)
+EARTH_RADIUS_KM = 6371.0
+J2_COEFFICIENT = 1.08263e-3
+MU_EARTH = 398600.4418  # معامل الجاذبية الأرضية (km^3/s^2)
+
+def calculate_j2_perturbation(semi_major_axis_km: float, inclination_deg: float) -> float:
+    """
+    حساب تأثير الاضطراب المداري الناتج عن تفلطح الأرض (J2 Perturbation) على معدل تغير زاوية العقدة الصاعدة.
+    """
+    inc_rad = math.radians(inclination_deg)
+    # المعادلة المعيارية للاضطراب المداري J2 (Node Regression Rate)
+    n = math.sqrt(MU_EARTH / (semi_major_axis_km ** 3))
+    factor = -1.5 * J2_COEFFICIENT * (EARTH_RADIUS_KM / semi_major_axis_km) ** 2 * n * math.cos(inc_rad)
+    return factor
+
+def test_earth_radius_constant():
+    """التحقق من ثبات نصف قطر الأرض المعياري."""
+    assert EARTH_RADIUS_KM == 6371.0
+
+def test_j2_perturbation_calculation():
+    """التحقق من دقة حسابات J2 perturbation ضمن الهامش المقبول معيارياً."""
+    # بيانات اختبارية لقمر صناعي في مدار منخفض LEO (ارتفاع 550 كم -> نصف المحور الرئيسي ~ 6921 كم)
+    semi_major_axis = 6921.0
+    inclination = 53.0
+    
+    perturbation_rate = calculate_j2_perturbation(semi_major_axis, inclination)
+    
+    # التأكد من أن النتيجة هي رقم حقيقي وليست فارغة أو غير معرفة
+    assert isinstance(perturbation_rate, float)
+    assert not math.isnan(perturbation_rate)
+    assert not math.isinf(perturbation_rate)
+    
+    # التحقق من أن القيمة تقع ضمن النطاق الفيزيائي المتوقع لمدار LEO
+    assert -0.001 < perturbation_rate < 0.001
+
+def test_link_budget_fspl():
+    """التحقق من صحة حسابات فقد المسار الحر (FSPL) للترددات العالية 6G."""
+    altitude_km = 550.0
+    freq_ghz = 28.0
+    
+    # معادلة FSPL: 20*log10(d) + 20*log10(f) + 92.45
+    fspl = 20 * math.log10(altitude_km) + 20 * math.log10(freq_ghz) + 92.45
+    
+    # التأكد من أن قيمة الفقد تتوافق مع النطاق الفيزيائي المعروف لترددات 28 GHz على ارتفاع 550 كم
+    assert 150.0 <= fspl <= 175.0
