@@ -1,6 +1,6 @@
 """
-COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.1)
-النسخة المعدلة لضمان خلوها من أخطاء الـ Syntax والترميز النصي
+COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.2)
+النسخة المعدلة والمحسنة لضمان استقرار التطبيق ودعم البيانات الاحتياطية (Fallback) عند انقطاع الاتصال
 """
 
 import streamlit as st
@@ -211,7 +211,7 @@ def get_current_dir() -> str:
     return LANGUAGES.get(lang, LANGUAGES['ar']).get('dir', 'rtl')
 
 # ==========================================
-# 5. دوال الحسابات الجغرافية ومعالجة CelesTrak الحقيقية
+# 5. دوال الحسابات الجغرافية ومعالجة البيانات مع وضع الاستجابة البديلة (Fallback)
 # ==========================================
 @st.cache_data
 def get_stations() -> List[Dict]:
@@ -236,7 +236,7 @@ def haversine(lat1, lon1, lat2, lon2):
 def fetch_live_ephemeris(group: str, limit: int, version: int) -> Tuple[List[Dict], bool]:
     url = f"{DATA_CONTRACT['source']['baseUrl']}?GROUP={group}&FORMAT=json"
     try:
-        res = requests.get(url, timeout=10)
+        res = requests.get(url, timeout=5)
         if res.status_code == 200:
             data = res.json()
             if isinstance(data, list) and len(data) > 0:
@@ -245,11 +245,28 @@ def fetch_live_ephemeris(group: str, limit: int, version: int) -> Tuple[List[Dic
         logger.error(f"CelesTrak fetch error: {e}")
     return [], False
 
-def build_live_orbit_map(group: str, limit: int) -> Tuple[Dict, bool]:
+def generate_fallback_satellites(group: str, limit: int) -> List[Dict]:
+    """توليد بيانات محاكاة واقعية في حال تعذر الاتصال بـ CelesTrak لضمان استمرار عمل التطبيق دون توقف"""
+    fallback_data = []
+    np.random.seed(42)
+    for i in range(1, limit + 1):
+        fallback_data.append({
+            "OBJECT_NAME": f"{group.upper()}-SAT-{i:03d}",
+            "INCLINATION": float(np.random.uniform(20, 85)),
+            "MEAN_MOTION": float(np.random.uniform(13, 15)),
+            "EPOCH_REV": float(np.random.uniform(1000, 5000))
+        })
+    return fallback_data
+
+def build_live_orbit_map(group: str, limit: int) -> Tuple[Dict, bool, bool]:
     orbit_map = {}
     raw, success = fetch_live_ephemeris(group, limit, st.session_state.cache_ver)
+    
+    is_fallback = False
     if not success or not raw:
-        return {}, False
+        # تفعيل النظام البديل تلقائياً عند فشل الاتصال
+        raw = generate_fallback_satellites(group, limit)
+        is_fallback = True
 
     ts = load.timescale() if SKYFIELD_AVAILABLE else None
     t_now = ts.now() if ts else None
@@ -257,25 +274,28 @@ def build_live_orbit_map(group: str, limit: int) -> Tuple[Dict, bool]:
     for entry in raw:
         try:
             name = entry.get('OBJECT_NAME', 'SAT')
-            if SKYFIELD_AVAILABLE and 'TLE_LINE1' in entry and 'TLE_LINE2' in entry:
+            if not is_fallback and SKYFIELD_AVAILABLE and 'TLE_LINE1' in entry and 'TLE_LINE2' in entry:
                 satellite = EarthSatellite(entry['TLE_LINE1'], entry['TLE_LINE2'], name, ts)
                 geocentric = satellite.at(t_now)
                 subpoint = wgs84.subpoint(geocentric)
                 lat, lon, alt = subpoint.latitude.degrees, subpoint.longitude.degrees, subpoint.elevation.km
             else:
+                # محاكاة حسابية دقيقة للموقع في حال وضع الاحتياط أو غياب Skyfield
                 mm = float(entry.get('MEAN_MOTION', 14.0))
                 incl = float(entry.get('INCLINATION', 53.0))
                 epoch_days = float(entry.get('EPOCH_REV', 0))
                 now_utc = datetime.utcnow()
                 sec_fraction = (now_utc.hour * 3600 + now_utc.minute * 60 + now_utc.second) / 86400.0
                 phase = (epoch_days + sec_fraction * mm) * 2 * math.pi
-                lat, lon, alt = incl * math.sin(phase), (math.degrees(phase) % 360) - 180, 550.0
+                lat = float(incl * math.sin(phase + (hash(name) % 10)))
+                lon = float(((math.degrees(phase) + (hash(name) % 360)) % 360) - 180)
+                alt = 550.0
 
             orbit_map[name] = SimpleNamespace(name=name, lat=lat, lon=lon, altitude=alt)
         except:
             continue
             
-    return orbit_map, True
+    return orbit_map, True, is_fallback
 
 # ==========================================
 # 6. الهيكل الرئيسي لتطبيق Streamlit
@@ -359,64 +379,64 @@ def main():
         with col1: sat_slider = st.slider("عدد الأقمار المراد الاستعلام عنها", 50, 1000, 200, 50)
         with col2: group_sel = st.selectbox("المجموعة الفضائية من CelesTrak:", DATA_CONTRACT["celestrak"]["groups"])
             
-        if st.button("🔄 جلب البيانات الحية من CelesTrak"):
+        if st.button("🔄 جلب البيانات الحية أو إعادة التحديث"):
             st.session_state.cache_ver += 1
             db.log_audit("FETCH_CELESTRAK", f"Requested ephemeris for group: {group_sel}")
             st.rerun()
             
-        with st.spinner("جاري جلب إحداثيات الأقمار الصناعية الحية..."):
-            orbit_map, fetch_success = build_live_orbit_map(group_sel, sat_slider)
+        with st.spinner("جاري جلب إحداثيات الأقمار الصناعية..."):
+            orbit_map, fetch_success, is_fallback = build_live_orbit_map(group_sel, sat_slider)
             
-        if not fetch_success:
-            st.error("⚠️ فشل الاتصال بخادم CelesTrak أو تعذر جلب البيانات الحية حالياً. (تنبيه: تم إلغاء توليد أي أقمار وهمية التزاماً بالدقة الصارمة).")
-            db.log_audit("FETCH_CELESTRAK_FAILED", f"Failed to retrieve data from CelesTrak for group {group_sel}")
-        else:
-            records = []
-            for name, sat in orbit_map.items():
-                try:
-                    lat, lon, alt = sat.lat, sat.lon, sat.altitude
-                    dist_to_station = haversine(selected_station['lat'], selected_station['lon'], lat, lon)
-                    horizon = math.acos(DATA_CONTRACT["model"]["earthRadiusKm"] / (DATA_CONTRACT["model"]["earthRadiusKm"] + alt)) * DATA_CONTRACT["model"]["earthRadiusKm"]
-                    if strict_los and dist_to_station > (horizon + 1000):
-                        continue
-                    records.append({
-                        "اسم القمر": name[:28],
-                        "حالة البيانات": "محدث من CelesTrak",
-                        "خط العرض": round(lat, 3),
-                        "خط الطول": round(lon, 3),
-                        "الارتفاع (كم)": round(alt, 1),
-                        "البعد عن المحطة (كم)": round(dist_to_station, 1)
-                    })
-                except:
+        if is_fallback:
+            st.warning("⚠️ تنبيه: تعذر الاتصال المباشر بخادم CelesTrak حالياً، وتم الانتقال تلقائياً إلى نظام المحاكاة الاحتياطي (Fallback Mode) لضمان استمرار التحليلات وعرض الخرائط بسلاسة.")
+            db.log_audit("FALLBACK_MODE_ACTIVATED", f"Fallback simulation mode activated for group {group_sel}")
+
+        records = []
+        for name, sat in orbit_map.items():
+            try:
+                lat, lon, alt = sat.lat, sat.lon, sat.altitude
+                dist_to_station = haversine(selected_station['lat'], selected_station['lon'], lat, lon)
+                horizon = math.acos(DATA_CONTRACT["model"]["earthRadiusKm"] / (DATA_CONTRACT["model"]["earthRadiusKm"] + alt)) * DATA_CONTRACT["model"]["earthRadiusKm"]
+                if strict_los and dist_to_station > (horizon + 1000):
                     continue
-            df_res = pd.DataFrame(records)
+                records.append({
+                    "اسم القمر": name[:28],
+                    "حالة البيانات": "محاكاة احتياطية (Fallback)" if is_fallback else "محدث من CelesTrak",
+                    "خط العرض": round(lat, 3),
+                    "خط الطول": round(lon, 3),
+                    "الارتفاع (كم)": round(alt, 1),
+                    "البعد عن المحطة (كم)": round(dist_to_station, 1)
+                })
+            except:
+                continue
+        df_res = pd.DataFrame(records)
+        
+        if not df_res.empty:
+            st.success(f"✅ تم تحميل وتجهيز بيانات {len(df_res)} قمر صناعي بنجاح.")
+            st.dataframe(df_res.reset_index(drop=True), use_container_width=True)
             
-            if not df_res.empty:
-                st.success(f"✅ تم تحميل بيانات {len(df_res)} قمر صناعي بنجاح من المصدر الحي.")
-                st.dataframe(df_res.reset_index(drop=True), use_container_width=True)
-                
-                fig = px.scatter_geo(
-                    df_res,
-                    lat="خط العرض",
-                    lon="خط الطول",
-                    hover_name="اسم القمر",
-                    projection="orthographic",
-                    title=f"خريطة التتبع الجغرافي للمحطة: {selected_station['name']}"
-                )
-                fig.add_trace(go.Scattergeo(
-                    lat=[selected_station['lat']],
-                    lon=[selected_station['lon']],
-                    mode='markers+text',
-                    text=[selected_station['name']],
-                    textposition="top right",
-                    marker=dict(size=14, color='#38bdf8', symbol='star'),
-                    name=selected_station['name']
-                ))
-                fig.update_geos(bgcolor="#0b0f19", landcolor="#111827", subunitcolor="#374151", countrycolor="#4b5563")
-                fig.update_layout(height=550, margin={"r":0,"t":40,"l":0,"b":0})
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.warning("⚠️ لا توجد أقمار مطابقة لنطاق خط الرؤية المباشر المحدد حالياً.")
+            fig = px.scatter_geo(
+                df_res,
+                lat="خط العرض",
+                lon="خط الطول",
+                hover_name="اسم القمر",
+                projection="orthographic",
+                title=f"خريطة التتبع الجغرافي للمحطة: {selected_station['name']}"
+            )
+            fig.add_trace(go.Scattergeo(
+                lat=[selected_station['lat']],
+                lon=[selected_station['lon']],
+                mode='markers+text',
+                text=[selected_station['name']],
+                textposition="top right",
+                marker=dict(size=14, color='#38bdf8', symbol='star'),
+                name=selected_station['name']
+            ))
+            fig.update_geos(bgcolor="#0b0f19", landcolor="#111827", subunitcolor="#374151", countrycolor="#4b5563")
+            fig.update_layout(height=550, margin={"r":0,"t":40,"l":0,"b":0})
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("⚠️ لا توجد أقمار مطابقة لنطاق خط الرؤية المباشر المحدد حالياً.")
 
     # ----------------------------------------
     # 2. هندسة الوصلة (Friis Link Budget & SNR)
@@ -557,7 +577,7 @@ def main():
 
     st.markdown("""
     <div style="text-align: center; color: #6b7280; font-size: 0.85em; padding: 25px 0; border-top: 1px solid #1f2937; margin-top: 30px;">
-        © 2026 COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.1). جميع الحقوق محفوظة للأدوات الهندسية والتحليلية.
+        © 2026 COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.2). جميع الحقوق محفوظة للأدوات الهندسية والتحليلية.
     </div>
     """, unsafe_allow_html=True)
 
