@@ -1,6 +1,6 @@
 """
-COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.2)
-النسخة المعدلة والمحسنة لضمان استقرار التطبيق ودعم البيانات الاحتياطية (Fallback) عند انقطاع الاتصال
+COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.3 - Live TLE & Skyfield Engine)
+النسخة المحدثة للبيانات الحية والفعلية عبر CelesTrak و Skyfield
 """
 
 import streamlit as st
@@ -13,15 +13,11 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from types import SimpleNamespace
-import time
-import json
-import os
-import logging
 import hashlib
 import sqlite3
 
 try:
-    from skyfield.api import Topos, EarthSatellite, load, wgs84
+    from skyfield.api import EarthSatellite, load, wgs84
     SKYFIELD_AVAILABLE = True
 except ImportError:
     SKYFIELD_AVAILABLE = False
@@ -29,18 +25,15 @@ except ImportError:
 # ==========================================
 # 1. إعدادات التسجيل ونظام السجلات (Logging)
 # ==========================================
+import logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('cosmic324_engineering.log'),
-        logging.StreamHandler()
-    ]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
 # ==========================================
-# 2. عقود البيانات والمعلمات الفيزيائية الحقيقية
+# 2. عقود البيانات والمعلمات الفيزيائية
 # ==========================================
 DATA_CONTRACT = {
     "celestrak": {
@@ -141,17 +134,15 @@ class EngineeringDatabase:
         
         for idx, log in enumerate(logs_sorted):
             if log['prev_hash'] != expected_prev:
-                err_msg = f"عدم تطابق في الـ Hash عند السجل رقم {log['id']} (تلاعب محتمل أو تلف في السلسل)"
-                return False, err_msg
+                return False, f"عدم تطابق في الـ Hash عند السجل رقم {log['id']}"
             
             raw_string = f"{log['timestamp']}:{log['event_type']}:{log['description']}:{log['prev_hash']}"
             recomputed = hashlib.sha256(raw_string.encode()).hexdigest()
             if recomputed != log['current_hash']:
-                err_msg = f"خطأ في بصمة الـ Hash للسجل رقم {log['id']}!"
-                return False, err_msg
+                return False, f"خطأ في بصمة الـ Hash للسجل رقم {log['id']}!"
             expected_prev = log['current_hash']
             
-        return True, "سلامة السلسلة مثبتة بنجاح (Hash-Chain Verified): لا يوجد أي تلاعب مكتشف."
+        return True, "سلامة السلسلة مثبتة بنجاح (Hash-Chain Verified)."
 
     def get_legal_docs(self) -> List[Dict]:
         try:
@@ -182,7 +173,7 @@ LANGUAGES = {
         "name": "العربية",
         "dir": "rtl",
         "title": "🛰️ COSMIC-324: منصة التتبع الهندسي وتحليل الوصلات الفضائية",
-        "subtitle": "أداة هندسية تحليلية لتتبع الأقمار الصناعية، حسابات الميزانية الراديوية (Friis)، وإزاحة دوبلر",
+        "subtitle": "أداة هندسية تحليلية لتتبع الأقمار الصناعية الحية، حسابات الميزانية الراديوية (Friis)، وإزاحة دوبلر",
         "dashboard": "📊 لوحة التتبع الحي للأقمار الصناعية",
         "link_budget": "📡 هندسة الوصلة وحسابات Friis & SNR",
         "doppler_panel": "🌐 تحليل إزاحة دوبلر الفلكية",
@@ -193,7 +184,7 @@ LANGUAGES = {
         "name": "English",
         "dir": "ltr",
         "title": "🛰️ COSMIC-324: Satellite Tracking & Link Analysis Suite",
-        "subtitle": "Analytical engineering tool for satellite ephemeris, Friis link budget, and Doppler shift",
+        "subtitle": "Analytical engineering tool for live satellite ephemeris, Friis link budget, and Doppler shift",
         "dashboard": "📊 Live Satellite Tracking Dashboard",
         "link_budget": "📡 Link Budget & Friis / SNR Analysis",
         "doppler_panel": "🌐 Doppler Shift Analysis",
@@ -211,7 +202,7 @@ def get_current_dir() -> str:
     return LANGUAGES.get(lang, LANGUAGES['ar']).get('dir', 'rtl')
 
 # ==========================================
-# 5. دوال الحسابات الجغرافية ومعالجة البيانات مع وضع الاستجابة البديلة (Fallback)
+# 5. جلب البيانات الفلكية الحقيقية (Live TLE & Skyfield)
 # ==========================================
 @st.cache_data
 def get_stations() -> List[Dict]:
@@ -234,68 +225,62 @@ def haversine(lat1, lon1, lat2, lon2):
 
 @st.cache_data(ttl=900)
 def fetch_live_ephemeris(group: str, limit: int, version: int) -> Tuple[List[Dict], bool]:
-    url = f"{DATA_CONTRACT['source']['baseUrl']}?GROUP={group}&FORMAT=json"
+    """جلب بيانات المدارات الحقيقية (TLE) مباشرة بصيغة نصية أو جيسون من CelesTrak"""
+    url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group}&FORMAT=tle"
     try:
-        res = requests.get(url, timeout=5)
+        res = requests.get(url, timeout=8)
         if res.status_code == 200:
-            data = res.json()
-            if isinstance(data, list) and len(data) > 0:
-                return data[:limit], True
+            lines = res.text.strip().splitlines()
+            satellites = []
+            # ملفات الـ TLE تتألف من 3 أسطر لكل قمر (الاسم، السطر الأول، السطر الثاني)
+            for i in range(0, len(lines) - 2, 3):
+                if i + 2 < len(lines):
+                    name = lines[i].strip()
+                    line1 = lines[i+1].strip()
+                    line2 = lines[i+2].strip()
+                    satellites.append({
+                        "OBJECT_NAME": name,
+                        "TLE_LINE1": line1,
+                        "TLE_LINE2": line2
+                    })
+            if len(satellites) > 0:
+                return satellites[:limit], True
     except Exception as e:
-        logger.error(f"CelesTrak fetch error: {e}")
+        logger.error(f"Live CelesTrak TLE fetch error: {e}")
     return [], False
 
-def generate_fallback_satellites(group: str, limit: int) -> List[Dict]:
-    """توليد بيانات محاكاة واقعية في حال تعذر الاتصال بـ CelesTrak لضمان استمرار عمل التطبيق دون توقف"""
-    fallback_data = []
-    np.random.seed(42)
-    for i in range(1, limit + 1):
-        fallback_data.append({
-            "OBJECT_NAME": f"{group.upper()}-SAT-{i:03d}",
-            "INCLINATION": float(np.random.uniform(20, 85)),
-            "MEAN_MOTION": float(np.random.uniform(13, 15)),
-            "EPOCH_REV": float(np.random.uniform(1000, 5000))
-        })
-    return fallback_data
-
-def build_live_orbit_map(group: str, limit: int) -> Tuple[Dict, bool, bool]:
+def build_live_orbit_map(group: str, limit: int) -> Tuple[Dict, bool]:
+    """حساب الإحداثيات الفعلية اللحظية باستخدام Skyfield وبيانات TLE الحقيقية"""
     orbit_map = {}
     raw, success = fetch_live_ephemeris(group, limit, st.session_state.cache_ver)
     
-    is_fallback = False
     if not success or not raw:
-        # تفعيل النظام البديل تلقائياً عند فشل الاتصال
-        raw = generate_fallback_satellites(group, limit)
-        is_fallback = True
+        return {}, False
 
-    ts = load.timescale() if SKYFIELD_AVAILABLE else None
-    t_now = ts.now() if ts else None
+    if not SKYFIELD_AVAILABLE:
+        return {}, False
 
-    for entry in raw:
-        try:
+    try:
+        ts = load.timescale()
+        t_now = ts.now()
+        
+        for entry in raw:
             name = entry.get('OBJECT_NAME', 'SAT')
-            if not is_fallback and SKYFIELD_AVAILABLE and 'TLE_LINE1' in entry and 'TLE_LINE2' in entry:
-                satellite = EarthSatellite(entry['TLE_LINE1'], entry['TLE_LINE2'], name, ts)
+            line1 = entry.get('TLE_LINE1')
+            line2 = entry.get('TLE_LINE2')
+            if line1 and line2:
+                satellite = EarthSatellite(line1, line2, name, ts)
                 geocentric = satellite.at(t_now)
                 subpoint = wgs84.subpoint(geocentric)
-                lat, lon, alt = subpoint.latitude.degrees, subpoint.longitude.degrees, subpoint.elevation.km
-            else:
-                # محاكاة حسابية دقيقة للموقع في حال وضع الاحتياط أو غياب Skyfield
-                mm = float(entry.get('MEAN_MOTION', 14.0))
-                incl = float(entry.get('INCLINATION', 53.0))
-                epoch_days = float(entry.get('EPOCH_REV', 0))
-                now_utc = datetime.utcnow()
-                sec_fraction = (now_utc.hour * 3600 + now_utc.minute * 60 + now_utc.second) / 86400.0
-                phase = (epoch_days + sec_fraction * mm) * 2 * math.pi
-                lat = float(incl * math.sin(phase + (hash(name) % 10)))
-                lon = float(((math.degrees(phase) + (hash(name) % 360)) % 360) - 180)
-                alt = 550.0
-
-            orbit_map[name] = SimpleNamespace(name=name, lat=lat, lon=lon, altitude=alt)
-        except:
-            continue
-            
-    return orbit_map, True, is_fallback
+                lat = subpoint.latitude.degrees
+                lon = subpoint.longitude.degrees
+                alt = subpoint.elevation.km
+                orbit_map[name] = SimpleNamespace(name=name, lat=lat, lon=lon, altitude=alt)
+    except Exception as e:
+        logger.error(f"Skyfield calculation error: {e}")
+        return {}, False
+        
+    return orbit_map, True
 
 # ==========================================
 # 6. الهيكل الرئيسي لتطبيق Streamlit
@@ -376,20 +361,21 @@ def main():
     # ----------------------------------------
     if nav == t('dashboard'):
         col1, col2 = st.columns([2, 1])
-        with col1: sat_slider = st.slider("عدد الأقمار المراد الاستعلام عنها", 50, 1000, 200, 50)
+        with col1: sat_slider = st.slider("عدد الأقمار المراد الاستعلام عنها", 50, 500, 100, 50)
         with col2: group_sel = st.selectbox("المجموعة الفضائية من CelesTrak:", DATA_CONTRACT["celestrak"]["groups"])
             
-        if st.button("🔄 جلب البيانات الحية أو إعادة التحديث"):
+        if st.button("🔄 جلب الإحداثيات الحية المباشرة"):
             st.session_state.cache_ver += 1
-            db.log_audit("FETCH_CELESTRAK", f"Requested ephemeris for group: {group_sel}")
+            db.log_audit("FETCH_LIVE_CELESTRAK_TLE", f"Fetched live TLE ephemeris for group: {group_sel}")
             st.rerun()
             
-        with st.spinner("جاري جلب إحداثيات الأقمار الصناعية..."):
-            orbit_map, fetch_success, is_fallback = build_live_orbit_map(group_sel, sat_slider)
+        with st.spinner("جاري الاتصال وسحب مدارات TLE الحية وحساب مواقعها الفلكية الفعلية..."):
+            orbit_map, fetch_success = build_live_orbit_map(group_sel, sat_slider)
             
-        if is_fallback:
-            st.warning("⚠️ تنبيه: تعذر الاتصال المباشر بخادم CelesTrak حالياً، وتم الانتقال تلقائياً إلى نظام المحاكاة الاحتياطي (Fallback Mode) لضمان استمرار التحليلات وعرض الخرائط بسلاسة.")
-            db.log_audit("FALLBACK_MODE_ACTIVATED", f"Fallback simulation mode activated for group {group_sel}")
+        if not fetch_success or not orbit_map:
+            st.error("❌ تعذر جلب البيانات الحية حالياً من خوادم CelesTrak أو تأكد من تثبيت مكتبة `skyfield` عبر النظام البيئي.")
+        else:
+            st.success("✅ تم جلب البيانات الحية المباشرة وحساب المواقع الفلكية الفعلية بنجاح.")
 
         records = []
         for name, sat in orbit_map.items():
@@ -401,7 +387,7 @@ def main():
                     continue
                 records.append({
                     "اسم القمر": name[:28],
-                    "حالة البيانات": "محاكاة احتياطية (Fallback)" if is_fallback else "محدث من CelesTrak",
+                    "حالة البيانات": "حقيقي مباشر (Live TLE)",
                     "خط العرض": round(lat, 3),
                     "خط الطول": round(lon, 3),
                     "الارتفاع (كم)": round(alt, 1),
@@ -412,7 +398,6 @@ def main():
         df_res = pd.DataFrame(records)
         
         if not df_res.empty:
-            st.success(f"✅ تم تحميل وتجهيز بيانات {len(df_res)} قمر صناعي بنجاح.")
             st.dataframe(df_res.reset_index(drop=True), use_container_width=True)
             
             fig = px.scatter_geo(
@@ -421,7 +406,7 @@ def main():
                 lon="خط الطول",
                 hover_name="اسم القمر",
                 projection="orthographic",
-                title=f"خريطة التتبع الجغرافي للمحطة: {selected_station['name']}"
+                title=f"خريطة التتبع الحي الفعلي للمحطة: {selected_station['name']}"
             )
             fig.add_trace(go.Scattergeo(
                 lat=[selected_station['lat']],
@@ -436,7 +421,7 @@ def main():
             fig.update_layout(height=550, margin={"r":0,"t":40,"l":0,"b":0})
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("⚠️ لا توجد أقمار مطابقة لنطاق خط الرؤية المباشر المحدد حالياً.")
+            st.warning("⚠️ لا توجد أقمار مطابقة لنطاق التصفية المختار.")
 
     # ----------------------------------------
     # 2. هندسة الوصلة (Friis Link Budget & SNR)
@@ -525,7 +510,7 @@ def main():
     elif nav == t('legal_panel'):
         st.subheader("⚖️ أداة التوثيق الداخلي والمراجعة القانونية")
         st.markdown("""
-        > **تنويه هام:** هذه الوحدة هي أداة توثيق داخلي لتنظيم وترتيب المذكرات واللوائح القانونية والمؤسسية (مثل عقود الشركات وحوكمة الشركات العائلية وتنظيم الاتصالات). **ولا تُعد بأي حال من الأحوال بديلاً عن الاستشارة القانونية الرسمية** المقدمة من محامين مرخصين أو مستشارين قانونيين معتمدين.
+        > **تنويه هام:** هذه الوحدة هي أداة توثيق داخلي لتنظيم وترتيب المذكرات واللوائح القانونية والمؤسسية (مثل عقود الشركات وحوكمة الشركات العائلية وتنظيم الاتصالات). **ولا تُعد بأي حال من الأحوال بديلاً عن الاستشارة القانونية الرسمية**.
         """)
 
         docs = db.get_legal_docs()
@@ -577,7 +562,7 @@ def main():
 
     st.markdown("""
     <div style="text-align: center; color: #6b7280; font-size: 0.85em; padding: 25px 0; border-top: 1px solid #1f2937; margin-top: 30px;">
-        © 2026 COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.2). جميع الحقوق محفوظة للأدوات الهندسية والتحليلية.
+        © 2026 COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.3). جميع الحقوق محفوظة للأدوات الهندسية والتحليلية.
     </div>
     """, unsafe_allow_html=True)
 
