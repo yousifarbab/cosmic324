@@ -21,6 +21,7 @@ import secrets
 import hmac
 import hashlib
 import sqlite3
+from licensing_module import SovereignLicensing
 
 try:
     from skyfield.api import Topos, EarthSatellite, load, wgs84
@@ -96,7 +97,6 @@ class SovereignEnterpriseDB:
                         notes TEXT NOT NULL
                     )
                 """)
-                # إدخال بيانات تجريبية أولية خالية تماماً من أي إشارات لسلطنة عمان
                 cursor = conn.cursor()
                 cursor.execute("SELECT COUNT(*) FROM compliance_table")
                 if cursor.fetchone()[0] == 0:
@@ -335,6 +335,11 @@ def build_live_orbit_map(group: str, limit: int) -> Dict:
 
 def main():
     st.sidebar.title("🚀 COSMIC-324 V17.0")
+    
+    # التحقق من الرخصة في الشريط الجانبي
+    if not SovereignLicensing.is_valid():
+        st.sidebar.error("⚠️ الترخيص غير مفعل. يرجى الاتصال بالدعم.")
+        st.stop()
     
     crisis_label = "🔴 إيقاف حالة الطوارئ" if st.session_state.crisis_mode else "🚨 تفعيل وضع الطوارئ الحرج (Red Alert)"
     if st.sidebar.button(crisis_label):
