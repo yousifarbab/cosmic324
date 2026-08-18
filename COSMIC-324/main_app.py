@@ -1,6 +1,6 @@
 """
-COSMIC-324: 6G Titan X Enterprise Sovereign Edition
-النسخة السيادية المتقدمة والمحدثة - الإصدار الشامل (V17.0 - متكامل تماماً وبدون أي إشارات لسلطنة عمان في الامتثال)
+COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.0)
+النسخة الهندسية المحدثة وفق المعايير الحقيقية للاتصالات الفضائية (بدون عسكرة أو بيانات وهمية)
 """
 
 import streamlit as st
@@ -17,12 +17,8 @@ import time
 import json
 import os
 import logging
-import secrets
-import hmac
 import hashlib
 import sqlite3
-from licensing_module import SovereignLicensing
-from ai_predictive_module import ai_engine
 
 try:
     from skyfield.api import Topos, EarthSatellite, load, wgs84
@@ -30,18 +26,22 @@ try:
 except ImportError:
     SKYFIELD_AVAILABLE = False
 
+# ==========================================
+# 1. إعدادات التسجيل ونظام السجلات (Logging)
+# ==========================================
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('cosmic324_sovereign.log'),
+        logging.FileHandler('cosmic324_engineering.log'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
-SECRET_KEY = os.environ.get('COSMIC_SECRET_KEY', 'cosmic-324-absolute-sovereign-master-key')
-
+# ==========================================
+# 2. عقود البيانات والمعلمات الفيزيائية الحقيقية
+# ==========================================
 DATA_CONTRACT = {
     "celestrak": {
         "groups": ["starlink", "active", "visual", "weather", "gps", "iridium"],
@@ -50,16 +50,19 @@ DATA_CONTRACT = {
     },
     "model": {
         "earthRadiusKm": 6371.0,
-        "frequencyGHz": 28.0,
-        "transmitterPowerWatt": 40.0
+        "speedOfLight": 3e8,  # م/ث
+        "boltzmannConstant": 1.380649e-23  # J/K
     },
     "source": {
         "baseUrl": "https://celestrak.org/NORAD/elements/gp.php"
     }
 }
 
-class SovereignEnterpriseDB:
-    def __init__(self, db_path: str = "sovereign_enterprise.db"):
+# ==========================================
+# 3. قاعدة البيانات المحلية وسجل الـ Hash-Chained
+# ==========================================
+class EngineeringDatabase:
+    def __init__(self, db_path: str = "engineering_suite.db"):
         self.db_path = db_path
         self._init_db()
     
@@ -67,156 +70,134 @@ class SovereignEnterpriseDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute("""
-                    CREATE TABLE IF NOT EXISTS licenses (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        license_key TEXT UNIQUE NOT NULL,
-                        client_name TEXT NOT NULL,
-                        tier TEXT NOT NULL,
-                        expiry_date TEXT NOT NULL,
-                        created_at TEXT NOT NULL,
-                        is_active INTEGER DEFAULT 1
-                    )
-                """)
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS immutable_audit (
+                    CREATE TABLE IF NOT EXISTS hash_audit_logs (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         timestamp TEXT NOT NULL,
                         event_type TEXT NOT NULL,
                         description TEXT NOT NULL,
-                        status TEXT NOT NULL,
-                        cryptographic_hash TEXT NOT NULL
+                        prev_hash TEXT NOT NULL,
+                        current_hash TEXT NOT NULL
                     )
                 """)
                 conn.execute("""
-                    CREATE TABLE IF NOT EXISTS compliance_table (
+                    CREATE TABLE IF NOT EXISTS legal_compliance_docs (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         jurisdiction TEXT NOT NULL,
                         law_title TEXT NOT NULL,
                         category TEXT NOT NULL,
-                        compliance_status TEXT NOT NULL,
-                        last_reviewed TEXT NOT NULL,
+                        review_status TEXT NOT NULL,
+                        last_updated TEXT NOT NULL,
                         notes TEXT NOT NULL
                     )
                 """)
                 cursor = conn.cursor()
-                cursor.execute("SELECT COUNT(*) FROM compliance_table")
+                cursor.execute("SELECT COUNT(*) FROM legal_compliance_docs")
                 if cursor.fetchone()[0] == 0:
-                    sample_laws = [
-                        ("السودان", "قانون الشركات المالية وحركة المؤسسات", "حركة الشركات", "مراجعة معتمدة", datetime.utcnow().isoformat(), "مستند إلى أبحاث حوكمة الشركات في فض النزاعات"),
-                        ("دولي", "معاهدة الفضاء الخارجي وتنسيق المدارات (ITU)", "القانون الدولي", "ملتزم بالمعايير", datetime.utcnow().isoformat(), "متابعة إحداثيات التتبع TLE وفق المعايير العالمية")
+                    sample_docs = [
+                        ("داخلي / مؤسسي", "إطار توثيق عقود الحوكمة المؤسسية والشركات العائلية", "القانون التجاري", "مسودة توثيق داخلي", datetime.utcnow().isoformat(), "أداة إرشادية داخلية بحتة ولا تُغني عن الاستشارة القانونية المتخصصة."),
+                        ("دولي / فضائي", "معايير الاتحاد الدولي للاتصالات (ITU) لتنسيق الترددات", "تنظيم الاتصالات", "معتمد فنياً", datetime.utcnow().isoformat(), "متابعة خطوط الرؤية والمدارات وفق المعطيات الفلكية.")
                     ]
-                    conn.executemany("INSERT INTO compliance_table (jurisdiction, law_title, category, compliance_status, last_reviewed, notes) VALUES (?, ?, ?, ?, ?, ?)", sample_laws)
+                    conn.executemany("INSERT INTO legal_compliance_docs (jurisdiction, law_title, category, review_status, last_updated, notes) VALUES (?, ?, ?, ?, ?, ?)", sample_docs)
         except Exception as e:
             logger.error(f"Database Initialization Error: {e}")
-    
-    def generate_license(self, client_name: str, tier: str, days: int = 365) -> Tuple[str, str]:
-        expiry = (datetime.utcnow() + timedelta(days=days)).strftime('%Y-%m-%d')
-        token = secrets.token_hex(16)
-        sig = hmac.new(SECRET_KEY.encode(), f"{token}:{client_name}".encode(), hashlib.sha256).hexdigest()[:16].upper()
-        key = f"CSM324-SOV-{token[:8].upper()}-{sig}"
-        
-        with sqlite3.connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO licenses (license_key, client_name, tier, expiry_date, created_at) VALUES (?, ?, ?, ?, ?)",
-                (key, client_name, tier, expiry, datetime.utcnow().isoformat())
-            )
-        return key, expiry
 
-    def get_licenses(self) -> List[Dict]:
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.execute("SELECT license_key, client_name, tier, expiry_date, is_active FROM licenses")
-                return [dict(row) for row in cursor.fetchall()]
-        except:
-            return []
-
-    def get_compliance_records(self) -> List[Dict]:
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.execute("SELECT jurisdiction, law_title, category, compliance_status, last_reviewed, notes FROM compliance_table")
-                return [dict(row) for row in cursor.fetchall()]
-        except:
-            return []
-
-    def add_compliance_record(self, jurisdiction: str, law_title: str, category: str, status: str, notes: str):
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute(
-                    "INSERT INTO compliance_table (jurisdiction, law_title, category, compliance_status, last_reviewed, notes) VALUES (?, ?, ?, ?, ?, ?)",
-                    (jurisdiction, law_title, category, status, datetime.utcnow().isoformat(), notes)
-                )
-        except Exception as e:
-            logger.error(f"Add Compliance Error: {e}")
-
-    def log_immutable_audit(self, event_type: str, desc: str, status: str = "SECURE"):
+    def log_audit(self, event_type: str, desc: str):
         timestamp = datetime.utcnow().isoformat()
-        raw_data = f"{timestamp}:{event_type}:{desc}:{status}:{SECRET_KEY}"
-        crypto_hash = hashlib.sha256(raw_data.encode()).hexdigest()
+        prev_hash = self._get_latest_hash()
+        raw_string = f"{timestamp}:{event_type}:{desc}:{prev_hash}"
+        current_hash = hashlib.sha256(raw_string.encode()).hexdigest()
         
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
-                    "INSERT INTO immutable_audit (timestamp, event_type, description, status, cryptographic_hash) VALUES (?, ?, ?, ?, ?)",
-                    (timestamp, event_type, desc, status, crypto_hash)
+                    "INSERT INTO hash_audit_logs (timestamp, event_type, description, prev_hash, current_hash) VALUES (?, ?, ?, ?, ?)",
+                    (timestamp, event_type, desc, prev_hash, current_hash)
                 )
         except Exception as e:
-            logger.error(f"Immutable Audit Log Error: {e}")
+            logger.error(f"Audit Log Error: {e}")
+
+    def _get_latest_hash(self) -> str:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute("SELECT current_hash FROM hash_audit_logs ORDER BY id DESC LIMIT 1")
+                row = cursor.fetchone()
+                return row[0] if row else "0" * 64
+        except:
+            return "0" * 64
 
     def get_audit_logs(self) -> List[Dict]:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                cursor = conn.execute("SELECT timestamp, event_type, description, status, cryptographic_hash FROM immutable_audit ORDER BY id DESC LIMIT 100")
+                cursor = conn.execute("SELECT id, timestamp, event_type, description, prev_hash, current_hash FROM hash_audit_logs ORDER BY id DESC")
                 return [dict(row) for row in cursor.fetchall()]
         except:
             return []
 
-sov_db = SovereignEnterpriseDB()
+    def verify_integrity(self) -> Tuple[bool, str]:
+        logs = self.get_audit_logs()
+        # logs are sorted DESC, let's reverse to check chronologically
+        logs_sorted = list(reversed(logs))
+        expected_prev = "0" * 64
+        
+        for idx, log in enumerate(logs_sorted):
+            if log['prev_hash'] != expected_prev:
+                return False, fعدم تطابق في الـ Hash عند السجل رقم {log['id']} (تلاعب محتمل أو تلف في السسلسل)"
+            
+            raw_string = f"{log['timestamp']}:{log['event_type']}:{log['description']}:{log['prev_hash']}"
+            recomputed = hashlib.sha256(raw_string.encode()).hexdigest()
+            if recomputed != log['current_hash']:
+                return False, f"خطأ في بصمة الـ Hash للسجل رقم {log['id']}!"
+            expected_prev = log['current_hash']
+            
+        return True, "سلامة السلسلة مثبتة بنجاح (Hash-Chain Verified): لا يوجد أي تلاعب مكتشف."
 
+    def get_legal_docs(self) -> List[Dict]:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute("SELECT jurisdiction, law_title, category, review_status, last_updated, notes FROM legal_compliance_docs")
+                return [dict(row) for row in cursor.fetchall()]
+        except:
+            return []
+
+    def add_legal_doc(self, jur: str, title: str, cat: str, status: str, notes: str):
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    "INSERT INTO legal_compliance_docs (jurisdiction, law_title, category, review_status, last_updated, notes) VALUES (?, ?, ?, ?, ?, ?)",
+                    (jur, title, cat, status, datetime.utcnow().isoformat(), notes)
+                )
+        except Exception as e:
+            logger.error(f"Add Legal Doc Error: {e}")
+
+db = EngineeringDatabase()
+
+# ==========================================
+# 4. واجهة اللغات (عربي / إنجليزي)
+# ==========================================
 LANGUAGES = {
     "ar": {
         "name": "العربية",
         "dir": "rtl",
-        "title": "🚀 كوزميك-324: المنظومة السيادية الفيزيائية المطلقة (V17.0)",
-        "subtitle": "النظام الفضائي الحقيقي الهجين - مع عتاد SDR، ونظام الدفاع ضد المسيرات، والتشفير الكمومي",
-        "welcome": "🌟 مرحباً بك في غرفة العمليات السيادية المركزية (الإصدار الشامل V17.0).",
-        "dashboard": "📊 لوحة التتبع الفضائي الميداني الحقيقي",
-        "counter_uav": "🛡️ نظام الدفاع ضد المسيرات (Counter-UAV)",
-        "compliance": "⚖️ وحدة الامتثال التنظيمي والسيادي (Global Compliance)",
-        "sdr_spectrum": "📡 RF Spectrum & SDR",
-        "hardware_panel": "🔌 إدارة العتاد السيادي ومستشعرات IoT",
-        "link_budget": "📡 حسابات هندسة الوصلة وتحليل الإشارة (Link Budget & SNR)",
-        "doppler_panel": "🌐 تحليل إزاحة دوبلر والانتقال (Doppler & Handover)",
-        "command_panel": "⚡ التحكم الميداني وعكس الأوامر (Uplink)",
-        "ai_predictive": "🤖 الذكاء الاصطناعي التنبؤي والإنذار المبكر",
-        "audit_panel": "📜 سجلات التدقيق المشفرة وسجلات بلاكشين لا مركزية",
-        "crisis_panel": "🚨 مركز الطوارئ والتدخل الفيزيائي العاجل (Red Alert)",
-        "licenses_panel": "🔑 إدارة التراخيص السيادية والمؤسسية",
-        "health_panel": "🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM)",
-        "settings_panel": "⚙️ الإعدادات المتقدمة للشبكة والاتصال"
+        "title": "🛰️ COSMIC-324: منصة التتبع الهندسي وتحليل الوصلات الفضائية",
+        "subtitle": "أداة هندسية تحليلية لتتبع الأقمار الصناعية، حسابات الميزانية الراديوية (Friis)، وإزاحة دوبلر",
+        "dashboard": "📊 لوحة التتبع الحي للأقمار الصناعية",
+        "link_budget": "📡 هندسة الوصلة وحسابات Friis & SNR",
+        "doppler_panel": "🌐 تحليل إزاحة دوبلر الفلكية",
+        "legal_panel": "⚖️ أداة التوثيق الداخلي والمراجعة القانونية",
+        "audit_panel": "📜 سجل العمليات المربوط (Hash-Chained Log)"
     },
     "en": {
         "name": "English",
         "dir": "ltr",
-        "title": "🚀 COSMIC-324: Absolute Sovereign Physical System (V17.0)",
-        "subtitle": "Hybrid Space System - with SDR, Counter-UAV Defense, and Quantum Encryption",
-        "welcome": "🌟 Welcome to the Central Sovereign Operations Room (V17.0 Absolute).",
-        "dashboard": "📊 Real Live Satellite Tracking Dashboard",
-        "counter_uav": "🛡️ Counter-UAV Defense System",
-        "compliance": "⚖️ Global Compliance & Sovereign Unit",
-        "sdr_spectrum": "📡 RF Spectrum & SDR",
-        "hardware_panel": "🔌 Sovereign Hardware & IoT Sensors",
-        "link_budget": "📡 Link Budget & Signal Analysis (SNR)",
-        "doppler_panel": "🌐 Doppler Shift & Handover",
-        "command_panel": "⚡ Tactical Command & Uplink",
-        "ai_predictive": "🤖 Predictive AI & Early Warning",
-        "audit_panel": "📜 Immutable Cryptographic & Decentralized Logs",
-        "crisis_panel": "🚨 Crisis Management & Red Alert Center",
-        "licenses_panel": "🔑 Enterprise Sovereign Licenses",
-        "health_panel": "🩺 Hardware Health & Quantum Security (HSM)",
-        "settings_panel": "⚙️ Advanced Network Settings & Endpoints"
+        "title": "🛰️ COSMIC-324: Satellite Tracking & Link Analysis Suite",
+        "subtitle": "Analytical engineering tool for satellite ephemeris, Friis link budget, and Doppler shift",
+        "dashboard": "📊 Live Satellite Tracking Dashboard",
+        "link_budget": "📡 Link Budget & Friis / SNR Analysis",
+        "doppler_panel": "🌐 Doppler Shift Analysis",
+        "legal_panel": "⚖️ Internal Legal & Regulatory Documentation Tool",
+        "audit_panel": "📜 Hash-Chained Audit Log"
     }
 }
 
@@ -228,56 +209,19 @@ def get_current_dir() -> str:
     lang = st.session_state.get('language', 'ar')
     return LANGUAGES.get(lang, LANGUAGES['ar']).get('dir', 'rtl')
 
-st.set_page_config(page_title="COSMIC-324 V17.0 Sovereign", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
-
-if 'language' not in st.session_state:
-    st.session_state.language = 'ar'
-if 'cache_ver' not in st.session_state:
-    st.session_state.cache_ver = 0
-if 'crisis_mode' not in st.session_state:
-    st.session_state.crisis_mode = False
-
-current_dir = get_current_dir()
-bg_color = "#1f0404" if st.session_state.crisis_mode else "#06060c"
-border_color = "rgba(255, 50, 50, 0.8)" if st.session_state.crisis_mode else "rgba(0, 204, 255, 0.2)"
-
-st.markdown(f"""
-<style>
-    .main, .stApp {{
-        background-color: {bg_color};
-        direction: {current_dir};
-        text-align: {'right' if current_dir == 'rtl' else 'left'};
-    }}
-    .stMetric {{
-        background: linear-gradient(145deg, #121222, #080812);
-        border-radius: 10px;
-        padding: 15px;
-        border: 1px solid {border_color};
-    }}
-    h1, h2, h3, h4 {{
-        color: {'#FF5555' if st.session_state.crisis_mode else '#00CCFF'};
-        font-family: 'Segoe UI', Tahoma, sans-serif;
-    }}
-    .welcome-box {{
-        background: linear-gradient(135deg, #101026, #060610);
-        border-radius: 12px;
-        padding: 20px;
-        border: 1px solid {border_color};
-        margin-bottom: 20px;
-    }}
-</style>
-""", unsafe_allow_html=True)
-
+# ==========================================
+# 5. دوال الحسابات الجغرافية ومعالجة CelesTrak الحقيقية
+# ==========================================
 @st.cache_data
-def get_countries() -> List[Dict]:
+def get_stations() -> List[Dict]:
     return sorted([
-        {"name": "Sudan (السودان - الخرطوم)", "lat": 15.5007, "lon": 32.5599},
-        {"name": "Saudi Arabia (المملكة العربية السعودية)", "lat": 23.8859, "lon": 45.0792},
-        {"name": "United Arab Emirates (الإمارات)", "lat": 23.4241, "lon": 53.8478},
-        {"name": "Asia-Pacific Hub (محطة آسيا والمحيط الهادئ)", "lat": 36.2048, "lon": 138.2529}
+        {"name": "محطة الخرطوم البحثية (السودان)", "lat": 15.5007, "lon": 32.5599},
+        {"name": "محطة الرياض المركزية (المملكة العربية السعودية)", "lat": 23.8859, "lon": 45.0792},
+        {"name": "محطة دبي التقنية (الإمارات)", "lat": 23.4241, "lon": 53.8478},
+        {"name": "محطة طوكيو الفضائية (آسيا)", "lat": 36.2048, "lon": 138.2529}
     ], key=lambda x: x["name"])
 
-ALL_COUNTRIES = get_countries()
+ALL_STATIONS = get_stations()
 
 def haversine(lat1, lon1, lat2, lon2):
     R = DATA_CONTRACT["model"]["earthRadiusKm"]
@@ -288,339 +232,343 @@ def haversine(lat1, lon1, lat2, lon2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 @st.cache_data(ttl=900)
-def fetch_live_ephemeris(group: str, limit: int, version: int) -> List[Dict]:
+def fetch_live_ephemeris(group: str, limit: int, version: int) -> Tuple[List[Dict], bool]:
     url = f"{DATA_CONTRACT['source']['baseUrl']}?GROUP={group}&FORMAT=json"
     try:
-        res = requests.get(url, timeout=15)
-        if res.status_code == 200 and res.text.startswith('['):
-            return res.json()[:limit]
+        res = requests.get(url, timeout=10)
+        if res.status_code == 200:
+            data = res.json()
+            if isinstance(data, list) and len(data) > 0:
+                return data[:limit], True
     except Exception as e:
-        logger.error(f"Live Ephemeris fetch error: {e}")
-    return []
+        logger.error(f"CelesTrak fetch error: {e}")
+    return [], False
 
-def build_live_orbit_map(group: str, limit: int) -> Dict:
+def build_live_orbit_map(group: str, limit: int) -> Tuple[Dict, bool]:
     orbit_map = {}
-    raw = fetch_live_ephemeris(group, limit, st.session_state.cache_ver)
+    raw, success = fetch_live_ephemeris(group, limit, st.session_state.cache_ver)
+    if not success or not raw:
+        return {}, False
+
     ts = load.timescale() if SKYFIELD_AVAILABLE else None
     t_now = ts.now() if ts else None
 
-    if raw:
-        for entry in raw:
-            try:
-                name = entry.get('OBJECT_NAME', 'SAT')
-                if SKYFIELD_AVAILABLE and 'TLE_LINE1' in entry and 'TLE_LINE2' in entry:
-                    satellite = EarthSatellite(entry['TLE_LINE1'], entry['TLE_LINE2'], name, ts)
-                    geocentric = satellite.at(t_now)
-                    subpoint = wgs84.subpoint(geocentric)
-                    lat, lon, alt = subpoint.latitude.degrees, subpoint.longitude.degrees, subpoint.elevation.km
-                else:
-                    mm = float(entry.get('MEAN_MOTION', 14.0))
-                    incl = float(entry.get('INCLINATION', 53.0))
-                    epoch_days = float(entry.get('EPOCH_REV', 0))
-                    now_utc = datetime.utcnow()
-                    sec_fraction = (now_utc.hour * 3600 + now_utc.minute * 60 + now_utc.second) / 86400.0
-                    phase = (epoch_days + sec_fraction * mm) * 2 * math.pi
-                    lat, lon, alt = incl * math.sin(phase), (math.degrees(phase) % 360) - 180, 550.0
+    for entry in raw:
+        try:
+            name = entry.get('OBJECT_NAME', 'SAT')
+            if SKYFIELD_AVAILABLE and 'TLE_LINE1' in entry and 'TLE_LINE2' in entry:
+                satellite = EarthSatellite(entry['TLE_LINE1'], entry['TLE_LINE2'], name, ts)
+                geocentric = satellite.at(t_now)
+                subpoint = wgs84.subpoint(geocentric)
+                lat, lon, alt = subpoint.latitude.degrees, subpoint.longitude.degrees, subpoint.elevation.km
+            else:
+                mm = float(entry.get('MEAN_MOTION', 14.0))
+                incl = float(entry.get('INCLINATION', 53.0))
+                epoch_days = float(entry.get('EPOCH_REV', 0))
+                now_utc = datetime.utcnow()
+                sec_fraction = (now_utc.hour * 3600 + now_utc.minute * 60 + now_utc.second) / 86400.0
+                phase = (epoch_days + sec_fraction * mm) * 2 * math.pi
+                lat, lon, alt = incl * math.sin(phase), (math.degrees(phase) % 360) - 180, 550.0
 
-                sat = SimpleNamespace(name=name, lat=lat, lon=lon, altitude=alt)
-                orbit_map[name] = sat
-            except:
-                continue
+            orbit_map[name] = SimpleNamespace(name=name, lat=lat, lon=lon, altitude=alt)
+        except:
+            continue
+            
+    return orbit_map, True
 
-    if not orbit_map:
-        for i in range(limit):
-            name = f"SOV-PHYS-SAT-{i+1:04d}"
-            sat = SimpleNamespace(name=name, lat=((i * 37) % 180) - 90, lon=((i * 59) % 360) - 180, altitude=550.0)
-            orbit_map[name] = sat
-    return orbit_map
-
+# ==========================================
+# 6. الهيكل الرئيسي لتطبيق Streamlit
+# ==========================================
 def main():
-    st.sidebar.title("🚀 COSMIC-324 V17.0")
-    
-    if not SovereignLicensing.is_valid():
-        st.sidebar.error("⚠️ الترخيص غير مفعل. يرجى الاتصال بالدعم.")
-        st.stop()
-    
-    crisis_label = "🔴 إيقاف حالة الطوارئ" if st.session_state.crisis_mode else "🚨 تفعيل وضع الطوارئ الحرج (Red Alert)"
-    if st.sidebar.button(crisis_label):
-        st.session_state.crisis_mode = not st.session_state.crisis_mode
-        state_str = "ACTIVATED" if st.session_state.crisis_mode else "DEACTIVATED"
-        sov_db.log_immutable_audit("CRISIS_MODE", f"Emergency state changed to {state_str}", "CRITICAL" if st.session_state.crisis_mode else "SECURE")
-        st.rerun()
+    st.set_page_config(page_title="COSMIC-324 Engineering Suite", page_icon="🛰️", layout="wide", initial_sidebar_state="expanded")
 
+    if 'language' not in st.session_state:
+        st.session_state.language = 'ar'
+    if 'cache_ver' not in st.session_state:
+        st.session_state.cache_ver = 0
+
+    current_dir = get_current_dir()
+
+    st.markdown(f"""
+    <style>
+        .main, .stApp {{
+            background-color: #0b0f19;
+            direction: {current_dir};
+            text-align: {'right' if current_dir == 'rtl' else 'left'};
+        }}
+        .stMetric {{
+            background: #111827;
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid #1f2937;
+        }}
+        h1, h2, h3, h4 {{
+            color: #38bdf8;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }}
+        .info-box {{
+            background: #111827;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #374151;
+            margin-bottom: 15px;
+        }}
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.sidebar.title("🛰️ COSMIC-324 Suite")
+    
     lang_choice = st.sidebar.selectbox("🌐 Language / اللغة", ["ar", "en"], format_func=lambda x: LANGUAGES[x]["name"], index=0 if st.session_state.language=='ar' else 1)
     if lang_choice != st.session_state.language:
         st.session_state.language = lang_choice
         st.rerun()
         
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### اختيار المحطة السيادية المستهدفة:")
-    country_names = [c["name"] for c in ALL_COUNTRIES]
-    selected_country_name = st.sidebar.selectbox("المحطة:", country_names)
-    selected_country = next(c for c in ALL_COUNTRIES if c["name"] == selected_country_name)
+    st.sidebar.markdown("### اختيار المحطة الأرضية المرجعية:")
+    station_names = [s["name"] for s in ALL_STATIONS]
+    selected_st_name = st.sidebar.selectbox("المحطة:", station_names)
+    selected_station = next(s for s in ALL_STATIONS if s["name"] == selected_st_name)
     
-    view_mode_choice = st.sidebar.radio("طريقة العرض الجغرافي:", ["عرض كامل الأوكتاف العالمي", "تصفية الأقمار في خط الرؤية المباشر (LoS)"], index=0)
+    view_mode_choice = st.sidebar.radio("نطاق التصفية الجغرافية:", ["عرض شامل لجميع الأقمار المتاحة", "تصفية الأقمار في خط الرؤية المباشر (LoS)"], index=0)
     strict_los = ("LoS" in view_mode_choice)
     
     st.sidebar.markdown("---")
-    nav = st.sidebar.radio("📌 القائمة المركزية", [
+    nav = st.sidebar.radio("📌 القائمة الرئيسية", [
         t('dashboard'),
-        t('counter_uav'),
-        t('compliance'),
-        t('sdr_spectrum'),
-        t('hardware_panel'),
         t('link_budget'),
         t('doppler_panel'),
-        t('command_panel'),
-        t('ai_predictive'),
-        t('audit_panel'),
-        t('crisis_panel'),
-        t('licenses_panel'),
-        t('health_panel'),
-        t('settings_panel')
+        t('legal_panel'),
+        t('audit_panel')
     ])
     
     st.title(t('title'))
     st.markdown(f"*{t('subtitle')}*")
-    
-    if st.session_state.crisis_mode:
-        st.error("🚨 تنبيه قصوى: نظام الطوارئ الفيزيائي السيادي (Red Alert) مفعل! تم عزل العقد وتحويل مسارات الحزم طارئاً.")
 
     st.markdown(f"""
-    <div class="welcome-box">
-        <h2>{t('welcome')}</h2>
-        <p>المحطة الميدانية النشطة: <b>{selected_country['name']}</b> (خط العرض: {selected_country['lat']}°, خط الطول: {selected_country['lon']}°) | التوقيت العالمي الحقيقي (UTC): <b>{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}</b></p>
+    <div class="info-box">
+        <b>المحطة المرجعية النشطة:</b> {selected_station['name']} (خط العرض: {selected_station['lat']}°, خط الطول: {selected_station['lon']}°) | التوقيت العالمي (UTC): <b>{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}</b>
     </div>
     """, unsafe_allow_html=True)
     
+    # ----------------------------------------
+    # 1. لوحة التتبع الحي والأقمار الصناعية
+    # ----------------------------------------
     if nav == t('dashboard'):
         col1, col2 = st.columns([2, 1])
-        with col1: sat_slider = st.slider("عدد الأقمار المرصودة حياً", 50, 2000, 500, 50)
-        with col2: group_sel = st.selectbox("المجموعة الفضائية الحية:", DATA_CONTRACT["celestrak"]["groups"])
+        with col1: sat_slider = st.slider("عدد الأقمار المراد الاستعلام عنها", 50, 1000, 200, 50)
+        with col2: group_sel = st.selectbox("المجموعة الفضائية من CelesTrak:", DATA_CONTRACT["celestrak"]["groups"])
             
-        if st.button("🔄 جلب وتحديث الإحداثيات الحية الفورية (Live Ephemeris)"):
+        if st.button("🔄 جلب البيانات الحية من CelesTrak"):
             st.session_state.cache_ver += 1
-            sov_db.log_immutable_audit("REFRESH_TLE", f"Fetched fresh Ephemeris for group: {group_sel}", "SUCCESS")
+            db.log_audit("FETCH_CELESTRAK", f"Requested ephemeris for group: {group_sel}")
             st.rerun()
             
-        with st.spinner("جاري الاتصال بقواعد بيانات الإحداثيات الفلكية الحية..."):
-            orbit_map = build_live_orbit_map(group_sel, sat_slider)
+        with st.spinner("جاري جلب إحداثيات الأقمار الصناعية الحية..."):
+            orbit_map, fetch_success = build_live_orbit_map(group_sel, sat_slider)
+            
+        if not fetch_success:
+            st.error("⚠️ فشل الاتصال بخادم CelesTrak أو تعذر جلب البيانات الحية حالياً. (تنبيه: تم إلغاء توليد أي أقمار وهمية التزاماً بالدقة الصارمة).")
+            db.log_audit("FETCH_CELESTRAK_FAILED", f"Failed to retrieve data from CelesTrak for group {group_sel}")
+        else:
             records = []
             for name, sat in orbit_map.items():
                 try:
                     lat, lon, alt = sat.lat, sat.lon, sat.altitude
-                    dist_to_station = haversine(selected_country['lat'], selected_country['lon'], lat, lon)
+                    dist_to_station = haversine(selected_station['lat'], selected_station['lon'], lat, lon)
                     horizon = math.acos(DATA_CONTRACT["model"]["earthRadiusKm"] / (DATA_CONTRACT["model"]["earthRadiusKm"] + alt)) * DATA_CONTRACT["model"]["earthRadiusKm"]
-                    if strict_los and dist_to_station > (horizon + 1200):
+                    if strict_los and dist_to_station > (horizon + 1000):
                         continue
                     records.append({
                         "اسم القمر": name[:28],
-                        "الحالة الحية": "متصل ومزامن لحظياً",
+                        "حالة البيانات": "محدث من CelesTrak",
                         "خط العرض": round(lat, 3),
                         "خط الطول": round(lon, 3),
-                        "الارتفاع الفعلي (كم)": round(alt, 1),
+                        "الارتفاع (كم)": round(alt, 1),
                         "البعد عن المحطة (كم)": round(dist_to_station, 1)
                     })
                 except:
                     continue
             df_res = pd.DataFrame(records)
             
-        if not df_res.empty:
-            st.success(f"✅ إجمالي الأقمار المرصودة حياً في النطاق السيادي: {len(df_res)} قمر صناعي.")
-            st.dataframe(df_res.reset_index(drop=True), use_container_width=True)
-            
-            fig = px.scatter_geo(
-                df_res,
-                lat="خط العرض",
-                lon="خط الطول",
-                hover_name="اسم القمر",
-                projection="orthographic",
-                title=f"خريطة التتبع الميداني الحي - مرصودة من {selected_country['name']}"
-            )
-            fig.add_trace(go.Scattergeo(
-                lat=[selected_country['lat']],
-                lon=[selected_country['lon']],
-                mode='markers+text',
-                text=[selected_country['name']],
-                textposition="top right",
-                marker=dict(size=16, color='red', symbol='star'),
-                name=f"محطة التحكم: {selected_country['name']}"
-            ))
-            fig.update_geos(bgcolor="#06060c", landcolor="#121220", subunitcolor="#00CCFF", countrycolor="#0066AA")
-            fig.update_layout(height=600, margin={"r":0,"t":40,"l":0,"b":0})
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("⚠️ لا توجد أقمار ضمن نطاق الرؤية المباشر. يرجى اختيار عرض كامل الأوكتاف العالمي.")
+            if not df_res.empty:
+                st.success(f"✅ تم تحميل بيانات {len(df_res)} قمر صناعي بنجاح من المصدر الحي.")
+                st.dataframe(df_res.reset_index(drop=True), use_container_width=True)
+                
+                fig = px.scatter_geo(
+                    df_res,
+                    lat="خط العرض",
+                    lon="خط الطول",
+                    hover_name="اسم القمر",
+                    projection="orthographic",
+                    title=f"خريطة التتبع الجغرافي للمحطة: {selected_station['name']}"
+                )
+                fig.add_trace(go.Scattergeo(
+                    lat=[selected_station['lat']],
+                    lon=[selected_station['lon']],
+                    mode='markers+text',
+                    text=[selected_station['name']],
+                    textposition="top right",
+                    marker=dict(size=14, color='#38bdf8', symbol='star'),
+                    name=selected_station['name']
+                ))
+                fig.update_geos(bgcolor="#0b0f19", landcolor="#111827", subunitcolor="#374151", countrycolor="#4b5563")
+                fig.update_layout(height=550, margin={"r":0,"t":40,"l":0,"b":0})
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning("⚠️ لا توجد أقمار مطابقة لنطاق خط الرؤية المباشر المحدد حالياً.")
 
-    elif nav == t('counter_uav'):
-        st.subheader("🛡️ نظام الدفاع النشط ضد المسيرات ورصد الأهداف الجوية (Counter-UAV)")
-        st.write("مراقبة الترددات الكهرومغناطيسية والبصمات الراديوية لكشف الطائرات المسيرة غير المصرح بها وتعطيل إشارات توجيهها.")
-        
-        col_u1, col_u2 = st.columns(2)
-        with col_u1:
-            st.metric("حالة الرادار التكتيكي المحلي", "نشط ومؤمن", "0 تهديدات مخترقة")
-            st.code("UAV Radar Sensor Array: ACTIVE\nFrequency Band: 2.4 GHz / 5.8 GHz\nJamming Module: Standby / Ready", language="yaml")
-        with col_u2:
-            st.metric("كفاءة التشويش الموجه (RF Jamming)", "99.8%", "مستقر")
-            st.code("Target Tracked: None in Restricted Zone\nAirspace Security Level: DEFCON 2", language="yaml")
-
-        if st.button("🚀 تنفيذ مسح طيفي فوري للأجواء المحيطة بالمحطة"):
-            time.sleep(1)
-            sov_db.log_immutable_audit("COUNTER_UAV_SCAN", f"Performed tactical airspace scan around {selected_country['name']}", "SUCCESS")
-            st.success("✅ تم الانتهاء من المسح الطيفي بنجاح. الأجواء آمنة وخالية من أي مسيرات معادية.")
-
-    elif nav == t('compliance'):
-        st.subheader("⚖️ وحدة الامتثال التنظيمي والسيادي (Global Compliance)")
-        st.markdown("إدارة اللوائح والتشريعات الدولية للحماية الفضائية وتنظيم الاتصالات اللاسلكية والتحقق من المعايير السيادية العامة.")
-        
-        records = sov_db.get_compliance_records()
-        if records:
-            df_comp = pd.DataFrame(records)
-            st.dataframe(df_comp.reset_index(drop=True), use_container_width=True)
-        else:
-            st.info("لا توجد سجلات امتثال متاحة حالياً.")
-            
-        with st.expander("➕ إضافة أو رفع لوائح تنظيمية جديدة"):
-            with st.form("new_compliance_form"):
-                jur = st.text_input("النطاق القضائي أو الدولة (مثل: السودان، دولي):")
-                title = st.text_input("عنوان القانون أو التشريع:")
-                cat = st.selectbox("التصنيف القانوني:", ["القانون التجاري", "تنظيم الاتصالات", "حركة الشركات", "القانون الدولي", "حماية البيانات"])
-                stat = st.selectbox("حالة الامتثال:", ["متوافق ومفعل", "نشط وتحت الإشراف", "مراجعة معتمدة", "ملتزم بالمعايير"])
-                nt = st.text_area("ملاحظات المراجعة التنظيمية:")
-                if st.form_submit_button("حفظ وإضافة اللائحة السيادية") and jur and title:
-                    sov_db.add_compliance_record(jur, title, cat, stat, nt)
-                    sov_db.log_immutable_audit("ADD_COMPLIANCE", f"Added compliance record: {title} ({jur})", "SUCCESS")
-                    st.success("✅ تم إضافة اللائحة التنظيمية وتحديث السجل بنجاح.")
-                    st.rerun()
-
-    elif nav == t('sdr_spectrum'):
-        st.subheader("📡 محاكاة الطيف الراديوي ومستقبلات SDR الفيزيائية")
-        freqs = np.linspace(26.0, 30.0, 100)
-        power_spectrum = -50 + 15 * np.sin(freqs * 2) + np.random.normal(0, 1.5, 100)
-        df_spec = pd.DataFrame({"التردد (GHz)": freqs, "قدرة الإشارة (dBm)": power_spectrum})
-        st.plotly_chart(px.line(df_spec, x="التردد (GHz)", y="قدرة الإشارة (dBm)", title="طيف الترددات الراديوية الحي"), use_container_width=True)
-
-    elif nav == t('hardware_panel'):
-        st.subheader("🔌 إدارة العتاد السيادي ومستشعرات إنترنت الأشياء (Hardware & IoT)")
-        c1, c2 = st.columns(2)
-        with c1: st.code("SDR Module (HackRF One): CONNECTED\nLO Frequency: 28.0 GHz\nGain: 32 dB", language="yaml")
-        with c2: st.code("ESP32 Sovereign Telemetry: ACTIVE\nInternal Temp: 41.2 °C\nPacket Loss: 0.00%", language="yaml")
-
+    # ----------------------------------------
+    # 2. هندسة الوصلة (Friis Link Budget & SNR)
+    # ----------------------------------------
     elif nav == t('link_budget'):
-        st.subheader("📡 تحليل الهامش الكهرومغناطيسي ونسبة الإشارة للتشويش (SNR)")
+        st.subheader("📡 حسابات ميزانية الوصلة الراديوية (Friis Transmission Equation & SNR)")
+        st.write("حساب قوة الإشارة المستقبلة بناءً على معادلة فرايس الحقيقية لفقد المسار الحر، القدرة المشعة المكافئة المتدرجة (EIRP)، وضوضاء جونسون-نايكويست الحرارية.")
+        
         c1, c2, c3 = st.columns(3)
-        with c1: sat_alt_input = st.number_input("متوسط ارتفاع القمر (كم)", value=550.0, step=10.0)
-        with c2: freq_input = st.number_input("التردد التشغيلي 6G (GHz)", value=28.0, step=1.0)
-        with c3: power_input = st.number_input("قدرة الإرسال (Watt)", value=40.0, step=5.0)
-        fspl = 20 * math.log10(sat_alt_input) + 20 * math.log10(freq_input) + 92.45
-        snr_estimated = 45.0 - (fspl * 0.12) + (power_input * 0.05)
-        col_m1, col_m2, col_m3 = st.columns(3)
-        with col_m1: st.metric("فقد المسار الحر (FSPL)", f"{round(fspl, 2)} dB")
-        with col_m2: st.metric("نسبة الإشارة للتشويش (SNR)", f"{round(snr_estimated, 2)} dB", "مستقر حياً")
-        with col_m3: st.metric("كفاءة القناة الطيفية", "99.99%", "مثالي لـ 6G")
+        with c1:
+            frequency_ghz = st.number_input("التردد التشغيلي (GHz):", value=12.5, step=0.5, min_value=0.1, max_value=100.0)
+            distance_km = st.number_input("المسافة بين المحطة والقمر (كم):", value=850.0, step=50.0, min_value=100.0)
+        with c2:
+            tx_power_dbw = st.number_input("قدرة المرسل (Tx Power in dBW):", value=10.0, step=1.0)
+            tx_gain_dbi = st.number_input("كسب هوائي المرسل (Tx Gain dBi):", value=30.0, step=1.0)
+        with c3:
+            rx_gain_dbi = st.number_input("كسب هوائي المستقبل (Rx Gain dBi):", value=35.0, step=1.0)
+            system_temp_k = st.number_input("درجة حرارة النظام المكافئة (Kelvin):", value=290.0, step=10.0)
+            bandwidth_mhz = st.number_input("عرض النطاق الترددي (MHz):", value=20.0, step=5.0)
 
+        # الحسابات الهندسية الحقيقية
+        frequency_hz = frequency_ghz * 1e9
+        distance_m = distance_km * 1e3
+        wavelength = DATA_CONTRACT["model"]["speedOfLight"] / frequency_hz
+        
+        # EIRP = P_tx (dBW) + G_tx (dBi)
+        eirp_dbw = tx_power_dbw + tx_gain_dbi
+        
+        # Friis Free Space Path Loss (FSPL) in dB = 20*log10(4 * pi * d / lambda)
+        fspl_db = 20 * math.log10(4 * math.pi * distance_m / wavelength)
+        
+        # Received Power Pr (dBW) = EIRP + G_rx - FSPL
+        pr_dbw = eirp_dbw + rx_gain_dbi - fspl_db
+        pr_dbm = pr_dbw + 30  # تحويل إلى dBm
+        
+        # Johnson-Nyquist Noise Power N = k * T * B
+        bandwidth_hz = bandwidth_mhz * 1e6
+        noise_power_watts = DATA_CONTRACT["model"]["boltzmannConstant"] * system_temp_k * bandwidth_hz
+        noise_power_dbw = 10 * math.log10(noise_power_watts)
+        noise_power_dbm = noise_power_dbw + 30
+        
+        # SNR (Signal-to-Noise Ratio) in dB = Pr (dBW) - Noise (dBW)
+        snr_db = pr_dbw - noise_power_dbw
+
+        st.markdown("---")
+        m1, m2, m3, m4 = st.columns(4)
+        with m1: st.metric("الفقد الحر للمسار (FSPL)", f"{round(fspl_db, 2)} dB")
+        with m2: st.metric("القدرة المشعة (EIRP)", f"{round(eirp_dbw, 2)} dBW")
+        with m3: st.metric("قدرة الإشارة المستقبلة (Pr)", f"{round(pr_dbm, 2)} dBm")
+        with m4: st.metric("نسبة الإشارة للضوضاء (SNR)", f"{round(snr_db, 2)} dB", "مستقر" if snr_db > 10 else "ضعيف")
+
+        if st.button("💾 تسجيل حسابات الوصلة في سجل العمليات"):
+            db.log_audit("LINK_BUDGET_CALC", f"Calculated Friis link budget: Freq={frequency_ghz}GHz, Dist={distance_km}km, SNR={round(snr_db,2)}dB")
+            st.success("✅ تم حفظ نتيجة الحساب في سجل التدقيق المشفر بنجاح.")
+
+    # ----------------------------------------
+    # 3. تحليل إزاحة دوبلر (Doppler Shift)
+    # ----------------------------------------
     elif nav == t('doppler_panel'):
-        st.subheader("🌐 تحليل إزاحة دوبلر والانتقال (Doppler & Handover)")
+        st.subheader("🌐 تحليل إزاحة دوبلر الفلكية (Doppler Shift Calculation)")
+        st.write("حساب التغير الظاهري في تردد الإشارة نتيجة السرعة النسبية بين القمر الصناعي المتحرك والمحطة الأرضية الثابتة.")
+
         col_d1, col_d2 = st.columns(2)
         with col_d1:
-            st.info("تردد الوصلة الهابطة: 20.5 GHz\n\nالانزياح: ±45.2 kHz")
+            carrier_freq_ghz = st.number_input("التردد الحامل للأصل (GHz):", value=10.0, step=0.5)
+            sat_velocity_kms = st.number_input("سرعة القمر المدارية (كم/ث):", value=7.56, step=0.1)
         with col_d2:
-            st.success("الانتقال السلس (Handover): جاهز\n\nزمن التبديل: < 4.2 ms")
+            max_elevation_deg = st.number_input("زاوية الارتفاع القصوى للمرور (درجات):", value=45.0, step=5.0, min_value=5.0, max_value=90.0)
 
-    elif nav == t('command_panel'):
-        st.subheader("⚡ التحكم الميداني وعكس الأوامر (Command Uplink)")
-        cmd_type = st.selectbox("نوع أمر الوصلة العكسية:", ["توجيه شعاعي فوري للقمر النشط", "عزل قطاع الاتصالات الطارئ", "تحديث مفاتيح التشفير الكمومي"])
-        if st.button("⚡ تنفيذ وإرسال الأمر الميداني الحي"):
-            time.sleep(1)
-            st.success(f"✅ تم تنفيذ وإرسال الأمر بنجاح عبر البوابة السيادية لـ {selected_country['name']}.")
-            sov_db.log_immutable_audit("COMMAND_UPLINK", f"Executed: {cmd_type} at station {selected_country['name']}", "SUCCESS")
-
-    elif nav == t('ai_predictive'):
-        st.subheader("🤖 الذكاء الاصطناعي التنبؤي والإنذار المبكر")
-        st.write("تحليل سلوك المسارات المتوقعة والكشف المبكر عن التداخلات الطيفية بواسطة محرك الذكاء الاصطناعي السيادي.")
+        # المعادلة الكلاسيكية لدوبلر: Delta_f = (v / c) * f_0 * cos(theta)
+        f_0 = carrier_freq_ghz * 1e9
+        v = sat_velocity_kms * 1e3
+        c = DATA_CONTRACT["model"]["speedOfLight"]
         
-        sample_preds = ai_engine.predict_orbital_trajectory(selected_country['lat'], selected_country['lon'], steps=5)
-        df_preds = pd.DataFrame(sample_preds)
-        st.markdown("### 📈 التنبؤ بالمسار المداري للخطوات القادمة:")
-        st.dataframe(df_preds, use_container_width=True)
-        
-        dummy_signals = [-50.1, -49.8, -50.2, -48.9, -65.4, -50.0]
-        anomaly_res = ai_engine.analyze_spectrum_anomaly(dummy_signals)
-        st.markdown("### 📡 تقرير فحص الشذوذ الطيفي:")
-        st.json(anomaly_res)
+        # أقصى إزاحة تحدث عند الأفق (cos(0) = 1 تقريباً أو أقصى إسقاط شعاعي)
+        max_doppler_hz = (v / c) * f_0
+        max_doppler_khz = max_doppler_hz / 1e3
 
+        st.markdown("---")
+        dm1, dm2 = st.columns(2)
+        with dm1: st.metric("أقصى إزاحة ترددية (Max Doppler Shift)", f"± {round(max_doppler_khz, 2)} kHz")
+        with dm2: st.metric("سرعة إرسال الموجة النسبية", f"{sat_velocity_kms} كم/ث")
+
+        # رسم بياني لمنحنى دوبلر خلال مرور القمر
+        time_points = np.linspace(-300, 300, 100) # بالثواني حول نقطة التوسط
+        doppler_curve = max_doppler_khz * np.sin(time_points / 150.0)
+        df_doppler = pd.DataFrame({"الزمن النسبي (ثواني)": time_points, "الإزاحة الترددية (kHz)": doppler_curve})
+        
+        st.plotly_chart(px.line(df_doppler, x="الزمن النسبي (ثواني)", y="الإزاحة الترددية (kHz)", title="منحنى إزاحة دوبلر عبر الزمن أثناء عبور القمر"), use_container_width=True)
+
+        if st.button("💾 تسجيل تحليل دوبلر في سجل العمليات"):
+            db.log_audit("DOPPLER_CALC", f"Calculated max Doppler shift: ±{round(max_doppler_khz,2)} kHz at {carrier_freq_ghz} GHz")
+            st.success("✅ تم توثيق الحساب في سجل التدقيق بنجاح.")
+
+    # ----------------------------------------
+    # 4. أداة التوثيق الداخلي والمراجعة القانونية
+    # ----------------------------------------
+    elif nav == t('legal_panel'):
+        st.subheader("⚖️ أداة التوثيق الداخلي والمراجعة القانونية")
+        st.markdown("""
+        > **تنويه هام:** هذه الوحدة هي أداة توثيق داخلي لتنظيم وترتيب المذكرات واللوائح القانونية والمؤسسية (مثل عقود الشركات وحوكمة الشركات العائلية وتنظيم الاتصالات). **ولا تُعد بأي حال من الأحوال بديلاً عن الاستشارة القانونية الرسمية** المقدمة من محامين مرخصين أو مستشارين قانونيين معتمدين.
+        """)
+
+        docs = db.get_legal_docs()
+        if docs:
+            df_docs = pd.DataFrame(docs)
+            st.dataframe(df_docs.reset_index(drop=True), use_container_width=True)
+        else:
+            st.info("لا توجد مستندات قانونية مسجلة حالياً.")
+
+        with st.expander("➕ إضافة وثيقة أو ملاحظة قانونية جديدة"):
+            with st.form("legal_form"):
+                jur = st.text_input("النطاق أو الجهة (مثل: داخلي / مؤسسي، تنظيم محلي):")
+                title = st.text_input("عنوان المذكرة أو التشريع:")
+                cat = st.selectbox("التصنيف:", ["القانون التجاري", "حوكمة الشركات", "تنظيم الاتصالات", "عقود وعمليات"])
+                status = st.selectbox("حالة المراجعة:", ["مسودة توثيق داخلي", "قيد المراجعة الفنية", "معتمد للنarchived"])
+                notes = st.text_area("ملاحظات تفصيلية أو إضافية:")
+                
+                if st.form_submit_button("حفظ المستند في الأرشيف الداخلي") and jur and title:
+                    db.add_legal_doc(jur, title, cat, status, notes)
+                    db.log_audit("ADD_LEGAL_DOC", f"Added internal legal/compliance document: {title}")
+                    st.success("✅ تم حفظ المستند وإضافة العملية لسجل التدقيق المشفر بنجاح.")
+                    st.rerun()
+
+    # ----------------------------------------
+    # 5. سجل العمليات المشفر (Hash-Chained Log)
+    # ----------------------------------------
     elif nav == t('audit_panel'):
-        st.subheader("📜 سجلات التدقيق المشفرة وسجلات بلاكشين لا مركزية")
-        logs = sov_db.get_audit_logs()
+        st.subheader("📜 سجل العمليات المربوط (Hash-Chained Audit Log)")
+        st.write("كل عملية أو حساب يتم إجراؤه في النظام يتم ربطه رياضياً عبر الـ Hash بالسجل الذي يسبقه (Cryptographic Hash-Chained)، مما يضمن إمكانية كشف أي تعديل أو عبث بالبيانات بشكل فوري.")
+
+        col_v1, col_v2 = st.columns([1, 3])
+        with col_v1:
+            if st.button("🔍 التحقق من سلامة السلسلة (Verify Integrity)"):
+                is_valid, msg = db.verify_integrity()
+                if is_valid:
+                    st.success(f"✅ {msg}")
+                else:
+                    st.error(f"❌ تنبيه أمني: {msg}")
+        
+        logs = db.get_audit_logs()
         if logs:
             df_logs = pd.DataFrame(logs)
             st.dataframe(df_logs.reset_index(drop=True), use_container_width=True)
+            
             csv_data = df_logs.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 تحميل تقارير التدقيق والتليمتري (CSV)", data=csv_data, file_name=f"sovereign_audit_logs_{datetime.utcnow().strftime('%Y%m%d')}.csv", mime="text/csv")
+            st.download_button("📥 تحميل سجل العمليات بصيغة CSV", data=csv_data, file_name=f"engineering_audit_logs_{datetime.utcnow().strftime('%Y%m%d')}.csv", mime="text/csv")
         else:
-            st.info("لا توجد سجلات تدقيق حتى الآن.")
-
-    elif nav == t('crisis_panel'):
-        st.subheader("🚨 مركز الطوارئ والتدخل الفيزيائي العاجل (Red Alert Center)")
-        col_cr1, col_cr2 = st.columns(2)
-        with col_cr1:
-            if st.button("🔴 إعلان حالة الإنذار القصوى وعزل العقد"):
-                st.session_state.crisis_mode = True
-                sov_db.log_immutable_audit("CRISIS_ACTION", "Red Alert isolation protocol executed.", "CRITICAL")
-                st.error("⚠️ تم تفعيل بروتوكول الطوارئ وعزل العقد!")
-                st.rerun()
-        with col_cr2:
-            if st.button("🟢 إلغاء حالة الطوارئ والعودة للوضع الآمن"):
-                st.session_state.crisis_mode = False
-                sov_db.log_immutable_audit("CRISIS_ACTION", "System restored to normal mode.", "SUCCESS")
-                st.success("✅ تم إلغاء حالة الطوارئ والعودة للوضع الطبيعي.")
-                st.rerun()
-
-    elif nav == t('licenses_panel'):
-        st.subheader("🔑 إدارة التراخيص السيادية والمؤسسية")
-        with st.form("lic_form"):
-            c_name = st.text_input("اسم الجهة أو المستفيد السيادي:")
-            c_tier = st.selectbox("الفئة المؤسسية:", ["Tier 1: Live Orbital Scout", "Tier 2: Sovereign Command", "Tier 3: 6G Absolute Master"])
-            if st.form_submit_button("توليد مفتاح تشفير وترخيص معتمد") and c_name:
-                key, exp = sov_db.generate_license(c_name, c_tier)
-                sov_db.log_immutable_audit("GENERATE_LICENSE", f"Issued new license for client: {c_name}", "SUCCESS")
-                st.success("✅ تم إصدار المفتاح وتفعيل البصمة التشفيرية:")
-                st.code(key, language="text")
-                st.info(f"تاريخ الصلاحية: {exp}")
-        st.markdown("---")
-        lics = sov_db.get_licenses()
-        if lics:
-            st.dataframe(pd.DataFrame(lics).reset_index(drop=True), use_container_width=True)
-        else:
-            st.info("لا توجد تراخيص مسجلة حالياً.")
-
-    elif nav == t('health_panel'):
-        st.subheader("🩺 مؤشرات أداء العتاد والأمان الكمومي (HSM)")
-        c1, c2, c3, c4 = st.columns(4)
-        with c1: st.metric("حمل العقد الحية", "12.4%", "-0.8%")
-        with c2: st.metric("زمن الاستجابة (API Latency)", "8.9 ms", "-2.1 ms")
-        with c3: st.metric("معدل فقد الحزم", "0.000%", "مثالي")
-        with c4: st.metric("حالة وحدة الأمان (HSM)", "AES-256 / Quantum", "مؤمن")
-        
-        perf_data = pd.DataFrame({
-            "الوقت": [datetime.utcnow() - timedelta(minutes=i) for i in range(15, 0, -1)],
-            "استهلاك العتاد (%)": np.random.uniform(18, 30, 15),
-            "حركة الشبكة الحية (Gbps)": np.random.uniform(5.1, 9.4, 15)
-        })
-        st.plotly_chart(px.line(perf_data, x="الوقت", y=["استهلاك العتاد (%)", "حركة الشبكة الحية (Gbps)"], title="أداء الخوادم ومحطات العتاد الحية"), use_container_width=True)
-
-    elif nav == t('settings_panel'):
-        st.subheader("⚙️ الإعدادات المتقدمة للشبكة والاتصال")
-        with st.form("settings_f"):
-            st.text_input("رابط مزود البيانات الحية (CelesTrak GP TLE Endpoint):", value=DATA_CONTRACT['source']['baseUrl'])
-            st.selectbox("بروتوكول أمان الحزم الصاعدة:", ["TLS 1.3 Sovereign Secured", "Quantum-Resistant Mesh", "Standard IPsec"])
-            if st.form_submit_button("حفظ وتطبيق الإعدادات السيادية الحية"):
-                sov_db.log_immutable_audit("UPDATE_SETTINGS", "Advanced sovereign settings updated.", "SUCCESS")
-                st.success("✅ تم تحديث وتثبيت الإعدادات الحية بنجاح.")
+            st.info("سجل العمليات فارغ حالياً.")
 
     st.markdown("""
-    <div style="text-align: center; color: #556677; font-size: 0.85em; padding: 25px 0; border-top: 1px solid #16162c; margin-top: 30px;">
-        © 2026 COSMIC-324: Absolute Sovereign Physical System (V17.0). النظام الميداني المعتمد للتحكم الفضائي الحي والأمان السيادي.
+    <div style="text-align: center; color: #6b7280; font-size: 0.85em; padding: 25px 0; border-top: 1px solid #1f2937; margin-top: 30px;">
+        © 2026 COSMIC-324: Satellite Tracking & Link Analysis Suite (V18.0). جميع الحقوق محفوظة للأدوات الهندسية والتحليلية.
     </div>
     """, unsafe_allow_html=True)
 
